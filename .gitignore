@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.sidecrew/
+*.tsbuildinfo
+.stryker-tmp/
+reports/
+.build/
+.swiftpm/
+.DS_Store

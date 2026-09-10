@@ -1,0 +1,30 @@
+{
+  "name": "sidecrew",
+  "version": "0.0.1",
+  "description": "Local worker models for Claude Code, behind a compile→run→mutation verifier. Claude plans and reviews; small on-device models do the narrow work. MCP server + CLI.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "sidecrew": "dist/cli.js" },
+  "files": ["dist", "claude", "README.md", "LICENSE"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:slow": "SIDECREW_SLOW=1 vitest run",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": ["claude-code", "mcp", "mcp-server", "mlx", "local-llm", "unit-tests", "mutation-testing", "apple-silicon", "developer-tools"],
+  "repository": { "type": "git", "url": "https://github.com/lvlrSajjad/sidecrew.git" }
+}

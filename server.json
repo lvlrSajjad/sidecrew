@@ -1,0 +1,10 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.lvlrSajjad/sidecrew",
+  "description": "Local worker models for coding agents behind a compile→run→mutation verifier. Claude plans; on-device MLX models write; only survivors come back.",
+  "version": "0.0.1",
+  "packages": [
+    { "registry_name": "npm", "name": "sidecrew", "version": "0.0.1",
+      "package_arguments": [ { "type": "positional", "value": "mcp" } ] }
+  ]
+}
