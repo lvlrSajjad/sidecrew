@@ -3,7 +3,8 @@
 > Test generation is workload #1. The WorkerTask → Candidate → Verdict triple is meant to stay generic; only the verifier and the shape taxonomy are test-specific.
 
 Everything between planner → worker → verifier → reviewer is JSON conforming to these shapes.
-Pydantic models live in `src/schemas.ts` and must match this file (Phase 0).
+The zod schemas in `src/schemas.ts` mirror this file, and `test/schemas.test.ts` parses every `json` block below
+with them, so the two cannot drift.
 
 ```
 Opus (test-planner)          local worker (MLX)          verifier            Claude (survivor-reviewer)
@@ -14,6 +15,11 @@ Opus (test-planner)          local worker (MLX)          verifier            Cla
 
 ## Shapes (`TestShape.kind`)
 `happy_path` · `boundary` · `error_or_throw` · `async` · `stateful_sequence` · `property_like`
+
+## Enums
+`Language` — `typescript` · `swift` · `python` · `kotlin`
+`TestFramework` — `vitest` · `jest` · `xctest` · `swift-testing`
+`CapabilityStatus` — `ok` · `degraded` · `missing`
 
 ## TestPlan
 ```json
@@ -83,7 +89,11 @@ Stored next to the plan. Referenced by path from `TestPlan.shapes[].exemplar`.
   "timing_ms": { "compile": 1400, "pass": 900, "mutation": 21000 }
 }
 ```
-Survive ⇔ `compile_ok ∧ pass_ok ∧ mutation.killed ≥ 1 ∧ ¬tautological`.
+Survive ⇔ `compile_ok ∧ pass_ok ∧ mutation.killed ≥ 1 ∧ ¬tautological`. `src/schemas.ts` enforces this as an
+iff: a `Verdict` whose `survived` disagrees with its own fields does not parse.
+
+`mutation` is `null` when the mutation stage never ran (compile or pass failed first), and each key of
+`timing_ms` is present only for a stage that actually ran.
 
 ## BatchResult
 ```json
@@ -99,6 +109,31 @@ Survive ⇔ `compile_ok ∧ pass_ok ∧ mutation.killed ≥ 1 ∧ ¬tautological
   "escalations": [ { "task_id": "…", "attempts": [ { "error": "…" }, { "error": "…" } ] } ]
 }
 ```
+
+## StatusReport
+```json
+{
+  "worker": { "up": true, "base_url": "http://localhost:8000/v1", "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "revision": "abc123" },
+  "memory": { "total_gb": 32.0, "free_gb": 17.2 },
+  "capabilities": { "mlx_lm": "ok", "tsc": "ok", "vitest": "ok", "stryker": "missing", "swift": "ok", "muter": "missing" }
+}
+```
+`worker.model` / `worker.revision` are `null` while the worker is down. `capabilities` keys are open — every
+row `doctor` knows about appears here with a `CapabilityStatus`.
+
+## ValidationReport
+```json
+{
+  "plan": ".sidecrew/plans/strings/test_plan.json",
+  "valid": false,
+  "checked": { "functions": 20, "shapes": 6, "exemplars": 6 },
+  "errors": [ { "code": "missing_exemplar", "message": "shapes[1].exemplar does not exist on disk", "where": "shapes[1].exemplar" } ],
+  "warnings": [ { "code": "stale_source_sha", "message": "slugify changed since the plan was written", "where": "functions[0]" } ],
+  "stale": ["slugify"]
+}
+```
+`valid` is `errors.length === 0`; warnings never make a plan invalid. `stale` lists function names whose
+`source_sha` no longer matches the module on disk.
 
 ## MCP tool signatures (Phase 4)
 ```
