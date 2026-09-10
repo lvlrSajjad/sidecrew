@@ -6,7 +6,7 @@ import { runMcp } from "./mcp.js";
 const [cmd = "help", ...rest] = process.argv.slice(2);
 const usage = `sidecrew — local workers behind a verifier, for Claude Code
 
-  sidecrew doctor                      what this machine can do
+  sidecrew doctor [--port 8000] [--json]       what this machine can do
   sidecrew serve [--model KEY] [--port 8000]   start a pinned mlx_lm.server worker
   sidecrew stop  [--port 8000]
   sidecrew status                      worker, model, free RAM
@@ -18,7 +18,7 @@ const usage = `sidecrew — local workers behind a verifier, for Claude Code
 
 const main = async () => {
   switch (cmd) {
-    case "doctor": return doctor();
+    case "doctor": return doctor(rest);
     case "mcp": return runMcp();
     case "serve": case "stop": case "status": case "plan": case "run": case "verify":
       throw new Error(`'${cmd}' not implemented yet — see docs/plan/PHASES.md`);
@@ -26,4 +26,3 @@ const main = async () => {
   }
 };
 main().catch((e) => { console.error(String(e?.message ?? e)); process.exit(1); });
-void rest;
