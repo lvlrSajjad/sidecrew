@@ -4,7 +4,7 @@ One phase per Opus session (roughly). Each has a prompt in `prompts/`, a definit
 
 | # | Phase | Status | Prompt |
 |---|-------|--------|--------|
-| 0 | Scaffold, contracts, `doctor` | ✅ scaffolded · contracts + doctor pending | `prompts/phase-0-scaffold.md` |
+| 0 | Scaffold, contracts, `doctor` | ✅ done | `prompts/phase-0-scaffold.md` |
 | 1 | `serve` + worker client + bench | ⬜ | `prompts/phase-1-worker.md` |
 | 2 | Verifier: TypeScript (Stryker) | ⬜ | `prompts/phase-2-verifier-ts.md` |
 | 3 | Verifier: Swift (Muter) | ⬜ | `prompts/phase-3-verifier-swift.md` |
@@ -17,6 +17,8 @@ One phase per Opus session (roughly). Each has a prompt in `prompts/`, a definit
 
 ## 0 — Scaffold, contracts, doctor
 **DoD:** `src/schemas.ts` covers every shape in `docs/specs/pipeline.md` and round-trips the spec examples in tests; `sidecrew doctor` reports node / mlx_lm / worker / memory / tsc+vitest+stryker / swift+muter each as ok / missing / degraded; `npm run lint && npm test` green; fixture shells exist.
+
+**Done** (2026-09-10). All nine shapes in zod; the test extracts every json block from the spec and parses it, and fails if blocks and schemas ever diverge (ADR-0007). `src/exec.ts` is the single shell-out, with a process-group kill on timeout. `doctor` exits non-zero only on node or memory. Fixture shells build and their test targets run. Not done, deliberately: `serve`, the worker client, verifiers and MCP tools still throw with their phase name; there is no CI workflow yet (BACKLOG).
 
 ## 1 — serve + worker client + bench
 **DoD:** `sidecrew serve` starts `mlx_lm.server` with the pinned revision from `src/models.json`, pidfile + log under `.sidecrew/`; `sidecrew stop`; `src/worker.ts` completes a chat at temp 0 + seed and returns identical output 5/5 (ADR-0003 if batching interferes); `sidecrew bench` writes `experiments/go-no-go/results/bench-<date>.json` (tok/s, TTFT, peak RSS, machine) for 7B and, if it fits with Xcode open, 14B; revisions pinned.
