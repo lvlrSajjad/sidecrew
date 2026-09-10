@@ -1,0 +1,18 @@
+{
+  "name": "@sidecrew/ts-fixture",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Verifier fixture: pure TypeScript functions with a Vitest suite. Phase 2 fills src/.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^8.6.0",
+    "@stryker-mutator/typescript-checker": "^8.6.0",
+    "@stryker-mutator/vitest-runner": "^8.6.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
