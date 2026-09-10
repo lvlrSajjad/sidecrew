@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  type Check, exitCodeFor, parseMemory, probeWorker, render, toStatusReport, baseUrlFor,
+  type Check, exitCodeFor, memoryCheck, parseMemory, probeWorker, render, toStatusReport, baseUrlFor,
 } from "../src/doctor.js";
 import { StatusReport } from "../src/schemas.js";
 
@@ -35,6 +35,37 @@ describe("parseMemory", () => {
   });
 });
 
+// qwen2.5-coder-7b-4bit is 5.0 GB in models.json, plus 1.5 GB of KV headroom.
+const NEED_GB = 6.5;
+
+describe("memoryCheck", () => {
+  it("fails a machine that could never fit the default model", () => {
+    expect(memoryCheck({ total_gb: 4, free_gb: 3.9 }).status).toBe("missing");
+  });
+
+  it("only degrades a big machine that is merely busy right now", () => {
+    const busy = memoryCheck({ total_gb: 32, free_gb: NEED_GB - 0.1 });
+    expect(busy.status).toBe("degraded");
+    expect(busy.detail).toContain("close something");
+    expect(exitCodeFor([busy])).toBe(0);
+  });
+
+  it("degrades when there is room for one worker but not two", () => {
+    expect(memoryCheck({ total_gb: 32, free_gb: NEED_GB + 0.1 }).status).toBe("degraded");
+    expect(memoryCheck({ total_gb: 32, free_gb: NEED_GB * 2 - 0.1 }).status).toBe("degraded");
+  });
+
+  it("is ok once two workers would fit", () => {
+    expect(memoryCheck({ total_gb: 32, free_gb: NEED_GB * 2 }).status).toBe("ok");
+  });
+
+  it("fails when memory cannot be read at all, rather than assuming the best", () => {
+    const unreadable = memoryCheck(null);
+    expect(unreadable.status).toBe("missing");
+    expect(exitCodeFor([unreadable])).toBe(1);
+  });
+});
+
 const check = (name: string, status: Check["status"]): Check => ({ name, status, detail: `${name} detail` });
 
 describe("exitCodeFor", () => {
@@ -44,7 +75,7 @@ describe("exitCodeFor", () => {
     expect(exitCodeFor([check("mlx_lm", "missing"), check("swift", "missing"), check("stryker", "missing")])).toBe(0);
   });
 
-  it("treats degraded memory as a smaller machine, not a broken one", () => {
+  it("treats degraded memory as a busy machine, not a broken one", () => {
     expect(exitCodeFor([check("memory", "degraded")])).toBe(0);
   });
 });

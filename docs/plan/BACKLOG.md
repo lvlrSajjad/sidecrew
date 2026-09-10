@@ -18,8 +18,6 @@ When two models are configured (7B, 14B), pick per function using observed survi
 - **No CI workflow exists.** `CLAUDE.md` says `release.yml` enforces that `server.json` and
   `package.json` versions move together, and that CI runs the fast test set. Neither workflow is in the
   repo. Phase 8 owns release; the fast-set CI is worth having well before that.
-- **`src/prompts/worker.md` will not ship.** `tsc` does not copy `.md` into `dist/`, and `files` only
-  lists `dist`. Phase 1 needs a copy step or has to inline the prompt.
 - **`doctor` does not report the worker's pinned revision.** `GET /v1/models` gives an id, not the HF
   commit. `StatusReport.worker.revision` is therefore always null until `serve` records what it started
   (Phase 1), which is also what makes the revision-pinning check in Phase 7 possible.

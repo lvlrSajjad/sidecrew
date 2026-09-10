@@ -8,7 +8,7 @@
   "files": ["dist", "claude", "README.md", "LICENSE"],
   "engines": { "node": ">=20" },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:slow": "SIDECREW_SLOW=1 vitest run",

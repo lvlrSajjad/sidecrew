@@ -57,14 +57,26 @@ export const parseMemory = (memsize: string, vmStat: string): Memory | null => {
   return { total_gb: total / GIB, free_gb: free / GIB };
 };
 
-const memoryCheck = (mem: Memory | null): Check => {
+/**
+ * Total RAM can fail this machine; free RAM cannot.
+ *
+ * Free memory is transient — Xcode and a simulator swing it by 8 GB, and closing them fixes it. A
+ * diagnostic that goes red because a browser is open is a diagnostic people learn to ignore, and then
+ * it is not there for the case it exists for. So a machine that is merely busy is degraded, with the
+ * number and the remedy; only a machine that could never fit the default model, or one whose memory we
+ * cannot read at all, is a failure. The run itself refuses when there is no room at the moment it asks.
+ */
+export const memoryCheck = (mem: Memory | null): Check => {
   if (!mem) return { name: "memory", status: "missing", detail: "could not read sysctl hw.memsize / vm_stat" };
   const model = defaultModel();
   const need = model.ram_gb + KV_HEADROOM_GB;
   const size = `${mem.total_gb.toFixed(1)} GB total · ${mem.free_gb.toFixed(1)} GB free`;
 
+  if (mem.total_gb < need) {
+    return { name: "memory", status: "missing", detail: `${size} — ${model.key} needs ~${need.toFixed(1)} GB and this machine does not have it` };
+  }
   if (mem.free_gb < need) {
-    return { name: "memory", status: "missing", detail: `${size} — ${model.key} needs ~${need.toFixed(1)} GB; close something` };
+    return { name: "memory", status: "degraded", detail: `${size} — ${model.key} needs ~${need.toFixed(1)} GB free; close something before a run` };
   }
   if (mem.free_gb < need * 2) {
     return { name: "memory", status: "degraded", detail: `${size} — room for one ${model.key}, not two workers or a 14B` };

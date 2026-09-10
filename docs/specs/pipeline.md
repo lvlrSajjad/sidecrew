@@ -18,7 +18,8 @@ Opus (test-planner)          local worker (MLX)          verifier            Cla
 
 ## Enums
 `Language` — `typescript` · `swift` · `python` · `kotlin`
-`TestFramework` — `vitest` · `jest` · `xctest` · `swift-testing`
+`TestFramework` — open string. `vitest` · `jest` · `xctest` · `swift-testing` are what the verifier can
+drive today; the verifier rejects the rest, because it is what knows.
 `CapabilityStatus` — `ok` · `degraded` · `missing`
 
 ## TestPlan

@@ -100,6 +100,12 @@ describe("the invariants the contracts are here to enforce", () => {
     expect(BatchResult.safeParse(spent).success).toBe(false);
   });
 
+  it("lets an unknown test framework through, and leaves the no to the verifier", () => {
+    const plan = TestPlan.parse(specExamples().get("TestPlan"));
+    expect(TestPlan.safeParse({ ...plan, test_framework: "ava" }).success).toBe(true);
+    expect(TestPlan.safeParse({ ...plan, test_framework: "" }).success).toBe(false);
+  });
+
   it("refuses a Candidate generated above temperature 0", () => {
     const candidate = Candidate.parse(specExamples().get("Candidate"));
     expect(Candidate.safeParse({ ...candidate, worker: { ...candidate.worker, temperature: 0.2 } }).success).toBe(false);

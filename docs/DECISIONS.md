@@ -38,5 +38,21 @@ using implicitly.
 Consequences: adding a shape means adding a spec example, not just a schema. Two invariants moved from
 prose into the type system — a `Verdict` whose `survived` disagrees with its own fields does not parse,
 and `BatchResult.stats.claude_tokens.workers` is a literal `0`, so a run that spent Claude tokens on
-worker inference cannot be serialised. `TestFramework` is a closed enum (`vitest` · `jest` · `xctest` ·
-`swift-testing`); Phases 2–3 will widen it if a real project needs something else.
+worker inference cannot be serialised. 
+Amended same day: `TestFramework` is an open string, not the closed enum this ADR first shipped. The
+enum would have rejected a real project at parse time, before the verifier got to say whether it could
+handle it — and the verifier is what actually knows, since it has to recognise the framework to build a
+run command at all. `KNOWN_TEST_FRAMEWORKS` keeps the four we can drive today as documentation.
+
+## ADR-0008 — `doctor` fails on the machine, not on the moment
+Context: the memory row failed the command whenever free RAM was below the default model's footprint.
+On the baseline 32 GB machine with Xcode and a simulator open that is an ordinary Tuesday: 8.6 GB free
+against a 6.5 GB need is one browser away from red, and the state clears by itself when Xcode closes.
+Decision: total RAM is a property of the machine and can fail `doctor`; free RAM is a property of the
+moment and only degrades it. A machine that could never fit the default model fails, as does one whose
+memory we cannot read; a machine that is merely busy reports the number and the remedy and exits 0. The
+run refuses on its own when there is no room at the instant it asks — that check belongs to Phase 4's
+memory-aware concurrency, where the answer is still true a second later.
+Consequences: the DoD still holds — memory can fail the command — but red now means something a person
+has to act on. A diagnostic that goes red for a condition that fixes itself is one people learn to
+ignore, and then it is not there for the case it exists for.

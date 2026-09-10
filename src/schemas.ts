@@ -9,7 +9,18 @@ export type ShapeKind = z.infer<typeof ShapeKind>;
 export const Language = z.enum(["typescript", "swift", "python", "kotlin"]);
 export type Language = z.infer<typeof Language>;
 
-export const TestFramework = z.enum(["vitest", "jest", "xctest", "swift-testing"]);
+/**
+ * The frameworks sidecrew knows how to drive today. Advisory, not exhaustive — see `TestFramework`.
+ */
+export const KNOWN_TEST_FRAMEWORKS = ["vitest", "jest", "xctest", "swift-testing"] as const;
+
+/**
+ * Open on purpose. A closed enum here would reject a real project before the verifier ever got a
+ * chance to say whether it could handle it, and the verifier — not the contract — is what actually
+ * knows: it has to recognise the framework to build a run command at all, and fails loudly when it
+ * cannot. Widening the contract moves that "no" to where the reason for it lives.
+ */
+export const TestFramework = z.string().min(1);
 export type TestFramework = z.infer<typeof TestFramework>;
 
 /** How `doctor` and `sidecrew_status` describe one external capability. */
