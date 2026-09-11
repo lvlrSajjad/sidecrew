@@ -1,0 +1,57 @@
+# Fast set only. The slow tests (`*.slow.test.ts`) need mlx_lm, ~12 GB of weights and Apple silicon, so
+# they stay a local gate — see CLAUDE.md. Nothing here downloads a model or starts a worker.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # macOS because sidecrew is a macOS/Apple-silicon tool: `doctor` shells out to sysctl and vm_stat,
+    # and `bench` to pmset and sw_vers. Running the suite anywhere else would be testing a machine we
+    # do not ship to.
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor from `engines`, and current. A break on either is a break for somebody.
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  contracts:
+    # Two invariants that are cheap to check and expensive to notice late.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: package.json and server.json versions agree
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          srv=$(node -p "require('./server.json').version")
+          echo "package.json=$pkg server.json=$srv"
+          [ "$pkg" = "$srv" ] || { echo "::error::versions disagree — they move together (CLAUDE.md)"; exit 1; }
+      - name: every shipped model is permissively licensed and pinned
+        run: |
+          node -e '
+            const m = require("./src/models.json");
+            const allowed = new Set(["Apache-2.0", "MIT"]);
+            let bad = 0;
+            for (const [key, e] of Object.entries(m.models)) {
+              if (!allowed.has(e.licence)) { console.error(`::error::${key} is ${e.licence} — non-negotiable #6 allows only Apache-2.0 / MIT`); bad++; }
+              if (!/^[0-9a-f]{7,64}$/.test(e.revision)) { console.error(`::error::${key} has no pinned revision — non-negotiable #4`); bad++; }
+            }
+            process.exit(bad ? 1 : 0);
+          '
