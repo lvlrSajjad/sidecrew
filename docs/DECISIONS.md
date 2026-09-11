@@ -56,3 +56,52 @@ memory-aware concurrency, where the answer is still true a second later.
 Consequences: the DoD still holds — memory can fail the command — but red now means something a person
 has to act on. A diagnostic that goes red for a condition that fixes itself is one people learn to
 ignore, and then it is not there for the case it exists for.
+
+## ADR-0009 — (PROPOSED, not decided) Model tier by installed RAM; what a 16 GB machine gets
+Context: sidecrew runs the worker on the user's own machine, so the machine is part of the product.
+A team poll puts most machines at 24–32 GB and some at 16 GB. `src/models.json` currently offers one
+`default` and two entries, both sized for 32 GB, and carries a `max_concurrency_32gb` field that bakes
+one tier into its own name. Three facts constrain the answer, and two of them are uncomfortable.
+
+**1. The obvious 16 GB model is blocked by our own licence rule.** Research §E: "Qwen2.5-Coder (except
+3B) and Devstral Apache-2.0". The 3B is the exception — Qwen Research License, not Apache-2.0 — and it
+is exactly the model anyone would reach for when the 7B does not fit. Non-negotiable #6 (Apache-2.0 /
+MIT only for anything downloaded by default) rules it out. Any 16 GB tier needs a different model, and
+picking one is a research task, not a guess: the permissive candidates our own research names in
+passing (Granite Code 3B, Phi-4 family, Qwen2.5-Coder-1.5B) are all recorded as trailing Qwen2.5-Coder
+at equal size, and none has a measured survival rate through our verifier.
+
+**2. The 16 GB tier may not exist at all with Xcode open.** Research estimated ~14–18 GB usable on a
+32 GB machine; `doctor` on the 32 GB baseline measures 7.0–9.5 GB actually free with the normal working
+set. macOS plus Xcode plus a simulator is a roughly fixed cost, so a 16 GB machine pays it out of half
+the budget and is left with very little. The 7B needs ~6.5 GB including KV. A 16 GB tier that assumes
+Xcode is open is likely to be a tier that fails in the field, and shipping it would be worse than
+saying no.
+
+**3. Which model a machine may run and how many it may run are different questions.** ADR-0008 split
+these for `doctor`: total RAM is a property of the machine, free RAM a property of the moment. The same
+split applies here — installed RAM decides tier eligibility and therefore what gets downloaded (stable,
+decidable once); free RAM decides concurrency at the instant a run starts (Phase 4's memory-aware
+concurrency). `max_concurrency_32gb` should become a function of `ram_gb` and free RAM, not a field.
+
+### Options for the 16 GB tier
+- **A — a smaller permissive model.** Requires finding one that is Apache-2.0/MIT, ~2 GB at 4-bit, and
+  not useless at test generation. Adds a research pass and a fourth go/no-go configuration. Highest
+  effort, and may still end in "not good enough".
+- **B — 16 GB means a quiet machine.** No new model. The tier exists but `doctor` tells the user to
+  close Xcode, which it already measures honestly. Cheapest; narrows who can use sidecrew mid-workday.
+- **C — 16 GB machines use Haiku as the worker.** The pipeline is already model-agnostic: C3 in the
+  go/no-go runs Haiku through the identical funnel, and the verifier is what creates the value. Costs
+  goal 3 (zero worker tokens) for those users, and **contradicts a Phase 0 contract decision** —
+  `BatchResult.stats.claude_tokens.workers` is a literal `0`, so this option requires changing the
+  schema that currently makes a paid worker unrepresentable.
+- **D — no 16 GB tier.** `doctor` already reports that such a machine cannot host a worker. Honest, and
+  free, but tells part of the team the tool is not for them.
+
+### Also affected
+The go/no-go protocol is written for one machine ("M2 Pro, 32 GB") and its decision rule produces one
+verdict. If sidecrew ships tiers, the decision becomes per-tier — 32 GB could be GO while 16 GB is
+NO-GO — and the 24 GB tier is currently measured by nothing at all.
+
+Decision: **none yet — needs a call.** Phase 1 owns model selection at `serve` time and is the first
+phase that cannot proceed without an answer.
