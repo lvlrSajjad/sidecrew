@@ -10,7 +10,7 @@ compile → run → mutation-kill. Sibling project in style and packaging: githu
 - `docs/specs/pipeline.md` — JSON contracts between planner, workers, verifier, reviewer. Changing a contract needs an ADR and a spec update in the same commit.
 
 ## Non-negotiables
-1. Worker inference never touches the Anthropic API. Workers are reached over `http://localhost:<port>/v1` (mlx_lm.server), never via a subagent.
+1. Worker inference never touches the Anthropic API **on the local tier** — reached over `http://localhost:<port>/v1` (mlx_lm.server), never via a subagent. ADR-0009 adds an `api` tier for machines with no room to host a worker; it is opt-in per machine, never the default, and `BatchResult` records which tier ran. The guarantee is enforced in `src/schemas.ts`, not assumed: a `local` run that spent Claude tokens on worker inference does not serialise.
 2. Survive ⇔ compiles ∧ passes on original code ∧ kills ≥ 1 mutant of the function under test ∧ non-tautological.
 3. Claude reviews survivors only, batched, filtered by mutation score. Never surface raw worker output to Claude.
 4. Determinism: temperature 0, fixed seed, one in-flight request per worker process. Pin HF revisions in `src/models.json`.

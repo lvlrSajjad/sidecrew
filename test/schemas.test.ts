@@ -94,10 +94,21 @@ describe("the invariants the contracts are here to enforce", () => {
     expect(Verdict.safeParse({ ...base, survived: false, compile_ok: false, error: "x".repeat(2049) }).success).toBe(false);
   });
 
-  it("refuses a BatchResult that spent Claude tokens on worker inference", () => {
-    const batch = BatchResult.parse(specExamples().get("BatchResult"));
-    const spent = { ...batch, stats: { ...batch.stats, claude_tokens: { ...batch.stats.claude_tokens, workers: 1 } } };
-    expect(BatchResult.safeParse(spent).success).toBe(false);
+  const batch = BatchResult.parse(specExamples().get("BatchResult"));
+  const spentOnWorkers = (kind: "local" | "api") => ({
+    ...batch,
+    config: { ...batch.config, worker_kind: kind },
+    stats: { ...batch.stats, claude_tokens: { ...batch.stats.claude_tokens, workers: 1 } },
+  });
+
+  it("refuses a local run that spent Claude tokens on worker inference", () => {
+    expect(BatchResult.safeParse(spentOnWorkers("local")).success).toBe(false);
+  });
+
+  it("allows the api tier to cost what it costs", () => {
+    // ADR-0009: the guarantee is conditional now, not abandoned. A fallback run reporting 0 would be
+    // the lie worth catching, not the honest number.
+    expect(BatchResult.safeParse(spentOnWorkers("api")).success).toBe(true);
   });
 
   it("lets an unknown test framework through, and leaves the no to the verifier", () => {
@@ -106,8 +117,18 @@ describe("the invariants the contracts are here to enforce", () => {
     expect(TestPlan.safeParse({ ...plan, test_framework: "" }).success).toBe(false);
   });
 
-  it("refuses a Candidate generated above temperature 0", () => {
+  it("refuses a Candidate generated above temperature 0, on either tier", () => {
     const candidate = Candidate.parse(specExamples().get("Candidate"));
     expect(Candidate.safeParse({ ...candidate, worker: { ...candidate.worker, temperature: 0.2 } }).success).toBe(false);
+    expect(Candidate.safeParse({
+      ...candidate,
+      worker: { ...candidate.worker, kind: "api", seed: null, temperature: 0.2 },
+    }).success).toBe(false);
+  });
+
+  it("holds a local worker to its seed and lets the api tier admit it has none", () => {
+    const candidate = Candidate.parse(specExamples().get("Candidate"));
+    expect(Candidate.safeParse({ ...candidate, worker: { ...candidate.worker, seed: null } }).success).toBe(false);
+    expect(Candidate.safeParse({ ...candidate, worker: { ...candidate.worker, kind: "api", seed: null } }).success).toBe(true);
   });
 });

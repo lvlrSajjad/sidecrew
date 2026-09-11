@@ -65,11 +65,16 @@ Stored next to the plan. Referenced by path from `TestPlan.shapes[].exemplar`.
 ```
 `retry_of` / `previous_error` are set only on the single retry.
 
+## WorkerKind
+`local` — an `mlx_lm.server` on `http://localhost:<port>/v1`. `api` — the Anthropic API, used only on
+machines with no room to host a worker (ADR-0009). `seed` is `null` on `api`, which offers none; a
+`local` candidate without one does not parse. Both tiers run at `temperature` 0.
+
 ## Candidate  (raw worker output, never shown to Claude)
 ```json
 {
   "task_id": "slugify:boundary:0",
-  "worker": { "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "revision": "abc123", "temperature": 0.0, "seed": 42 },
+  "worker": { "kind": "local", "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "revision": "abc123", "temperature": 0.0, "seed": 42 },
   "test_source": "import { describe, it, expect } from 'vitest'; …",
   "usage": { "prompt_tokens": 1830, "completion_tokens": 240 },
   "timing": { "ttft_ms": 410, "wall_ms": 6200 }
@@ -101,7 +106,7 @@ iff: a `Verdict` whose `survived` disagrees with its own fields does not parse.
 {
   "run_id": "2026-09-10T10-31-02Z-ts-fixture",
   "plan": "…/test_plan.json",
-  "config": { "worker_model": "…", "concurrency": 2, "retry": 1 },
+  "config": { "worker_kind": "local", "worker_model": "…", "concurrency": 2, "retry": 1 },
   "stats": { "tasks": 40, "survived": 31, "retried": 9, "escalated": 6,
              "funnel": { "compiled": 37, "passed": 34, "killed_ge_1": 32, "non_tautological": 31 },
              "latency_ms": { "median": 6100, "p90": 11800 }, "peak_rss_mb": 5100,
@@ -110,6 +115,9 @@ iff: a `Verdict` whose `survived` disagrees with its own fields does not parse.
   "escalations": [ { "task_id": "…", "attempts": [ { "error": "…" }, { "error": "…" } ] } ]
 }
 ```
+`claude_tokens.workers` must be `0` whenever `config.worker_kind` is `local`, and the schema enforces
+it: a local run that billed Claude for worker inference is a bug, not a number to report. On `api` it
+is whatever the fallback actually cost.
 
 ## StatusReport
 ```json

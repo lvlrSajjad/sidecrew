@@ -21,8 +21,9 @@ When two models are configured (7B, 14B), pick per function using observed survi
 - **`doctor` does not report the worker's pinned revision.** `GET /v1/models` gives an id, not the HF
   commit. `StatusReport.worker.revision` is therefore always null until `serve` records what it started
   (Phase 1), which is also what makes the revision-pinning check in Phase 7 possible.
-- **Model tier by installed RAM (ADR-0009, proposed).** `models.json` is sized for 32 GB and
-  `max_concurrency_32gb` bakes that into a field name. Real machines are 16/24/32 GB. Blocked on the
-  16 GB policy: the obvious small model (Qwen2.5-Coder-3B) is Qwen Research License, not Apache-2.0,
-  and a 16 GB machine with Xcode open may have no room for any worker. Phase 1 needs the answer;
-  Phase 6 needs a per-tier decision rule and has no 24 GB measurement at all.
+- **Tier selection at `serve` time (ADR-0009, decided — Phase 1 implements).** Installed RAM picks the
+  tier, free RAM picks the concurrency. `models.json` still carries `max_concurrency_32gb`, which bakes
+  one tier into a field name and should become a function of `ram_gb` and free RAM. The `api` fallback
+  must be opt-in per machine, never silent.
+- **Phase 6 needs a per-tier decision rule.** It produces one verdict for one machine today, and 24 GB —
+  the most common tier in the team poll — is measured by nothing at all.

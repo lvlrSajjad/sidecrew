@@ -14,7 +14,7 @@ survival rate on narrow, exemplar-conditioned per-function test tasks — at zer
 | C1 | Apple Foundation Models (on-device ~3B) | local OpenAI shim (`gety-ai/apple-on-device-openai` or `afm serve`) | Apple says "avoid code generation"; 4K context. Run for the record. |
 | C2 | Qwen2.5-Coder-7B-Instruct-4bit | `sidecrew serve` (mlx_lm.server) | primary candidate |
 | C2b | Qwen2.5-Coder-14B-Instruct-4bit | `sidecrew serve MODEL=qwen2.5-coder-14b-4bit` | only if it fit alongside Xcode in Phase 1 |
-| C3 | Claude Haiku | `haiku-worker` agent | network control; count tokens |
+| C3 | Claude Haiku | `haiku-worker` agent | network control **and**, since ADR-0009, the shipped worker for 16 GB machines — so this row is a product configuration, not only a baseline; count tokens |
 
 ## Measured per configuration
 - Funnel: tasks → compiled → passed → killed ≥ 1 → non-tautological (= survivors). Survival rate = survivors / tasks.

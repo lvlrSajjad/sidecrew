@@ -57,7 +57,7 @@ Consequences: the DoD still holds — memory can fail the command — but red no
 has to act on. A diagnostic that goes red for a condition that fixes itself is one people learn to
 ignore, and then it is not there for the case it exists for.
 
-## ADR-0009 — (PROPOSED, not decided) Model tier by installed RAM; what a 16 GB machine gets
+## ADR-0009 — Model tier by installed RAM; 16 GB machines fall back to the API
 Context: sidecrew runs the worker on the user's own machine, so the machine is part of the product.
 A team poll puts most machines at 24–32 GB and some at 16 GB. `src/models.json` currently offers one
 `default` and two entries, both sized for 32 GB, and carries a `max_concurrency_32gb` field that bakes
@@ -103,5 +103,29 @@ The go/no-go protocol is written for one machine ("M2 Pro, 32 GB") and its decis
 verdict. If sidecrew ships tiers, the decision becomes per-tier — 32 GB could be GO while 16 GB is
 NO-GO — and the 24 GB tier is currently measured by nothing at all.
 
-Decision: **none yet — needs a call.** Phase 1 owns model selection at `serve` time and is the first
-phase that cannot proceed without an answer.
+### Decision — option C: 16 GB machines use the Anthropic API as the worker
+Installed RAM picks the tier, free RAM picks the concurrency. 32 and 24 GB machines run the local 7B;
+16 GB machines, which cannot host one alongside Xcode, fall back to the API. This trades goal 3 for
+those users and is the reason non-negotiable #1 in `CLAUDE.md` is now scoped to the local tier rather
+than absolute. It avoids both the licence problem and the search for a small model none of our evidence
+says is good enough: the value of sidecrew is the verifier, and the verifier does not care where a
+candidate came from. The go/no-go already runs Haiku through the identical funnel as C3, so the
+fallback tier is the one configuration we will have measured before shipping it.
+
+Consequences, in the order they bite:
+- **The contract changed, and the guarantee with it.** `BatchResult.stats.claude_tokens.workers` was
+  `z.literal(0)`, which made a paid worker unrepresentable. It is now `NonNegInt` plus a refinement:
+  zero whenever `config.worker_kind` is `local`. Deleting the literal without re-stating the rule would
+  have quietly downgraded the project's headline claim to a comment.
+- **`Candidate` records its tier.** `worker.kind` is `local` | `api`, and `worker.seed` is nullable
+  because the Anthropic API offers no seed. A `local` candidate without a seed does not parse, so
+  non-negotiable #4 still holds exactly where it can. Determinism on the `api` tier is temperature 0
+  and nothing more — Phase 1's 5/5 identical-output check is a local-tier test and cannot be run
+  against the fallback.
+- **The API tier is opt-in, never a silent default.** A 32 GB machine that happens to be busy must not
+  quietly start billing; that is the free-RAM/installed-RAM distinction from ADR-0008 doing its job.
+- **Non-negotiable #3 is unaffected.** Claude still reviews survivors only. That the fallback worker is
+  also Claude does not make raw worker output reviewable — different call, different context, and the
+  verifier sits between them either way.
+- **Still open for Phase 6:** the decision rule produces one verdict for one machine, and 24 GB — the
+  most common tier in the team poll — is measured by nothing. The rule needs to become per-tier.

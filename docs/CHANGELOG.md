@@ -9,3 +9,4 @@
 - `npm run lint` now typechecks `test/` as well as `src/`; `npm run build` copies `src/prompts/` into `dist/`, which `tsc` does not do and `files` would otherwise never ship.
 - `TestFramework` is an open string rather than a closed enum: the verifier, not the contract, is what knows which frameworks it can drive (ADR-0007, amended).
 - `doctor` fails on total RAM, not on free RAM. A machine that is merely busy is degraded and exits 0 (ADR-0008).
+- Worker tier is part of the contract (ADR-0009). `Candidate.worker.kind` and `BatchResult.config.worker_kind` are `local` | `api`; 16 GB machines, which cannot host a local worker alongside Xcode, fall back to the API. The zero-worker-tokens guarantee is now conditional on the tier rather than absolute — and still enforced, not assumed.

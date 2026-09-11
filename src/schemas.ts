@@ -23,6 +23,14 @@ export const KNOWN_TEST_FRAMEWORKS = ["vitest", "jest", "xctest", "swift-testing
 export const TestFramework = z.string().min(1);
 export type TestFramework = z.infer<typeof TestFramework>;
 
+/**
+ * Where a candidate's tokens were spent. `local` is an mlx_lm.server on localhost; `api` is the
+ * fallback for machines with no room to host one (ADR-0009). The distinction is in the contract
+ * rather than in a comment because the zero-worker-tokens guarantee is conditional on it.
+ */
+export const WorkerKind = z.enum(["local", "api"]);
+export type WorkerKind = z.infer<typeof WorkerKind>;
+
 /** How `doctor` and `sidecrew_status` describe one external capability. */
 export const CapabilityStatus = z.enum(["ok", "degraded", "missing"]);
 export type CapabilityStatus = z.infer<typeof CapabilityStatus>;
@@ -86,21 +94,32 @@ export const WorkerTask = z.object({
 });
 export type WorkerTask = z.infer<typeof WorkerTask>;
 
-export const Candidate = z.object({
+const CandidateFields = z.object({
   task_id: z.string().min(1),
   worker: z.object({
+    kind: WorkerKind,
     model: z.string().min(1),
     revision: z.string(),
     // Determinism is a non-negotiable, not a default: a candidate produced at temperature > 0 is not
-    // reproducible and its verdict says nothing about the model.
+    // reproducible and its verdict says nothing about the model. Both tiers can honour temperature 0.
     temperature: z.literal(0),
-    seed: z.number().int(),
+    /** null only on the api tier, which offers no seed. See the refinement below. */
+    seed: z.number().int().nullable(),
   }),
   test_source: z.string(),
   usage: z.object({ prompt_tokens: NonNegInt, completion_tokens: NonNegInt }),
   timing: z.object({ ttft_ms: Millis, wall_ms: Millis }),
 });
-export type Candidate = z.infer<typeof Candidate>;
+
+export const Candidate = CandidateFields.superRefine((c, ctx) => {
+  // A local worker has no excuse: same seed, same output, or the bench in Phase 1 is measuring noise.
+  // The API tier cannot offer one, and pretending otherwise by writing a seed we never sent would make
+  // the record say something untrue.
+  if (c.worker.kind === "local" && c.worker.seed === null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["worker", "seed"], message: "a local worker must record the seed it ran with" });
+  }
+});
+export type Candidate = z.infer<typeof CandidateFields>;
 
 export const MutationResult = z.object({
   /** killed / (killed + survived). Equivalent mutants make a low score a review signal, not a failure. */
@@ -147,10 +166,15 @@ export const Verdict = VerdictFields.superRefine((v, ctx) => {
 });
 export type Verdict = z.infer<typeof VerdictFields>;
 
-export const BatchResult = z.object({
+const BatchResultFields = z.object({
   run_id: z.string().min(1),
   plan: z.string().min(1),
-  config: z.object({ worker_model: z.string().min(1), concurrency: z.number().int().positive(), retry: NonNegInt }),
+  config: z.object({
+    worker_kind: WorkerKind,
+    worker_model: z.string().min(1),
+    concurrency: z.number().int().positive(),
+    retry: NonNegInt,
+  }),
   stats: z.object({
     tasks: NonNegInt,
     survived: NonNegInt,
@@ -166,9 +190,8 @@ export const BatchResult = z.object({
     peak_rss_mb: z.number().nonnegative(),
     claude_tokens: z.object({
       planning: NonNegInt,
-      // Zero by construction: workers are reached over http://localhost/v1, never the Anthropic API.
-      // A literal, so any run that spent Claude tokens on worker inference fails to serialise.
-      workers: z.literal(0),
+      /** Zero whenever `config.worker_kind` is `local` — enforced below, not merely intended. */
+      workers: NonNegInt,
       /** null until the survivors have been reviewed. */
       review: NonNegInt.nullable(),
     }),
@@ -183,7 +206,26 @@ export const BatchResult = z.object({
     attempts: z.array(z.object({ error: ErrorText })),
   })),
 });
-export type BatchResult = z.infer<typeof BatchResult>;
+
+/**
+ * The zero-worker-tokens guarantee, now conditional rather than absolute (ADR-0009).
+ *
+ * It used to be `z.literal(0)`, which made a paid worker unrepresentable — the strongest possible
+ * statement, and wrong once 16 GB machines fall back to the API tier. Deleting the literal without
+ * replacing it would have quietly downgraded the project's headline claim to a comment, so the
+ * guarantee is re-stated where it is still true: a local run that billed Claude for worker inference
+ * is a bug, and does not serialise.
+ */
+export const BatchResult = BatchResultFields.superRefine((b, ctx) => {
+  if (b.config.worker_kind === "local" && b.stats.claude_tokens.workers !== 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "claude_tokens", "workers"],
+      message: "a local worker cannot spend Claude tokens — it is reached over http://localhost/v1",
+    });
+  }
+});
+export type BatchResult = z.infer<typeof BatchResultFields>;
 
 export const StatusReport = z.object({
   worker: z.object({
