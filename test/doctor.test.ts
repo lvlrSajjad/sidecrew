@@ -3,6 +3,7 @@ import {
   type Check, exitCodeFor, memoryCheck, parseMemory, probeWorker, render, toStatusReport, baseUrlFor,
 } from "../src/doctor.js";
 import { StatusReport } from "../src/schemas.js";
+import { defaultKey, entry } from "../src/models.js";
 
 const VM_STAT = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
 Pages free:                                    41558.
@@ -35,8 +36,10 @@ describe("parseMemory", () => {
   });
 });
 
-// qwen2.5-coder-7b-4bit is 5.0 GB in models.json, plus 1.5 GB of KV headroom.
-const NEED_GB = 6.5;
+// The default model's footprint plus doctor's 1.5 GB of KV headroom. Derived rather than written down:
+// `ram_gb` is a measured number that moves when the bench says so (ADR-0011), and a hardcoded copy of it
+// here made this test fail for the wrong reason the first time it did.
+const NEED_GB = entry(defaultKey()).ram_gb + 1.5;
 
 describe("memoryCheck", () => {
   it("fails a machine that could never fit the default model", () => {
@@ -121,7 +124,7 @@ describe("probeWorker", () => {
     // Port 1 is privileged and unbound; the connection is refused rather than hanging.
     const probe = await probeWorker(1, 500);
     expect(probe.up).toBe(false);
-    expect(probe.model).toBeNull();
+    expect(probe.available).toEqual([]);
     expect(probe.detail).toContain("sidecrew serve");
   });
 });

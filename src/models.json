@@ -1,8 +1,18 @@
 {
-  "_comment": "Pinned worker models. Apache-2.0 / MIT weights only. Fill `revision` with the HF commit hash after first download (Phase 1). ram_gb are ESTIMATES until bench.",
+  "_comment": "Pinned worker models. Apache-2.0 / MIT weights only. `revision` is the HF commit sidecrew serves; write it with `sidecrew models --pin`. ram_gb is MEASURED steady-state peak RSS from a run that swapped nothing, rounded up, floored by the weight size on disk. 7B: 4.5 (measured 4.42 GiB, weights 4.0). 14B: 8.2 (measured 8.06 GiB with Xcode open and 8.17 GiB quiet; weights 7.7). Both replace research estimates of 5.0 and 9.0. Read ADR-0011 before changing these: RSS is only trustworthy when taken after the model is fully loaded AND the run swapped nothing — under memory pressure macOS compresses and RSS falls while the machine thrashes. The KV cache grows further with context; that is part of what serve's 2 GB headroom is for.",
+  "_notes": {
+    "devstral-small": "Devstral Small (24B, Apache-2.0) is research §A rank 3 and deliberately not an entry: ~14 GB of weights leaves no headroom on the 32 GB baseline with Xcode open, which is the machine we ship for. Add it only with a bench that shows it fitting.",
+    "qwen2.5-coder-3b": "The obvious 16 GB model, and blocked by non-negotiable #6: the 3B is the one Qwen2.5-Coder size under the Qwen Research License rather than Apache-2.0. ADR-0009 sends 16 GB machines to the api tier instead.",
+    "codestral": "Never add. The weights are research-only (research §E licence traps).",
+    "concurrency": "How many workers may run is a function of ram_gb and free RAM at the instant a run starts (ADR-0009), not a field here. Phase 4 owns it."
+  },
   "default": "qwen2.5-coder-7b-4bit",
+  "tiers": [
+    { "min_ram_gb": 24, "tier": "local", "model": "qwen2.5-coder-7b-4bit", "why": "hosts the 7B alongside Xcode and a simulator; zero Claude tokens for worker inference" },
+    { "min_ram_gb": 0, "tier": "api", "model": null, "why": "not enough installed RAM to host a worker next to a normal working set — ADR-0009 falls back to the Anthropic API, opt-in per machine" }
+  ],
   "models": {
-    "qwen2.5-coder-7b-4bit":  { "repo": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",  "revision": "", "ram_gb": 5.0, "licence": "Apache-2.0", "max_concurrency_32gb": 3 },
-    "qwen2.5-coder-14b-4bit": { "repo": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit", "revision": "", "ram_gb": 9.0, "licence": "Apache-2.0", "max_concurrency_32gb": 1 }
+    "qwen2.5-coder-7b-4bit":  { "repo": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",  "revision": "019cc73c45c770444708a6dd8690c66243cc5c80", "ram_gb": 4.5, "licence": "Apache-2.0" },
+    "qwen2.5-coder-14b-4bit": { "repo": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit", "revision": "29efdbab55a161237ab1e432a3abaf6c7ae2b477", "ram_gb": 8.2, "licence": "Apache-2.0" }
   }
 }

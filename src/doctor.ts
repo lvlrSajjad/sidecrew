@@ -3,9 +3,9 @@
 // The point of the split is that almost nothing here is fatal. No Swift toolchain means the Swift
 // verifier is unavailable; it does not mean sidecrew is broken. Only node and memory can fail the
 // command, because those two decide whether a worker can run at all.
-import { run, ok as exited0, firstLine } from "./exec.js";
+import { run, ok as exited0, firstLine, pythonBin, MLX_SERVER_MODULE } from "./exec.js";
 import { CapabilityStatus, type StatusReport } from "./schemas.js";
-import models from "./models.json" with { type: "json" };
+import { defaultKey, entry } from "./models.js";
 
 export interface Check {
   name: string;
@@ -22,10 +22,7 @@ const GIB = 1024 ** 3;
 /** node and memory gate the command; every other row is a capability, not an error. */
 const FATAL_ROWS = new Set(["node", "memory"]);
 
-const defaultModel = () => {
-  const key = models.default as keyof typeof models.models;
-  return { key, ...models.models[key] };
-};
+const defaultModel = () => entry(defaultKey());
 
 export const baseUrlFor = (port: number): string => `http://localhost:${port}/v1`;
 
@@ -94,25 +91,37 @@ export const readMemory = async (): Promise<Memory | null> => {
 };
 
 const mlxCheck = async (): Promise<Check> => {
-  const r = await run("python3", ["-m", "mlx_lm.server", "--help"], { timeoutMs: 30_000 });
+  const py = pythonBin();
+  const r = await run(py, [...MLX_SERVER_MODULE, "--help"], { timeoutMs: 60_000 });
+  const how = `${py} ${MLX_SERVER_MODULE.join(" ")}`;
   return exited0(r)
-    ? { name: "mlx_lm", status: "ok", detail: "python3 -m mlx_lm.server available" }
-    : { name: "mlx_lm", status: "missing", detail: "python3 -m mlx_lm.server not importable — pip install mlx-lm" };
+    ? { name: "mlx_lm", status: "ok", detail: `${how} available` }
+    : { name: "mlx_lm", status: "missing", detail: `${how} not importable — pip install mlx-lm (SIDECREW_PYTHON picks another interpreter)` };
 };
 
-export interface WorkerProbe { up: boolean; model: string | null; detail: string }
+export interface WorkerProbe {
+  up: boolean;
+  /**
+   * Every model `/v1/models` offers — which is NOT the one that is loaded. mlx_lm answers that endpoint
+   * from the Hugging Face cache, so a machine with two models downloaded lists both whichever one is
+   * resident. Only `.sidecrew/worker-<port>.json`, written by `serve`, knows what is actually serving;
+   * `sidecrew status` reads it. Kept as a list so nothing can mistake `[0]` for an answer.
+   */
+  available: string[];
+  detail: string;
+}
 
 /** GET /v1/models against a worker that may well not be there. A refused connection is the normal case. */
 export const probeWorker = async (port: number, timeoutMs = 2_000): Promise<WorkerProbe> => {
   const base = baseUrlFor(port);
   try {
     const res = await fetch(`${base}/models`, { signal: AbortSignal.timeout(timeoutMs) });
-    if (!res.ok) return { up: false, model: null, detail: `${base} answered HTTP ${res.status}` };
+    if (!res.ok) return { up: false, available: [], detail: `${base} answered HTTP ${res.status}` };
     const body = (await res.json()) as { data?: { id?: unknown }[] };
     const ids = (body.data ?? []).map((m) => String(m.id)).filter((id) => id !== "undefined");
-    return { up: true, model: ids[0] ?? null, detail: `${base} · ${ids.length ? ids.join(", ") : "no model loaded"}` };
+    return { up: true, available: ids, detail: `${base} · ${ids.length} model${ids.length === 1 ? "" : "s"} available` };
   } catch {
-    return { up: false, model: null, detail: `nothing on ${base} — start one with: sidecrew serve` };
+    return { up: false, available: [], detail: `nothing on ${base} — start one with: sidecrew serve` };
   }
 };
 
