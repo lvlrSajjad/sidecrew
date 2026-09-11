@@ -1,0 +1,109 @@
+{
+  "sidecrew": "0.0.1",
+  "created": "2026-09-11T15:19:22.051Z",
+  "tag": null,
+  "machine": {
+    "cpu": "Apple M2 Pro",
+    "ram_gb": 32,
+    "free_gb_at_start": 14.1,
+    "macos": "26.6.2",
+    "xcode_open": true,
+    "simulator_open": true,
+    "node": "v20.20.0",
+    "mlx_lm": "0.31.3",
+    "on_battery": false
+  },
+  "tier": {
+    "min_ram_gb": 24,
+    "tier": "local",
+    "model": "qwen2.5-coder-7b-4bit",
+    "why": "hosts the 7B alongside Xcode and a simulator; zero Claude tokens for worker inference"
+  },
+  "config": {
+    "seed": 42,
+    "max_tokens": 400,
+    "requests": 3,
+    "prompt_sha": "62b0c8e238b9f652",
+    "temperature": 0
+  },
+  "models": [
+    {
+      "key": "qwen2.5-coder-7b-4bit",
+      "repo": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+      "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+      "pinned": true,
+      "ram_gb_declared": 4.5,
+      "requests": 3,
+      "prompt_tokens": 722,
+      "completion_tokens": 400,
+      "decode_tok_s": 40.5,
+      "decode_tok_s_all": [
+        39.6,
+        40.5,
+        41.8
+      ],
+      "ttft_ms": 159,
+      "ttft_ms_all": [
+        1988,
+        159,
+        130
+      ],
+      "wall_ms": 10000,
+      "peak_rss_mb": 4527.3,
+      "swapped_out_mb": 0,
+      "trustworthy": true,
+      "load_ms": 3231,
+      "finish_reason": "length",
+      "determinism": {
+        "requests": 5,
+        "identical": true,
+        "distinct_outputs": 1,
+        "first_divergence": null,
+        "bytes": 1890,
+        "seed": 42,
+        "note": "byte-identical across every request, one in flight at a time (ADR-0003)"
+      },
+      "measured": true
+    },
+    {
+      "key": "qwen2.5-coder-14b-4bit",
+      "repo": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
+      "revision": "29efdbab55a161237ab1e432a3abaf6c7ae2b477",
+      "pinned": true,
+      "ram_gb_declared": 7.7,
+      "requests": 3,
+      "prompt_tokens": 722,
+      "completion_tokens": 400,
+      "decode_tok_s": 21.1,
+      "decode_tok_s_all": [
+        21.1,
+        21.1,
+        21.1
+      ],
+      "ttft_ms": 199,
+      "ttft_ms_all": [
+        3795,
+        199,
+        191
+      ],
+      "wall_ms": 19141,
+      "peak_rss_mb": 8258.2,
+      "swapped_out_mb": 0,
+      "trustworthy": true,
+      "load_ms": 4646,
+      "finish_reason": "length",
+      "determinism": {
+        "requests": 5,
+        "identical": true,
+        "distinct_outputs": 1,
+        "first_divergence": null,
+        "bytes": 1740,
+        "seed": 42,
+        "note": "byte-identical across every request, one in flight at a time (ADR-0003)"
+      },
+      "measured": true
+    }
+  ],
+  "skipped": [],
+  "measured": true
+}
