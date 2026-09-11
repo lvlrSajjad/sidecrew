@@ -115,3 +115,18 @@ export const ok = (r: RunResult): boolean => r.code === 0;
 /** First non-empty line of the output, which is what version probes actually want. */
 export const firstLine = (r: RunResult): string =>
   `${r.stdout}\n${r.stderr}`.split("\n").map((l) => l.trim()).find((l) => l.length > 0) ?? "";
+
+/**
+ * The python that hosts mlx_lm. `python3` unless `SIDECREW_PYTHON` names another — a venv, a pyenv
+ * shim, or the one interpreter on the machine that actually has mlx installed. It lives here because
+ * `doctor` probes it and `serve` spawns it, and those two must never disagree about which python
+ * they mean.
+ */
+export const pythonBin = (env: NodeJS.ProcessEnv = process.env): string => env.SIDECREW_PYTHON ?? "python3";
+
+/**
+ * How to invoke mlx_lm's OpenAI-compatible server. `-m mlx_lm server`, not `-m mlx_lm.server`: the
+ * latter still works in mlx_lm 0.31 but prints a deprecation notice, and the notice would land in the
+ * worker log on every single start.
+ */
+export const MLX_SERVER_MODULE = ["-m", "mlx_lm", "server"] as const;
