@@ -1,0 +1,268 @@
+{
+  "created": "2026-09-12T06:47:13.372Z",
+  "what": "wall clock for one candidate through verifyTs (tautology → tsc → vitest → stryker) on fixtures/ts-fixture",
+  "machine": {
+    "cpu": "Apple M2 Pro",
+    "ram_gb": 32,
+    "free_gb_at_start": 18.1,
+    "macos": "26.6.2",
+    "xcode_open": true,
+    "simulator_open": false,
+    "node": "v20.20.0",
+    "mlx_lm": "0.31.3",
+    "on_battery": false
+  },
+  "config": {
+    "stryker_concurrency": 2,
+    "fixture": "fixtures/ts-fixture",
+    "candidates": 8
+  },
+  "candidates": [
+    {
+      "task_id": "slugify:happy_path:0",
+      "file": "legitimate/happy-path.test.ts",
+      "function": "slugify",
+      "shape": "happy_path",
+      "expected": "survives",
+      "scope": "function",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.8333333333333334,
+      "killed": 10,
+      "timing_ms": {
+        "compile": 448,
+        "pass": 355,
+        "mutation": 9008,
+        "total": 9826
+      }
+    },
+    {
+      "task_id": "chunk:boundary:0",
+      "file": "legitimate/boundary.test.ts",
+      "function": "chunk",
+      "shape": "boundary",
+      "expected": "survives",
+      "scope": "function",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.8,
+      "killed": 5,
+      "timing_ms": {
+        "compile": 435,
+        "pass": 359,
+        "mutation": 14661,
+        "total": 15465
+      }
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "file": "legitimate/error-or-throw.test.ts",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "expected": "survives",
+      "scope": "function",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 6,
+      "timing_ms": {
+        "compile": 452,
+        "pass": 356,
+        "mutation": 6355,
+        "total": 7171
+      }
+    },
+    {
+      "task_id": "mapSeries:async:0",
+      "file": "legitimate/async.test.ts",
+      "function": "mapSeries",
+      "shape": "async",
+      "expected": "survives",
+      "scope": "function",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 3,
+      "timing_ms": {
+        "compile": 458,
+        "pass": 355,
+        "mutation": 5897,
+        "total": 6718
+      }
+    },
+    {
+      "task_id": "slugify:happy_path:1",
+      "file": "tautological/constant-assertions.test.ts",
+      "function": "slugify",
+      "shape": "happy_path",
+      "expected": "tautological",
+      "scope": "function",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timing_ms": {
+        "compile": 440,
+        "pass": 348,
+        "total": 796
+      }
+    },
+    {
+      "task_id": "titleCase:happy_path:1",
+      "file": "tautological/self-comparison.test.ts",
+      "function": "titleCase",
+      "shape": "happy_path",
+      "expected": "tautological",
+      "scope": "function",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timing_ms": {
+        "compile": 440,
+        "pass": 344,
+        "total": 790
+      }
+    },
+    {
+      "task_id": "chunk:happy_path:1",
+      "file": "tautological/snapshot-only.test.ts",
+      "function": "chunk",
+      "shape": "happy_path",
+      "expected": "tautological",
+      "scope": "function",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timing_ms": {
+        "compile": 437,
+        "pass": 357,
+        "total": 800
+      }
+    },
+    {
+      "task_id": "rotate:happy_path:1",
+      "file": "tautological/function-never-called.test.ts",
+      "function": "rotate",
+      "shape": "happy_path",
+      "expected": "tautological",
+      "scope": "function",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timing_ms": {
+        "compile": 437,
+        "pass": 361,
+        "total": 805
+      }
+    },
+    {
+      "task_id": "slugify:happy_path:0",
+      "file": "legitimate/happy-path.test.ts",
+      "function": "slugify",
+      "shape": "happy_path",
+      "expected": "survives",
+      "scope": "file",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.19230769230769232,
+      "killed": 10,
+      "timing_ms": {
+        "compile": 433,
+        "pass": 352,
+        "mutation": 30288,
+        "total": 31079
+      }
+    },
+    {
+      "task_id": "chunk:boundary:0",
+      "file": "legitimate/boundary.test.ts",
+      "function": "chunk",
+      "shape": "boundary",
+      "expected": "survives",
+      "scope": "file",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.24242424242424243,
+      "killed": 5,
+      "timing_ms": {
+        "compile": 447,
+        "pass": 359,
+        "mutation": 22585,
+        "total": 23398
+      }
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "file": "legitimate/error-or-throw.test.ts",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "expected": "survives",
+      "scope": "file",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.13636363636363635,
+      "killed": 6,
+      "timing_ms": {
+        "compile": 437,
+        "pass": 340,
+        "mutation": 27533,
+        "total": 28317
+      }
+    },
+    {
+      "task_id": "mapSeries:async:0",
+      "file": "legitimate/async.test.ts",
+      "function": "mapSeries",
+      "shape": "async",
+      "expected": "survives",
+      "scope": "file",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.4444444444444444,
+      "killed": 3,
+      "timing_ms": {
+        "compile": 442,
+        "pass": 359,
+        "mutation": 8084,
+        "total": 8892
+      }
+    }
+  ],
+  "summary": {
+    "per_candidate_ms": {
+      "survivor_median": 7171,
+      "survivor_p90": 15465,
+      "survivor_max": 15465,
+      "tautology_median": 796
+    },
+    "stage_median_ms": {
+      "compile": 440,
+      "pass": 355,
+      "mutation": 6355
+    },
+    "mutation_scope_ms": {
+      "function_scoped_median": 7171,
+      "whole_file_median": 23398
+    },
+    "mutation_score": {
+      "function_scoped_median": 0.8333333333333334,
+      "whole_file_median": 0.19230769230769232
+    }
+  },
+  "measured": true
+}

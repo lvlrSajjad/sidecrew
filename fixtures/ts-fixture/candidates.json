@@ -1,0 +1,13 @@
+{
+  "note": "Eight candidates that all compile and pass. Four mean something and four mean nothing — the compile and run stages cannot tell them apart, which is why the tautology check and the mutation stage exist. `test/verifier-ts.slow.test.ts` and `scripts/measure-verifier-ts-cost.ts` both read this file, so the catalogue and what is measured cannot drift apart.",
+  "candidates": [
+    { "file": "legitimate/happy-path.test.ts", "task_id": "slugify:happy_path:0", "source": "src/strings.ts", "function": "slugify", "shape": "happy_path", "expect": "survives" },
+    { "file": "legitimate/boundary.test.ts", "task_id": "chunk:boundary:0", "source": "src/arrays.ts", "function": "chunk", "shape": "boundary", "expect": "survives" },
+    { "file": "legitimate/error-or-throw.test.ts", "task_id": "percentChange:error_or_throw:0", "source": "src/numbers.ts", "function": "percentChange", "shape": "error_or_throw", "expect": "survives" },
+    { "file": "legitimate/async.test.ts", "task_id": "mapSeries:async:0", "source": "src/async.ts", "function": "mapSeries", "shape": "async", "expect": "survives" },
+    { "file": "tautological/constant-assertions.test.ts", "task_id": "slugify:happy_path:1", "source": "src/strings.ts", "function": "slugify", "shape": "happy_path", "expect": "tautological" },
+    { "file": "tautological/self-comparison.test.ts", "task_id": "titleCase:happy_path:1", "source": "src/strings.ts", "function": "titleCase", "shape": "happy_path", "expect": "tautological" },
+    { "file": "tautological/snapshot-only.test.ts", "task_id": "chunk:happy_path:1", "source": "src/arrays.ts", "function": "chunk", "shape": "happy_path", "expect": "tautological" },
+    { "file": "tautological/function-never-called.test.ts", "task_id": "rotate:happy_path:1", "source": "src/arrays.ts", "function": "rotate", "shape": "happy_path", "expect": "tautological" }
+  ]
+}

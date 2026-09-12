@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    // Bundler, not NodeNext, and the reason is measurement rather than taste: under NodeNext every
+    // relative import needs a `.js` extension, and a worker model that omits one fails the compile
+    // stage for a convention it was never told about. That would show up as a discard rate and say
+    // nothing about the model. Vitest resolves through Vite, so Bundler is also what actually runs.
+    "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "tautological", "legitimate"]
 }

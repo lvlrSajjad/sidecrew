@@ -63,3 +63,27 @@ When two models are configured (7B, 14B), pick per function using observed survi
 - **`bench` writes results relative to the current directory.** Run from anywhere but the repo root it
   creates `experiments/go-no-go/results/` wherever it happens to be standing. Fine for a dev tool, wrong
   for an installed one; a `--out` flag or a repo-root probe would settle it.
+
+## Noticed in Phase 2
+- **`sidecrew verify` is still a stub.** `verifyTs` exists and is tested, but nothing on the CLI reaches
+  it and no `.sidecrew/runs/<id>/` artefacts are written. Phase 4 owns both; until then the verifier is
+  reachable only from tests and from `npm run measure:verifier-ts`.
+- **`verifyTs` takes an explicit target because there is no plan to read one from.** `TsTarget` carries
+  `sourceFile`, `functionName` and an optional `lineRange` that Phase 5's `TestPlan` will supply. When
+  it does, `deriveLineRange` should become the fallback for a stale or missing `line_range` rather than
+  the normal path — and a stale range now mutates the *wrong lines*, which raises the stakes on
+  `source_sha` and `ValidationReport.stale`.
+- **Stryker concurrency is a constant.** `DEFAULT_STRYKER_CONCURRENCY` is 2 because Stryker's own
+  default (`cpus - 1`) would put eight vitest processes next to a resident 7B worker. It should come
+  from the same memory-aware calculation as worker concurrency in Phase 4, not from two places.
+- **Mutation timeouts are charged to the candidate.** A mutant that hangs costs `timeoutMS` (10 s) of
+  wall clock each; the `boundary` candidate's three timeouts are why its verdict costs 15 s against a
+  7 s median. Worth revisiting with `--ignoreStatic` or a shorter factor once Phase 6 has a real
+  distribution.
+- **The detector has a known gap, on purpose.** A real assertion no mutant can break —
+  `expect(typeof f(x)).toBe("string")` — passes every static rule. Only `killed ≥ 1` stops it. It is in
+  ADR-0006's cheap-pass list and in the slow test; the adversarial-mutant idea above is the eventual
+  answer.
+- **The copy is per candidate.** Cheap on the fixture and on any normal repo, but it is a whole working
+  tree each time. If it ever shows up in a profile, the fix is one sandbox per module with the test file
+  rewritten between candidates — never a shared Stryker cache (ADR-0004).

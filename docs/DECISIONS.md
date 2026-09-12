@@ -54,7 +54,68 @@ Consequences:
 - The api tier (ADR-0009) has no seed and cannot be checked this way; determinism there is temperature
   0 and nothing more, as that ADR already states.
 
-## ADR-0004 — (Phase 2) verification sandbox: temp copy vs git worktree — _tbd_
+## ADR-0004 — The sandbox is a per-candidate temp copy with the project's own tests removed
+Context: a candidate has to be compiled and run somewhere. The Phase 2 prompt offered two options — a
+temp copy of the package or a git worktree — and measuring them turned up a third question nobody had
+asked, which turned out to be the one that mattered.
+
+**A git worktree cannot do this job.** A worktree contains committed content; the code a developer wants
+tests for is usually the code they just wrote. It has no `node_modules`, so every stage would need one
+symlinked in anyway, and it requires the target to be a git repository at all. It answers a question
+about HEAD when the question is about the working tree.
+
+**Running in place is worse than it looks.** It writes into the user's own `test/` directory, cannot run
+two candidates at once, and leaves files behind when a run is killed.
+
+**The third question: who gets credit for the kill?** Stryker reports a mutant as killed by whatever test
+killed it. Our verdict is a *count*. Point the verifier at a project with a real suite and every
+candidate inherits a full set of kills earned by tests that were there before it — `killed ≥ 1` would be
+satisfied by a candidate that asserts nothing, in every repo that already has tests. This is not a
+hypothetical: it is the default outcome of the obvious implementation.
+
+### Decision
+The sandbox is `mkdtemp` outside the project, holding a copy of it with
+
+- **every test file removed** (`*.{test,spec}.{js,ts,…}`) and the candidate written in as the only one,
+  so a kill can only have come from the candidate;
+- **`node_modules` symlinked**, not copied — the stages only read it, and a copy per candidate would
+  cost more than the mutation run;
+- **`reports/`, `.stryker-tmp/`, `coverage/` and `__snapshots__/` left behind**: generated output, and
+  in the snapshot case a recorded answer that a candidate must not be graded against.
+
+### The incremental cache, measured
+`incremental: true` is in the config, and it is safe **only** because the incremental file lives inside
+the sandbox and is therefore always cold. Pointed at a shared location it hands one candidate another's
+kills. Measured on the fixture, `src/strings.ts`, same machine, minutes apart:
+
+| run | test file | killed | survived |
+|---|---|---|---|
+| A | a real test of `commonPrefix` | 6 | 3 |
+| B | `expect(true).toBe(true)`, shared cache | **6** | 3 |
+
+Candidate B asserts nothing and was credited with candidate A's entire result. The mechanism is in
+Stryker's own source (`incremental-differ.ts`): when the new test run reports no coverage at all,
+`if (!testCoverage.hasCoverage) return true` reuses every previous result. A candidate that covers
+nothing is exactly the candidate that must not inherit anything. With coverage present the kills are
+recomputed correctly, but the `Survived` / `NoCoverage` bookkeeping still carries over (4 + 36 against a
+cold 1 + 40 for the same candidate), which moves the score.
+
+So the cache is not shared, and the reuse it was enabled for does not happen in this loop — every
+candidate brings a new test file, so there is nothing to reuse. It stays on because it costs nothing
+cold and a human running Stryker by hand in the same project wants it. `test/verifier-ts.slow.test.ts`
+has the regression: a candidate is verified immediately after one that earned kills on the same lines,
+and must come back with none.
+
+Consequences:
+- Verifying a candidate copies the project's source once (milliseconds on the fixture, and `node_modules`
+  is not part of it). A repository with a large working tree will notice; if it ever matters, the fix is
+  to copy once per *module* and rewrite only the test file, not to share a cache.
+- The verifier never writes into the project it is pointed at. `keepSandbox` prints the path for a
+  verdict you do not believe.
+- `CI=true` is set for the run stages so vitest cannot write a snapshot file for a snapshot that does
+  not exist yet. Without it a candidate whose only assertion is `toMatchSnapshot()` records its own
+  answer and passes, and the verifier blesses the output instead of checking it.
+
 
 ## ADR-0005 — (Phase 3) Muter + Swift Testing attribution — _tbd_
 
@@ -65,6 +126,13 @@ Decision: every gate we add is judged by "what is the cheapest way to pass it wi
 - killed ≥ 1 → a test that kills one trivial mutant (e.g. removes a `return`) while asserting nothing about the interesting logic. Countered only partially; hence mutation *score* drives review, not survival alone.
 - mutation score → snapshot-of-current-bug kills mutants and encodes the bug. Countered by review of low-score survivors and, later, LLM-proposed mutants (BACKLOG).
 - equivalent mutants inflate "survived" and depress the score for good tests. Accept; treat score as a review signal, not a pass/fail.
+- **New, Phase 2:** a real assertion no mutant can break — `expect(typeof applyAll("draft", [])).toBe("string")`.
+  It calls the function, it is not constant, it is not a self-comparison, and the static check passes it.
+  Only `killed ≥ 1` stops it, and it is in `verifier-ts.slow.test.ts` as the case that proves the
+  mutation stage is not redundant with the detector.
+- **New, Phase 2:** the snapshot cheap pass has a second door — writing a snapshot file that does not
+  exist yet. The static check catches snapshot-only tests; `CI=true` during verification (ADR-0004)
+  stops vitest recording the answer in the first place.
 Consequences: no single metric is the objective; survival is a filter, score is a router to review, and Claude still sees the low-confidence tail. Any new metric gets a "cheap pass" line added here before it is used for anything.
 
 ## ADR-0007 — StatusReport and ValidationReport are defined in the spec, and the spec is executable
@@ -253,3 +321,63 @@ Consequences:
   otherwise, which is why `swapped_out_mb` now sits beside it.
 - The 7B is unaffected and remains the default: 0 swapouts in every configuration measured, and 37 tok/s
   with Xcode and a simulator open against 38.5 quiet — a 4 % cost for the whole working set.
+
+## ADR-0012 — `stage_reached` is progress, not a failure code; the score is the standard one
+Context: `Verdict.stage_reached` is `compile | pass | mutation | done`, and the spec's own example used
+`mutation` for a run that completed the whole pipeline, which left `done` meaning nothing at all. Two of
+the four values were therefore unusable, and one real situation had no name: **the mutation run itself
+breaking**. A Stryker crash or timeout produces a verdict with `compile_ok`, `pass_ok` and no mutation
+data — which is indistinguishable, field by field, from a test that killed nothing. Phase 4's retry loop
+would retry a machine problem as though the worker had written a bad test, twice, and then escalate it
+to Claude.
+
+Decision, and it changes a contract example, so it is here rather than in a commit message:
+`stage_reached` is how far the pipeline got. `compile` and `pass` mean it stopped there; `pass` also
+covers "skipped mutation because the verdict was already settled", which is what a tautology does.
+`mutation` means the stage ran and produced no report. `done` means every stage ran. The spec example
+becomes `done`, and `docs/specs/pipeline.md` gains the table.
+
+The same section pins the score, which had been described in a comment as `killed / (killed + survived)`.
+It is the mutation-testing standard instead — `(killed + timeout) / (killed + timeout + survived +
+no_coverage)`, 0 when that denominator is 0 — so a sidecrew number can be compared with a published one.
+Survival does **not** follow it: `killed ≥ 1` counts the `Killed` status alone, because a mutant that
+hung the suite is a mutant nothing asserted about, and CLAUDE.md #2 asks for a kill. The asymmetry is
+deliberate and both halves are in the spec.
+
+Consequences:
+- `error` is still the retry's only reading material, so the most actionable sentence goes first: it is
+  the one that survives the 2 KB truncation. A tautology finding names the function and the line.
+- The four spec examples still parse (`done` was always in the enum), so `test/schemas.test.ts` needed no
+  change — which is the point of it being executable.
+- Phase 4 gets an explicit rule it would otherwise have had to invent: `stage_reached === "mutation"` is
+  not a candidate failure and must not consume the single retry.
+
+## ADR-0013 — Mutation is scoped to the function under test, not to the file
+Context: the Phase 2 prompt says to point `--mutate` at the single source file. CLAUDE.md #2 is stricter
+than that — "kills ≥ 1 mutant **of the function under test**" — and the fixture made the gap visible: a
+candidate testing one of five functions in `strings.ts` is graded against mutants of the other four,
+which no test of it could ever reach.
+
+Decision: mutate the function's line range (`--mutate src/strings.ts:20-25`, Stryker's mutation-range
+syntax) whenever the range is known. `TestPlan.functions[].line_range` carries it from Phase 5; until
+then `deriveLineRange` finds it by brace matching, and finding nothing means the whole file is mutated
+and the caller pays for it.
+
+Measured on the fixture, same machine, `"measured": true` in `verifier-ts-cost.json`:
+
+| | function-scoped | whole file |
+|---|---|---|
+| median wall clock per survivor | **7.2 s** | 23.4 s |
+| median mutation score | **0.83** | 0.19 |
+
+The 3.3× is the smaller half of the argument. The score is the larger one: at 0.19 the number is mostly
+a report on functions nobody was asked to test, and ADR-0006 uses the score to route survivors to
+review. A router fed by that signal would send everything to Claude and call it a threshold.
+
+Consequences:
+- A candidate can no longer earn its survival on a neighbouring function. It also can no longer be
+  blamed for one.
+- The range has to be right. A stale `line_range` from an edited module mutates the wrong lines, which
+  is what `ValidationReport.stale` and the `source_sha` check exist for — Phase 5 now has a second
+  reason to take them seriously.
+- Whole-file mutation stays reachable (`lineRange: null`) and is what the cost script compares against.

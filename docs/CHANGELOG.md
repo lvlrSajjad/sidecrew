@@ -1,4 +1,52 @@
 # Changelog
+## Unreleased — Phase 2 (2026-09-12)
+- `verifyTs(candidate, { target })`: tautology → `tsc --noEmit` → `vitest run <file>` → `stryker run`,
+  returning a `Verdict` that is parsed before it is returned, so an invalid one cannot leave the
+  function. Stages after a decisive failure are skipped, and so is the mutation stage for a candidate
+  already known to be tautological — it is ~90 % of the cost and cannot rescue a test that asserts
+  nothing.
+- **Measured, on the baseline M2 Pro / 32 GB with Xcode open** (`verifier-ts-cost.json`): a surviving
+  candidate costs **7.2 s** median, 15.5 s p90 (compile 0.44 s, pass 0.36 s, mutation 6.4 s); a
+  tautological one costs **0.80 s**, because it never reaches Stryker.
+- Each candidate is verified in its own temp copy of the project **with the project's own tests
+  removed** (ADR-0004). Without that, every candidate in a repo that already has a suite inherits kills
+  earned by tests that were there first, and `killed ≥ 1` stops being evidence about the candidate.
+  `node_modules` is symlinked; `reports/`, `coverage/`, `.stryker-tmp/` and `__snapshots__/` are left
+  behind. `CI=true` during the run stages stops vitest writing a snapshot file that does not exist yet,
+  which closes the second door on the snapshot cheap pass.
+- Stryker's incremental cache lives inside the sandbox and is therefore always cold. Shared, it is a
+  correctness bug and not a cache: measured, a candidate asserting only `expect(true).toBe(true)` was
+  credited with the previous candidate's 6 kills and its 0.67 score. The mechanism is quoted from
+  Stryker's `incremental-differ.ts` in ADR-0004, and there is a regression test.
+- Mutation is scoped to the function's line range, not the file (ADR-0013): 7.2 s against 23.4 s per
+  candidate, and a median score of **0.83 against 0.19** — a whole-file score is mostly a report on
+  functions nobody was asked to test, and ADR-0006 routes review by that score. `deriveLineRange` finds
+  the range by brace matching until `TestPlan.functions[].line_range` exists to supply it.
+- `src/verifier/tautology.ts`: constant assertions, `x` compared with itself, snapshot-only, and never
+  calling the function under test. It masks comments and string contents first, so
+  `it("expect(true).toBe(true)", …)` is a test name and not an assertion. Findings carry a line and a
+  sentence written to be read by the worker on its single retry.
+- `fixtures/ts-fixture` filled in: 21 pure functions across five files, and eight candidates that all
+  compile and all pass — four legitimate, four tautological — catalogued in `candidates.json`, which the
+  slow test and the cost script both read. `truncate` carries a planted off-by-one that is wrong on
+  exactly one input class; a test asserting the correct answer fails the pass stage, and one asserting
+  the buggy answer survives with a perfect score. Both are asserted, because that is ADR-0006's
+  snapshot-of-current-bug made reproducible.
+- The fixture uses `moduleResolution: "Bundler"`: under NodeNext a worker that omits a `.js` extension
+  fails the compile stage for a convention nobody told it about, and the discard rate would then be
+  measuring our tsconfig.
+- ADR-0012, with the spec change in the same commit: `stage_reached` is progress, not a failure code.
+  `done` is a completed pipeline; `mutation` now means the mutation run itself broke — a verdict that is
+  otherwise indistinguishable from "killed nothing", and which Phase 4 must not spend the single retry
+  on. `mutation.score` is pinned to the mutation-testing standard `(killed + timeout) / (killed +
+  timeout + survived + no_coverage)`, while survival still requires a real `Killed`.
+- `npm run measure:verifier-ts` writes `experiments/go-no-go/results/verifier-ts-cost.json` with
+  `"measured": true` and the machine, like `bench` does.
+- Tests: the parser, the detector, the sandbox rules and the range finder in the fast set; the whole
+  pipeline against the real fixture in `test/verifier-ts.slow.test.ts` under `SIDECREW_SLOW=1`,
+  including the two cases that justify the design — a candidate that passes and asserts something real
+  but kills nothing, and a candidate that must not inherit the previous one's kills.
+
 ## Unreleased — Phase 1 (2026-09-11)
 - `sidecrew serve` / `stop` / `status`: starts `mlx_lm.server` detached, waits for `/v1/models` to answer,
   writes `.sidecrew/worker-<port>.{pid,log,json}`. Refuses to start below the model's footprint + 2 GB free

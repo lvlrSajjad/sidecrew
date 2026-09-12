@@ -85,7 +85,7 @@ machines with no room to host a worker (ADR-0009). `seed` is `null` on `api`, wh
 ```json
 {
   "task_id": "slugify:boundary:0",
-  "stage_reached": "mutation",            // compile | pass | mutation | done
+  "stage_reached": "done",                 // compile | pass | mutation | done
   "survived": true,
   "compile_ok": true,
   "pass_ok": true,
@@ -98,8 +98,27 @@ machines with no room to host a worker (ADR-0009). `seed` is `null` on `api`, wh
 Survive ⇔ `compile_ok ∧ pass_ok ∧ mutation.killed ≥ 1 ∧ ¬tautological`. `src/schemas.ts` enforces this as an
 iff: a `Verdict` whose `survived` disagrees with its own fields does not parse.
 
-`mutation` is `null` when the mutation stage never ran (compile or pass failed first), and each key of
-`timing_ms` is present only for a stage that actually ran.
+`mutation` is `null` when the mutation stage never ran (compile or pass failed first, or the candidate
+was already known to be tautological), and each key of `timing_ms` is present only for a stage that
+actually ran.
+
+`stage_reached` is how far the pipeline got, and the four values are not four failures (ADR-0012):
+
+| value | meaning |
+|---|---|
+| `compile` | stopped in compile |
+| `pass` | stopped in pass, or skipped mutation because the verdict was already settled |
+| `mutation` | the mutation stage ran and did not produce a report — Stryker crashed, or timed out |
+| `done` | every stage ran; `mutation` holds the result |
+
+`mutation` is the one that is not about the candidate: the test may be fine and the mutation run broken.
+A retry loop that cannot tell it apart from `pass` retries a machine problem at the worker's expense.
+
+`mutation.score` is the mutation-testing standard — `(killed + timeout) / (killed + timeout + survived +
+no_coverage)`, and 0 when that denominator is 0 — so the numbers compare with everybody else's.
+Survival is stricter and asks for `killed ≥ 1` with `killed` meaning the `Killed` status alone: a mutant
+that hung the suite is a mutant nothing asserted about. Mutants Stryker could not build or run
+(`CompileError`, `RuntimeError`, `Ignored`) are in neither.
 
 ## BatchResult
 ```json

@@ -122,7 +122,11 @@ export const Candidate = CandidateFields.superRefine((c, ctx) => {
 export type Candidate = z.infer<typeof CandidateFields>;
 
 export const MutationResult = z.object({
-  /** killed / (killed + survived). Equivalent mutants make a low score a review signal, not a failure. */
+  /**
+   * `(killed + timeout) / (killed + timeout + survived + no_coverage)`, the mutation-testing standard,
+   * and 0 when nothing was mutated. Equivalent mutants make a low score a review signal rather than a
+   * failure — survival asks only for `killed ≥ 1`, and asks for a real kill (ADR-0006, ADR-0012).
+   */
   score: z.number().min(0).max(1),
   killed: NonNegInt,
   survived: NonNegInt,

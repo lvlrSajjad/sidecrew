@@ -6,7 +6,7 @@ One phase per Opus session (roughly). Each has a prompt in `prompts/`, a definit
 |---|-------|--------|--------|
 | 0 | Scaffold, contracts, `doctor` | ✅ done | `prompts/phase-0-scaffold.md` |
 | 1 | `serve` + worker client + bench | ✅ done | `prompts/phase-1-worker.md` |
-| 2 | Verifier: TypeScript (Stryker) | ⬜ | `prompts/phase-2-verifier-ts.md` |
+| 2 | Verifier: TypeScript (Stryker) | ✅ done | `prompts/phase-2-verifier-ts.md` |
 | 3 | Verifier: Swift (Muter) | ⬜ | `prompts/phase-3-verifier-swift.md` |
 | 4 | MCP tools + `run` + skill wiring | ⬜ | `prompts/phase-4-mcp-skill.md` |
 | 5 | Planner & exemplars (Opus side) | ⬜ | `prompts/phase-5-planner.md` |
@@ -72,6 +72,41 @@ still mlx_lm's job or the user's. Verifiers, planner and MCP tools still throw w
 
 ## 2 — Verifier: TypeScript
 **DoD:** `fixtures/ts-fixture` (~20 pure functions, Vitest, strict, one planted off-by-one); Stryker config scoped to one file, incremental; `verifyTs` → `Verdict` with stage, error (≤ 2 KB), mutation score, killed ids, per-stage ms; tautology detector separates 4 tautology / 4 legit fixtures; cost per candidate recorded.
+
+**Done** (2026-09-12). 21 functions across five files; `verifyTs` runs tautology → `tsc --noEmit` →
+`vitest run <file>` → `stryker run` and returns a parsed `Verdict`. The detector separates all eight
+fixtures and names a different reason for each of the four tautologies.
+
+Measured on the baseline M2 Pro / 32 GB with Xcode open
+(`experiments/go-no-go/results/verifier-ts-cost.json`, `"measured": true`):
+
+| | median | p90 |
+|---|---|---|
+| a surviving candidate | **7.2 s** | 15.5 s |
+| a tautological candidate | **0.80 s** | — |
+| compile / pass / mutation | 0.44 s · 0.36 s · 6.4 s | — |
+
+The mutation stage is ~90 % of a verdict, which is why the static check runs first and short-circuits it:
+a tautology costs 0.8 s instead of 8 s, and nothing that cannot survive ever reaches the expensive stage.
+
+**Three things the prompt did not ask for, each because measuring turned one up.** *(a)* The sandbox
+excludes the project's own tests (ADR-0004) — otherwise, in any repo that already has a suite, every
+candidate inherits kills earned by tests that were there first and `killed ≥ 1` stops meaning anything.
+*(b)* Stryker's incremental cache is per candidate and therefore always cold: with a shared cache, a
+candidate whose only assertion was `expect(true).toBe(true)` was credited with the previous candidate's
+6 kills — measured, with the mechanism quoted from Stryker's source. *(c)* Mutation is scoped to the
+function's line range rather than the file (ADR-0013): 7.2 s against 23.4 s, and a median score of 0.83
+against 0.19, because a whole-file score is mostly a report on functions nobody was asked to test — and
+ADR-0006 routes review by that score.
+
+`stage_reached` gained a meaning it did not have (ADR-0012): `done` is a completed pipeline and
+`mutation` is now reserved for a mutation run that broke, which is not the candidate's fault and must
+not consume the single retry. One contract example changed with it, in the same commit as the ADR.
+
+Not done, deliberately: no `sidecrew verify` CLI subcommand and no `.sidecrew/runs/<id>/` artefacts —
+Phase 4 owns both, and `verifyTs` takes an explicit target because there is no `TestPlan` to read one
+from yet. `deriveLineRange` is the stand-in for `TestPlan.functions[].line_range` and says so. The Swift
+verifier, the planner and the MCP tools still throw with their phase name.
 
 ## 3 — Verifier: Swift
 **DoD:** `fixtures/swift-fixture` (SwiftPM, XCTest + Swift Testing targets); Muter scoped via `--files-to-mutate`, `SWIFT_TREAT_WARNINGS_AS_ERRORS=NO`; `Verdict` parity with TS; Swift Testing attribution handled or ADR-0005; cost recorded.

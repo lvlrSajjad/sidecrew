@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:slow": "SIDECREW_SLOW=1 vitest run",
     "lint": "tsc --noEmit -p tsconfig.lint.json",
+    "measure:verifier-ts": "tsx scripts/measure-verifier-ts-cost.ts",
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
