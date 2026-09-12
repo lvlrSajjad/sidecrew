@@ -84,6 +84,12 @@ When two models are configured (7B, 14B), pick per function using observed survi
   `expect(typeof f(x)).toBe("string")` — passes every static rule. Only `killed ≥ 1` stops it. It is in
   ADR-0006's cheap-pass list and in the slow test; the adversarial-mutant idea above is the eventual
   answer.
+- **`doctor` probes the toolchain of the current directory, not of the project being verified.** It
+  reports `stryker MISSING` on this repo while the verifier is running Stryker candidates in
+  `fixtures/ts-fixture`, which has it. Both statements are true and together they are misleading: the
+  verifier's toolchain belongs to the project it is pointed at (ADR-0004's sandbox symlinks *that*
+  `node_modules`). `sidecrew_status` in Phase 4 needs a target directory, and `doctor` should take one
+  too — `sidecrew doctor --project fixtures/ts-fixture`.
 - **The copy is per candidate.** Cheap on the fixture and on any normal repo, but it is a whole working
   tree each time. If it ever shows up in a profile, the fix is one sandbox per module with the test file
   rewritten between candidates — never a shared Stryker cache (ADR-0004).
