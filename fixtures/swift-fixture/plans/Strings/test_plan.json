@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "language": "swift",
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Strings.swift",
+  "test_framework": "xctest",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 104540,
+    "created": "2026-09-14T19:30:00.000Z"
+  },
+  "test_target": "SwiftFixtureXCTests",
+  "shapes": [
+    {
+      "kind": "happy_path",
+      "exemplar": "exemplars/happy_path.swift",
+      "exemplar_function": "slugify",
+      "rules": "One or two representative inputs. Assert the exact return value, never its type or its count."
+    },
+    {
+      "kind": "boundary",
+      "exemplar": "exemplars/boundary.swift",
+      "exemplar_function": "slugify",
+      "rules": "Empty input, one element, and the value either side of each limit. One test per boundary, exact values."
+    }
+  ],
+  "functions": [
+    {
+      "name": "truncate",
+      "signature": "Strings.truncate(_ text: String, maxLength: Int) -> String",
+      "source_sha": "0c64dffcb1e5e30de1c7e3b3f3258fc076fb66b9eefd8f29afe151cd43124f95",
+      "line_range": [
+        27,
+        33
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "The one-character ellipsis counts towards maxLength, so a cut string is exactly maxLength characters long. maxLength <= 0 gives \"\"."
+    },
+    {
+      "name": "countOccurrences",
+      "signature": "Strings.countOccurrences(_ haystack: String, _ needle: String) -> Int",
+      "source_sha": "821b7dc7f560981896d56b9a15d090aac9c54de59e6b834641141f620c8a01ab",
+      "line_range": [
+        48,
+        59
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Non-overlapping: \"aaa\" contains \"aa\" once. An empty needle counts as none."
+    },
+    {
+      "name": "commonPrefix",
+      "signature": "Strings.commonPrefix(_ a: String, _ b: String) -> String",
+      "source_sha": "0a0e8f68a1ac3761deccd44caeb72f528c017bbe96ca0504dd07ac9bea3b6ca6",
+      "line_range": [
+        61,
+        69
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Character-wise; returns \"\" when the first characters differ, and the whole of the shorter string when one is a prefix of the other."
+    }
+  ]
+}

@@ -6,7 +6,10 @@ export interface RunOpts {
   cwd?: string;
   /** Wall clock. Reached ⇒ the whole process group is killed and `timedOut` is true. */
   timeoutMs?: number;
-  /** Merged over the parent environment. */
+  /**
+   * Merged over the parent environment. A key whose value is `undefined` is **removed** rather than
+   * merged, which is how a stage strips what its own launcher injected (`stageEnv`, ADR-0052).
+   */
   env?: NodeJS.ProcessEnv;
   /** Per-stream cap. A mutation run can print megabytes and none of it is worth holding. */
   maxOutputBytes?: number;
@@ -47,7 +50,7 @@ export async function run(cmd: string, args: string[] = [], opts: RunOpts = {}):
   return new Promise<RunResult>((resolve) => {
     const child = spawn(cmd, args, {
       cwd,
-      env: env ? { ...process.env, ...env } : process.env,
+      env: env ? withoutUndefined({ ...process.env, ...env }) : process.env,
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
     });
@@ -122,6 +125,13 @@ export const firstLine = (r: RunResult): string =>
  * `doctor` probes it and `serve` spawns it, and those two must never disagree about which python
  * they mean.
  */
+/** `{FOO: undefined}` means "unset FOO for the child", which a plain spread cannot express. */
+const withoutUndefined = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [k, v] of Object.entries(env)) if (v !== undefined) out[k] = v;
+  return out;
+};
+
 export const pythonBin = (env: NodeJS.ProcessEnv = process.env): string => env.SIDECREW_PYTHON ?? "python3";
 
 /**

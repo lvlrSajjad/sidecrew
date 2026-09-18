@@ -1,9 +1,17 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect, afterEach } from "vitest";
-import { median, RssSampler, resultPath, benchPrompt, measureDeterminism, renderBench, BENCH_SEED, SWAP_NOISE_FLOOR_MB, type BenchReport } from "../src/bench.js";
+import { median, refuseToClobber, RssSampler, resultPath, benchPrompt, measureDeterminism, renderBench, BENCH_SEED, SWAP_NOISE_FLOOR_MB, type BenchReport } from "../src/bench.js";
 import { startFake, type Fake } from "./fake-worker.js";
 
 let fake: Fake | null = null;
-afterEach(async () => { await fake?.close(); fake = null; });
+const made: string[] = [];
+afterEach(async () => {
+  await fake?.close();
+  fake = null;
+  for (const d of made.splice(0)) await rm(d, { recursive: true, force: true });
+});
 
 describe("median", () => {
   it("takes the middle of an odd sample and the mean of the middle two of an even one", () => {
@@ -24,6 +32,23 @@ describe("resultPath", () => {
 
   it("lets a tagged run sit beside the canonical one instead of overwriting it", () => {
     expect(resultPath(new Date("2026-09-11T23:30:00Z"), "out", "quiet")).toBe("out/bench-2026-09-11-quiet.json");
+  });
+});
+
+describe("refuseToClobber", () => {
+  it("says nothing about a path that is free", () => {
+    expect(() => refuseToClobber("out/bench-2999-01-01.json")).not.toThrow();
+  });
+
+  it("refuses to overwrite a measurement, and names the flag rather than the problem", async () => {
+    // Phase 6 runs three or four configurations, mostly on one day, and compares them. A forgotten
+    // --tag used to mean the second silently replaced the first; the only trace was `created`.
+    const dir = await mkdtemp(join(tmpdir(), "sidecrew-bench-"));
+    made.push(dir);
+    const path = resultPath(new Date("2026-09-11T23:30:00Z"), dir);
+    await writeFile(path, "{}", "utf8");
+    expect(() => refuseToClobber(path)).toThrow(/--tag <name>/);
+    expect(() => refuseToClobber(path, "quiet")).toThrow(/different --tag/);
   });
 });
 

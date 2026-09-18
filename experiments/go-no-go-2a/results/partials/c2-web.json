@@ -1,0 +1,177 @@
+{
+  "measured": true,
+  "config": "c2",
+  "input": "web",
+  "label": "project-b (React, jest)",
+  "plan": "experiments/go-no-go-2a/plans/project-b.json",
+  "commit": "716e0bbf8a39f97b844ddcaf33c6f011574fd534",
+  "repo_dirty": false,
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32,
+    "free_gb": 18.88,
+    "at": "2026-09-18T08:06:37.214Z"
+  },
+  "result": {
+    "run_id": "2026-09-18T07-16-34Z-project-b",
+    "plan": "<project>/project-b.json",
+    "config": {
+      "worker_kind": "local",
+      "worker_model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+      "concurrency": 1,
+      "retry": 1
+    },
+    "project": {
+      "errors_before": 0,
+      "errors_after": 0,
+      "tests_ran": 8795,
+      "tests_passed": 8788,
+      "combined_regressions": 2
+    },
+    "steps": [
+      {
+        "name": "dead imports and renames",
+        "tasks": 12,
+        "survived": 11,
+        "escalated": 1,
+        "errors_before": 0,
+        "errors_after": 0
+      }
+    ],
+    "stats": {
+      "tasks": 12,
+      "survived": 11,
+      "retried": 0,
+      "escalated": 1,
+      "funnel": {
+        "answered": 11,
+        "edits_parsed": 11,
+        "confined": 11,
+        "applied": 11,
+        "compiled": 11,
+        "suite_green": 11
+      },
+      "edit_parse_failed": 0,
+      "edit_truncated": 0,
+      "confinement_breaks": {},
+      "latency_ms": {
+        "median": 209441,
+        "p90": 213965
+      },
+      "generate_ms": {
+        "median": 7286,
+        "p90": 8964
+      },
+      "gate_ms": {
+        "median": 201305,
+        "p90": 207616
+      },
+      "peak_rss_mb": 188.6,
+      "claude_tokens": {
+        "planning": 0,
+        "workers": 0,
+        "review": null
+      }
+    },
+    "survivors": [
+      {
+        "task_id": "import-01",
+        "files": [
+          "src/app/pages/CompanyTeamDetailsPage/components/TeamMembersTableHeader.tsx"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "import-02",
+        "files": [
+          "src/app/pages/ForbiddenPage/index.tsx"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "import-03",
+        "files": [
+          "src/app/components/core/ECForm/fields/StorageLocationsField.tsx"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "import-05",
+        "files": [
+          "src/app/pages/ProjectsDetailsPage/components/ProjectWorkOrdersTabHeader.tsx"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "import-06",
+        "files": [
+          "src/app/components/ECSPHowItWorks/index.tsx"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-01",
+        "files": [
+          "src/app/hooks/useIsOffline.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-02",
+        "files": [
+          "src/utils/strings/sanitize-input.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-03",
+        "files": [
+          "src/services/emaApi.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-04",
+        "files": [
+          "src/app/hooks/useWorkflowStatusRefresh.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-05",
+        "files": [
+          "src/app/pages/AssessmentCycleBranchesPage/statusFilter.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-06",
+        "files": [
+          "src/app/components/ECWorkflowPriorityBadge/index.tsx"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 0
+      }
+    ],
+    "escalations": [
+      {
+        "task_id": "import-04",
+        "attempts": [
+          {
+            "error": "ENOTEMPTY: directory not empty, rmdir '/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-task-V6UW3E'"
+          }
+        ]
+      }
+    ]
+  }
+}

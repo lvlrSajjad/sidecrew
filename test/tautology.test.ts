@@ -11,10 +11,12 @@ import {
 } from "../src/verifier/tautology.js";
 
 const FIXTURES = "fixtures/ts-fixture";
+const SWIFT_FIXTURES = "fixtures/swift-fixture";
 
 interface CandidateEntry { file: string; function: string; expect: "survives" | "tautological" }
-const catalogue = async (): Promise<CandidateEntry[]> =>
-  (JSON.parse(await readFile(`${FIXTURES}/candidates.json`, "utf8")) as { candidates: CandidateEntry[] }).candidates;
+const catalogueIn = async (dir: string): Promise<CandidateEntry[]> =>
+  (JSON.parse(await readFile(`${dir}/candidates.json`, "utf8")) as { candidates: CandidateEntry[] }).candidates;
+const catalogue = async (): Promise<CandidateEntry[]> => catalogueIn(FIXTURES);
 
 describe("the eight fixtures", () => {
   it("flags all four tautologies and none of the four legitimate tests", async () => {
@@ -159,5 +161,170 @@ describe("the pieces", () => {
   it("keeps the boolean wrapper the Verdict is built from", () => {
     expect(isTautological(`import { slugify } from "./s";\nit("x", () => { expect(true).toBe(true); slugify("a"); });`, "slugify")).toBe(true);
     expect(isTautological(`import { slugify } from "./s";\nit("x", () => { expect(slugify("A")).toBe("a"); });`, "slugify")).toBe(false);
+  });
+});
+
+describe("the Swift dialect", () => {
+  // Same rules, different syntax. The interesting half of this block is that the *rules* needed no
+  // change at all: a constant assertion is a constant assertion whether it is spelled
+  // `expect(true).toBe(true)` or `XCTAssertTrue(true)`.
+  const src = (body: string) => `import Testing\n@testable import SwiftFixture\n\n@Test func t() {\n${body}\n}\n`;
+
+  it("flags all five Swift tautologies and none of the four legitimate candidates", async () => {
+    const entries = await catalogueIn(SWIFT_FIXTURES);
+    expect(entries).toHaveLength(9);
+    for (const c of entries) {
+      const report = analyseTautology(await readFile(`${SWIFT_FIXTURES}/${c.file}`, "utf8"), c.function, "swift");
+      expect(report.tautological, `${c.file}: ${JSON.stringify(report.findings)}`).toBe(c.expect === "tautological");
+      for (const f of report.findings) expect(f.message.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("names four different reasons across the five", async () => {
+    // Four, not five: `snapshot_only` has no spelling in XCTest or Swift Testing, and `no_assertions`
+    // — a test body with no assertion in it — is a cheap pass Swift makes easier than TypeScript does.
+    const codes = await Promise.all(
+      (await catalogueIn(SWIFT_FIXTURES))
+        .filter((c) => c.expect === "tautological")
+        .map(async (c) => analyseTautology(await readFile(`${SWIFT_FIXTURES}/${c.file}`, "utf8"), c.function, "swift").findings[0]?.code),
+    );
+    expect(new Set(codes).size).toBe(4);
+  });
+
+  it("covers every file in both fixture directories", async () => {
+    const listed = new Set((await catalogueIn(SWIFT_FIXTURES)).map((c) => c.file));
+    for (const dir of ["tautological", "legitimate"]) {
+      for (const file of await readdir(`${SWIFT_FIXTURES}/${dir}`)) {
+        expect(listed.has(`${dir}/${file}`), `${dir}/${file} is not in candidates.json`).toBe(true);
+      }
+    }
+  });
+
+  it("flags constant assertions in both frameworks' spellings", () => {
+    for (const assertion of ["XCTAssertTrue(true)", "XCTAssertFalse(false)", "XCTAssertEqual(2 + 2, 4)", "#expect(true)", "#expect(2 + 2 == 4)", 'XCTAssertEqual("a", "a")']) {
+      const r = analyseTautology(src(`    _ = Strings.slugify("a")\n    ${assertion}`), "slugify", "swift");
+      expect(r.tautological, assertion).toBe(true);
+      expect(r.findings[0]?.code, assertion).toBe("constant_assertions");
+    }
+  });
+
+  it("flags a value compared with itself, as an argument pair or across an operator", () => {
+    for (const assertion of ["XCTAssertEqual(actual, actual)", "#expect(actual == actual)", "XCTAssertEqual( actual ,actual )"]) {
+      const r = analyseTautology(src(`    let actual = Strings.slugify("a")\n    ${assertion}`), "slugify", "swift");
+      expect(r.findings.map((f) => f.code), assertion).toEqual(["self_comparison"]);
+    }
+  });
+
+  it("does not call an inequality a self-comparison", () => {
+    // `#expect(x != x)` says nothing either, but it says it by failing — so it never reaches the
+    // detector as a candidate that compiles, runs and passes.
+    const r = analyseTautology(src(`    let actual = Strings.slugify("a")\n    #expect(actual != actual)`), "slugify", "swift");
+    expect(r.tautological).toBe(false);
+  });
+
+  it("flags a test body with no assertion in it", () => {
+    const r = analyseTautology(src(`    _ = Strings.slugify("a")`), "slugify", "swift");
+    expect(r.findings.map((f) => f.code)).toEqual(["no_assertions"]);
+  });
+
+  it("flags a test that imports the module but never calls the function", () => {
+    const r = analyseTautology(src(`    #expect([1, 2].count == 2)`), "slugify", "swift");
+    expect(r.findings.map((f) => f.code)).toEqual(["function_never_called"]);
+  });
+
+  it("sees a qualified call as a call", () => {
+    // Swift candidates write `Strings.slugify(…)`, not `slugify(…)`.
+    expect(callsFunction(mask("Strings.slugify(\"a\")", "swift"), "slugify", "swift")).toBe(true);
+    expect(callsFunction(mask("let f = Strings.slugify", "swift"), "slugify", "swift")).toBe(false);
+    expect(callsFunction(mask("Strings.slugifyAll(\"a\")", "swift"), "slugify", "swift")).toBe(false);
+  });
+
+  it("blanks a Swift import without running past the end of it", () => {
+    // Swift imports have no `from` clause. The TypeScript rule would keep blanking to the end of the
+    // file, which would make every Swift candidate look like one that never calls its function.
+    const source = "import XCTest\n@testable import SwiftFixture\nStrings.slugify(\"a\")\n";
+    const body = withoutImports(mask(source, "swift"), "swift");
+    expect(body.trim()).toBe('Strings.slugify("x")');
+  });
+
+  it("passes a real assertion sitting among constant ones", () => {
+    const r = analyseTautology(src(`    #expect(true)\n    #expect(Strings.slugify("A b") == "a-b")`), "slugify", "swift");
+    expect(r.tautological).toBe(false);
+    expect(r.assertions).toBe(2);
+    expect(r.meaningful).toBe(1);
+  });
+
+  it("does not read assertions out of strings or comments, including multi-line ones", () => {
+    const source = [
+      "import Testing",
+      "@testable import SwiftFixture",
+      "@Test func t() {",
+      "  // #expect(true)",
+      '  let doc = """',
+      "  #expect(true)",
+      '  """',
+      '  #expect(Strings.slugify("A") == "a")',
+      "  _ = doc",
+      "}",
+    ].join("\n");
+    const r = analyseTautology(source, "slugify", "swift");
+    expect(r.assertions).toBe(1);
+    expect(r.tautological).toBe(false);
+  });
+
+  it("counts an unconditional failure as meaningful rather than constant", () => {
+    // `XCTFail("…")` takes a string literal, which is constant — but a test that calls it does not pass,
+    // so it is never the cheap pass this detector is looking for.
+    const r = analyseTautology(src(`    _ = Strings.slugify("a")\n    XCTFail("not implemented")`), "slugify", "swift");
+    expect(r.tautological).toBe(false);
+  });
+
+  it("knows nil is a Swift literal and undefined is not", () => {
+    expect(isConstantExpression("nil", "swift")).toBe(true);
+    expect(isConstantExpression("nil")).toBe(false);
+    expect(isConstantExpression("undefined", "swift")).toBe(false);
+  });
+});
+
+describe("copied_exemplar — ADR-0033", () => {
+  const exemplar = `import { describe, it, expect } from "vitest";
+import { slugify } from "../src/strings";
+
+describe("slugify", () => {
+  it("lowercases and dashes", () => {
+    expect(slugify("A B")).toBe("a-b");
+  });
+});
+`;
+
+  it("catches a candidate that is the exemplar handed back", () => {
+    // Measured on a real project: one "survivor" was byte-identical to its exemplar. It compiled,
+    // passed, killed 10 mutants and was non-tautological by every other rule, so it would have been the
+    // run's headline result — and it is the example, returned unchanged.
+    const report = analyseTautology(exemplar, "getBookValue", { exemplar });
+    expect(report.tautological).toBe(true);
+    expect(report.findings.map((f) => f.code)).toContain("copied_exemplar");
+    // The message has to tell the retry what to do, because the retry is the thing that reads it.
+    expect(report.findings[0]?.message).toMatch(/exemplar, returned unchanged/);
+    expect(report.findings[0]?.message).toMatch(/getBookValue/);
+  });
+
+  it("ignores whitespace, because a trailing newline is not a different file", () => {
+    expect(analyseTautology(`${exemplar}\n\n`, "getBookValue", { exemplar }).tautological).toBe(true);
+  });
+
+  it("does not fire on a real test that merely imitates the exemplar's style", () => {
+    // Copying structure and assertion style is exactly what the prompt asks for. Only a verbatim copy
+    // is the defect.
+    const real = exemplar.replace(/slugify/g, "titleCase").replace('"a-b"', '"A B"');
+    const report = analyseTautology(real, "titleCase", { exemplar });
+    expect(report.findings.map((f) => f.code)).not.toContain("copied_exemplar");
+  });
+
+  it("does nothing when no exemplar is supplied", () => {
+    // `sidecrew verify` on a hand-written file has no exemplar, and must not be penalised for it.
+    expect(analyseTautology(exemplar, "slugify").findings.map((f) => f.code)).not.toContain("copied_exemplar");
+    expect(analyseTautology(exemplar, "slugify", { exemplar: "" }).findings.map((f) => f.code))
+      .not.toContain("copied_exemplar");
   });
 });

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "language": "typescript",
+  "project": "fixtures/fix-fixture",
+  "test_framework": "vitest",
+  "meta": {
+    "planner_model": "hand-written",
+    "planner_tokens": 0,
+    "created": "2026-09-16T00:00:00Z"
+  },
+  "max_group_size": 10,
+  "correction": {
+    "enabled": false,
+    "max_corrections": 0,
+    "max_tokens": 0,
+    "on_observations": false
+  },
+  "steps": [
+    {
+      "name": "guard the rate lookup",
+      "tasks": [
+        {
+          "task_id": "rates",
+          "ask": "Fix every TypeScript error in these files without changing what the code does.",
+          "files": [
+            "src/rates.ts"
+          ],
+          "max_deleted_lines": 0,
+          "blocking": false,
+          "shape": "null_guard",
+          "notes": "An unknown or missing currency code must still produce 0, not a throw."
+        }
+      ]
+    },
+    {
+      "name": "default the optional fields",
+      "tasks": [
+        {
+          "task_id": "cart",
+          "ask": "Fix every TypeScript error in these files without changing what the code does.",
+          "files": [
+            "src/cart.ts"
+          ],
+          "max_deleted_lines": 0,
+          "blocking": false,
+          "shape": "null_guard",
+          "notes": "A cart with no discount must cost the full subtotal."
+        },
+        {
+          "task_id": "report",
+          "ask": "Fix every TypeScript error in these files without changing what the code does.",
+          "files": [
+            "src/report.ts"
+          ],
+          "max_deleted_lines": 0,
+          "blocking": false,
+          "shape": "null_guard",
+          "notes": "Callers pass the number of decimal places as a string and must keep working."
+        }
+      ]
+    }
+  ]
+}

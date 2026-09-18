@@ -1,0 +1,178 @@
+{
+  "measured": true,
+  "experiment": "status-quo (sidecrew against not using sidecrew)",
+  "phase": "11b",
+  "date": "2026-09-19",
+  "commit": "a4d2232",
+  "commit_source": "read from the arms' own ARM-* START lines \u2014 the frozen worktree they ran from, not this tree's HEAD (see main()).",
+  "arms_agree_on_commit": true,
+  "protocol": "experiments/status-quo/README.md \u2014 \u00a74 frozen 2026-09-18 before any arm ran; \u00a74.2's verdict WITHHELD per \u00a74.4, declared before the first arm",
+  "verdict": "WITHHELD",
+  "why_withheld": "\u00a74.4 \u2014 at least half the tasks must be null guards, API migrations or dead-code removal for \u00a74.2 to apply. The shape mix is 19/19 rename. See observation O1: two different frontier models produced BYTE-IDENTICAL output on all 19 tasks, so this task set demonstrably cannot discriminate.",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32,
+    "chip": "Apple Silicon",
+    "node": "v20.20.0"
+  },
+  "worker_local": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "temperature": 0
+  },
+  "project": "project-b",
+  "tasks": {
+    "n": 19,
+    "shape_mix": {
+      "rename": 19
+    },
+    "composition": "12 single-file + 7 multi-file renames; one multi-file task dropped when --validate caught it sharing a file with another"
+  },
+  "arms": {
+    "A": {
+      "label": "A (Opus alone, no gate)",
+      "delivered": 19,
+      "delivered_means": "everything produced \u2014 an ungated arm has no filter (\u00a74.1)",
+      "marginal_tokens": 95335,
+      "harness_floor_tokens": 48088,
+      "floor_note": "re-measured in this session: 48089 / 48087, spread 2. The project-a floor (47,927) had drifted by +162 \u2014 the floor is stable within a session and must be re-measured across them.",
+      "diff_lines": 123
+    },
+    "B": {
+      "label": "B (Sonnet alone, no gate)",
+      "delivered": 19,
+      "delivered_means": "everything produced \u2014 an ungated arm has no filter (\u00a74.1)",
+      "marginal_tokens": 88680,
+      "harness_floor_tokens": 53597,
+      "floor_note": "re-measured this session: 53598 / 53596, spread 2 (project-a used 53,420 \u2014 drift +178)",
+      "diff_lines": 118
+    },
+    "C": {
+      "source": "result.json",
+      "funnel": {
+        "answered": 23,
+        "edits_parsed": 23,
+        "confined": 21,
+        "applied": 21,
+        "compiled": 15,
+        "suite_green": 15
+      },
+      "latency_ms": {
+        "generate_ms": {
+          "median": 14909,
+          "p90": 29208
+        },
+        "gate_ms": {
+          "median": 201100,
+          "p90": 217071
+        },
+        "latency_ms": {
+          "median": 214226,
+          "p90": 227549
+        }
+      },
+      "claude_tokens": {
+        "planning": 0,
+        "workers": 0,
+        "review": null
+      },
+      "cross_check": {
+        "agrees": true
+      },
+      "tasks": 19,
+      "tasks_with_a_verdict": 19,
+      "survived": 15,
+      "refusals": 0,
+      "retried": 4,
+      "run_complete": true,
+      "machine_failures": {
+        "n": 0,
+        "tasks": [],
+        "no_verdict_written": [],
+        "suite_did_not_report": [],
+        "why": "ADR-0056 \u2014 the sandbox or the runner broke; never the worker's to answer. Reconstructed from disk because `fix` does not persist its FixResult."
+      },
+      "denominator_for_worker_quality": {
+        "value": 4,
+        "formula": "tasks - survived - refusals - machine_failures (\u00a75) \u2014 what actually reached the gate and failed it. Dividing by `tasks` understates the worker."
+      },
+      "final_stage_reached": {
+        "done": 15,
+        "compile": 3,
+        "confinement": 1
+      },
+      "failed_at_tests_only": {
+        "tasks": [],
+        "note": "ADR-0066: this is the shape a memory-pressure false negative takes. Not excluded from any denominator \u2014 cross-check each against pressure_telemetry before reading it as a defect the gate caught."
+      },
+      "label": "sidecrew \u2014 local 7B behind the gate",
+      "delivered_means": "survivors only \u2014 the gate threw the rest away (\u00a74.1)"
+    },
+    "D": {
+      "source": "reconstructed from verdicts (no result.json \u2014 the run did not finish)",
+      "funnel": null,
+      "latency_ms": null,
+      "claude_tokens": null,
+      "cross_check": {
+        "agrees": true
+      },
+      "tasks": 19,
+      "tasks_with_a_verdict": 19,
+      "survived": 18,
+      "refusals": 0,
+      "retried": 1,
+      "run_complete": false,
+      "machine_failures": {
+        "n": 0,
+        "tasks": [],
+        "no_verdict_written": [],
+        "suite_did_not_report": [],
+        "why": "ADR-0056 \u2014 the sandbox or the runner broke; never the worker's to answer. Reconstructed from disk because `fix` does not persist its FixResult.",
+        "_incomplete": "the run has not finished, so a planned task with no verdict has not necessarily failed \u2014 it may simply not have run. Only `suite_did_not_report` is counted here."
+      },
+      "denominator_for_worker_quality": {
+        "value": null,
+        "_incomplete": "not computable until the run finishes; see run_complete."
+      },
+      "final_stage_reached": {
+        "done": 18,
+        "compile": 1
+      },
+      "failed_at_tests_only": {
+        "tasks": [],
+        "note": "ADR-0066: this is the shape a memory-pressure false negative takes. Not excluded from any denominator \u2014 cross-check each against pressure_telemetry before reading it as a defect the gate caught."
+      },
+      "label": "the gate applied to arm A's own diffs; model held fixed, only the gate varies",
+      "delivered_means": "survivors only \u2014 the gate threw the rest away (\u00a74.1)"
+    }
+  },
+  "P": {
+    "_missing": "blind review not scored yet \u2014 run scripts/blind-review-11b.py draw, review, then score. P(x) is never computed from anything but a scored pack."
+  },
+  "pressure_telemetry": {
+    "measured": true,
+    "why": "ADR-0066 \u2014 the instrument the product is missing. A gate under memory pressure fails closed and its verdict cannot say so; this makes a starved verdict identifiable after the fact by timestamp.",
+    "samples": 597,
+    "interval_s": 20,
+    "first": "2026-09-18T20:12:08Z",
+    "last": "2026-09-18T23:33:16Z",
+    "pressure_level": {
+      "max": 1,
+      "warn_or_worse_frac": 0.0,
+      "legend": "1 normal, 2 warn, 4 critical"
+    },
+    "swap_gb": {
+      "floor": 1.4,
+      "max": 1.5,
+      "growth": 0.1
+    },
+    "free_gb": {
+      "min": 12.0,
+      "max": 21.1
+    },
+    "reading": "pressure `warn` with flat swap is this suite's ordinary operating point \u2014 352 suites plus a resident 7B do not fit in 32 GB with headroom, so the kernel compresses and nothing reaches disk. Sustained swap GROWTH is the damaging condition; see the ADR-0066 amendment."
+  },
+  "known_defects": [
+    "ADR-0066 \u2014 a gate under memory pressure fails closed and the false negative is indistinguishable from a true one. Arm C's first run was discarded at 4/19 and restarted from scratch on a quiet machine; this file reports only the restarted run."
+  ]
+}

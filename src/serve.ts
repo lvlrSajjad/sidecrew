@@ -5,11 +5,12 @@
 // the CLI that started it, so `serve` spawns it detached, hands the pid to a file and returns. Every
 // other shell-out in sidecrew still goes through exec.ts.
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile, rm, open } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { MLX_SERVER_MODULE, pythonBin, run, ok as exited0 } from "./exec.js";
-import { DEFAULT_PORT, baseUrlFor, probeWorker, readMemory, type Memory } from "./doctor.js";
-import { defaultKey, entry, resolveForServe, short, tierFor, type ModelEntry } from "./models.js";
+import { DEFAULT_PORT, baseUrlFor, probeWorker, readMemory, readPressure, type Memory, type PressureLevel } from "./doctor.js";
+import { apiModel, defaultKey, entry, resolveForServe, short, tierFor, type ModelEntry } from "./models.js";
 import { complete } from "./worker.js";
 
 /**
@@ -31,9 +32,33 @@ const POLL_MS = 500;
 
 export const SIDECREW_DIR = ".sidecrew";
 
+/**
+ * Which `.sidecrew` a command should read worker state from (ADR-0029).
+ *
+ * `serve` writes `worker-<port>.{json,pid,log}` relative to the directory it was run in, and every other
+ * command used to read them relative to *its* directory. Run `sidecrew serve` in one place and
+ * `sidecrew run` in another and the second finds no record — which used to mean it guessed, and the guess
+ * was wrong in the way that costs the most (see `discoverWorkers`).
+ *
+ * Three sources, in order: `SIDECREW_DIR` when set — the only thing that works when the two directories
+ * are in different trees, which is the normal case for a tool run against somebody else's repo; then the
+ * nearest existing `.sidecrew` at or above the current directory, which covers running from a workspace
+ * of the project you served from; then `.sidecrew` here, which is where a fresh `serve` creates one.
+ */
+export function sidecrewDir(from = process.cwd(), env: NodeJS.ProcessEnv = process.env): string {
+  if (env.SIDECREW_DIR) return env.SIDECREW_DIR;
+  let dir = resolve(from);
+  for (;;) {
+    if (existsSync(join(dir, SIDECREW_DIR))) return join(dir, SIDECREW_DIR);
+    const up = dirname(dir);
+    if (up === dir) return SIDECREW_DIR;
+    dir = up;
+  }
+}
+
 export interface WorkerFiles { pid: string; log: string; record: string }
 
-export const workerFiles = (port: number, dir = SIDECREW_DIR): WorkerFiles => ({
+export const workerFiles = (port: number, dir = sidecrewDir()): WorkerFiles => ({
   pid: join(dir, `worker-${port}.pid`),
   log: join(dir, `worker-${port}.log`),
   record: join(dir, `worker-${port}.json`),
@@ -68,22 +93,81 @@ export interface MemoryGate { ok: boolean; need_gb: number; reason: string }
 /**
  * May this model start right now? Free RAM, not installed RAM — ADR-0008's distinction, on the side
  * where the answer has to still be true a second later.
+ *
+ * Two conditions, and the second was added in Phase 7 because the first is not sufficient (ADR-0026).
+ * `free_gb` comes from `vm_stat`'s reclaimable pages, and under memory pressure macOS compresses and
+ * evicts — so the number goes *up* while the machine gets worse, which is ADR-0011's finding from the
+ * other direction and exactly what Phase 6 observed when `ps` reported 205 MB for a 7B. The kernel's own
+ * pressure level is the part that knows, and a worker must not start into `warn` or `critical` however
+ * much free memory is being reported: non-negotiable #5 says never swap, not "swap a little".
  */
-export const memoryGate = (m: ModelEntry, mem: Memory | null): MemoryGate => {
+export const memoryGate = (m: ModelEntry, mem: Memory | null, pressure: PressureLevel = "unknown"): MemoryGate => {
   const need = m.ram_gb + SERVE_HEADROOM_GB;
   if (!mem) return { ok: false, need_gb: need, reason: "could not read this machine's memory — pass --force to start anyway" };
-  if (mem.free_gb >= need) return { ok: true, need_gb: need, reason: `${mem.free_gb.toFixed(1)} GB free ≥ ${need.toFixed(1)} GB needed` };
+
+  if (mem.free_gb >= need) {
+    if (pressure === "warn" || pressure === "critical") {
+      return {
+        ok: false,
+        need_gb: need,
+        reason:
+          `${mem.free_gb.toFixed(1)} GB looks free but the kernel reports memory pressure ${pressure} — ` +
+          "under pressure macOS compresses pages, so vm_stat's free count rises while the machine thrashes (ADR-0011). " +
+          "Close something and let it settle, wait with --wait, or pass --force.",
+      };
+    }
+    return { ok: true, need_gb: need, reason: `${mem.free_gb.toFixed(1)} GB free ≥ ${need.toFixed(1)} GB needed${pressure === "normal" ? ", pressure normal" : ""}` };
+  }
 
   const tier = tierFor(mem.total_gb);
+  // On the api tier this is not advice about freeing memory: the machine is not supposed to host a
+  // worker at all, so the fix is "don't run serve", not "close Xcode" (ADR-0045 §4, ADR-0032's shape).
   const advice = tier.tier === "api"
-    ? `this machine is the api tier (${tier.why}) — ADR-0009`
-    : "close Xcode, a simulator or a browser, or pass --force";
+    ? `this machine is the api tier · ${apiModel().model} (${tier.why}) — it does not host a local worker, ` +
+      "so there is nothing to serve here: run `sidecrew run` or `sidecrew fix` directly and the worker is Claude over the API (ADR-0045)"
+    : "close Xcode, a simulator or a browser, wait with --wait, or pass --force";
   return {
     ok: false,
     need_gb: need,
     reason: `${m.key} needs ~${need.toFixed(1)} GB free (${m.ram_gb} GB of weights + ${SERVE_HEADROOM_GB} GB headroom) and this machine has ${mem.free_gb.toFixed(1)} GB — ${advice}`,
   };
 };
+
+/** Ask the machine, both halves, at one instant. */
+export const currentGate = async (m: ModelEntry): Promise<MemoryGate> => {
+  const [mem, pressure] = await Promise.all([readMemory(), readPressure()]);
+  return memoryGate(m, mem, pressure);
+};
+
+/** How often the queue asks again. Free RAM moves when an app quits, not when a loop spins. */
+export const MEMORY_POLL_MS = 3_000;
+
+export interface QueueOpts {
+  /** How long to wait for room. 0 — the default — is the old behaviour: ask once and refuse. */
+  waitMs?: number;
+  pollMs?: number;
+  onWait?: (waitedMs: number, gate: MemoryGate) => void;
+}
+
+/**
+ * The queue half of the memory guard: wait for room rather than refuse (Phase 7, item 4).
+ *
+ * "Otherwise queue" is what turns the gate from a wall into a scheduler. A user who has just been told
+ * to close Xcode does close Xcode, and a `serve` that refused a second earlier makes them type the
+ * command again; a run script that hits the gate has no hands to close anything with and simply fails.
+ * Waiting is the same rule applied repeatedly — it never starts a worker into less memory than the gate
+ * demands, so the guarantee is unchanged and only the failure mode is kinder.
+ */
+export async function awaitMemory(m: ModelEntry, opts: QueueOpts = {}): Promise<MemoryGate> {
+  const deadline = Date.now() + (opts.waitMs ?? 0);
+  const startedAt = Date.now();
+  for (;;) {
+    const gate = await currentGate(m);
+    if (gate.ok || Date.now() >= deadline) return gate;
+    opts.onWait?.(Date.now() - startedAt, gate);
+    await new Promise((r) => setTimeout(r, opts.pollMs ?? MEMORY_POLL_MS));
+  }
+}
 
 // ── starting ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -190,11 +274,22 @@ export interface ServeOpts {
   dir?: string;
   readyTimeoutMs?: number;
   quiet?: boolean;
+  /**
+   * Start a worker whose weights are not the pinned revision (ADR-0027).
+   *
+   * The default is to refuse. Two survival rates taken on two revisions of the same repo are not
+   * comparable, and nothing downstream can tell — `Candidate.worker.revision` records what ran, so the
+   * evidence is there, but only for whoever thinks to look. This makes the refusal the thing that
+   * happens instead.
+   */
+  allowUnpinned?: boolean;
+  /** Wait this long for the memory gate to open before refusing. 0 asks once. */
+  waitMs?: number;
 }
 
 export async function serve(opts: ServeOpts = {}): Promise<WorkerRecord> {
   const port = opts.port ?? DEFAULT_PORT;
-  const dir = opts.dir ?? SIDECREW_DIR;
+  const dir = opts.dir ?? sidecrewDir();
   const key = opts.modelKey ?? defaultKey();
   const model = entry(key);
   const say = (s: string) => { if (!opts.quiet) process.stdout.write(`${s}\n`); };
@@ -219,13 +314,33 @@ export async function serve(opts: ServeOpts = {}): Promise<WorkerRecord> {
     );
   }
 
-  const mem = await readMemory();
-  const gate = memoryGate(model, mem);
+  const resolved = await resolveForServe(model);
+  // The pin is refused rather than warned about (ADR-0027). A warning printed above several minutes of
+  // model loading is a warning nobody reads, and what it is warning about is that every number this
+  // worker produces is incomparable with every number the last one did (non-negotiable #4).
+  if (!resolved.pinned && !opts.allowUnpinned) {
+    throw new Error(
+      `${resolved.warning ?? `${key} is not running its pinned revision`}\n` +
+      `  refusing to start: a survival rate taken on one revision cannot be compared with one taken on another (non-negotiable #4).\n` +
+      `  sidecrew models --pin ${key}   # pin whatever is in the cache, and commit it\n` +
+      "  --allow-unpinned               # start anyway; the candidate records the revision it actually ran",
+    );
+  }
+  if (resolved.warning) say(`warning: ${resolved.warning}`);
+  if (!resolved.pinned) say(`--allow-unpinned: this worker is not reproducible against ${short(model.revision)}`);
+
+  let announcedWait = false;
+  const gate = await awaitMemory(model, {
+    waitMs: opts.waitMs,
+    onWait: (_waited, g) => {
+      if (announcedWait) return;
+      announcedWait = true;
+      say(`waiting for room (${Math.round((opts.waitMs ?? 0) / 1000)}s at most): ${g.reason}`);
+    },
+  });
   if (!gate.ok && !opts.force) throw new Error(gate.reason);
   if (!gate.ok) say(`--force: starting anyway. ${gate.reason}`);
-
-  const resolved = await resolveForServe(model);
-  if (resolved.warning) say(`warning: ${resolved.warning}`);
+  if (announcedWait && gate.ok) say(`room now: ${gate.reason}`);
 
   await mkdir(dir, { recursive: true });
   const files = workerFiles(port, dir);
@@ -288,7 +403,7 @@ export async function serve(opts: ServeOpts = {}): Promise<WorkerRecord> {
 
 // ── stopping ──────────────────────────────────────────────────────────────────────────────────────
 
-export const readRecord = async (port: number, dir = SIDECREW_DIR): Promise<WorkerRecord | null> => {
+export const readRecord = async (port: number, dir = sidecrewDir()): Promise<WorkerRecord | null> => {
   try {
     return JSON.parse(await readFile(workerFiles(port, dir).record, "utf8")) as WorkerRecord;
   } catch {
@@ -296,7 +411,7 @@ export const readRecord = async (port: number, dir = SIDECREW_DIR): Promise<Work
   }
 };
 
-export const readPid = async (port: number, dir = SIDECREW_DIR): Promise<number | null> => {
+export const readPid = async (port: number, dir = sidecrewDir()): Promise<number | null> => {
   const raw = await readFile(workerFiles(port, dir).pid, "utf8").catch(() => "");
   const pid = Number(raw.trim());
   return Number.isInteger(pid) && pid > 0 ? pid : null;
@@ -306,7 +421,7 @@ export interface StopOpts { port?: number; dir?: string; quiet?: boolean }
 
 export async function stop(opts: StopOpts = {}): Promise<boolean> {
   const port = opts.port ?? DEFAULT_PORT;
-  const dir = opts.dir ?? SIDECREW_DIR;
+  const dir = opts.dir ?? sidecrewDir();
   const files = workerFiles(port, dir);
   const say = (s: string) => { if (!opts.quiet) process.stdout.write(`${s}\n`); };
 
@@ -388,6 +503,10 @@ export async function status(opts: StatusOpts = {}): Promise<void> {
   if (mem) {
     const tier = tierFor(mem.total_gb);
     lines.push(`memory   ${mem.total_gb.toFixed(1)} GB installed · ${mem.free_gb.toFixed(1)} GB free → ${tier.tier} tier`);
+    if (tier.tier === "api") {
+      lines.push(`         ${tier.why}`);
+      lines.push(`         worker is ${apiModel().model} over the Anthropic API and is billed — zero-worker-tokens is a local-tier guarantee (ADR-0045)`);
+    }
   }
   process.stdout.write(`${lines.join("\n")}\n`);
 }

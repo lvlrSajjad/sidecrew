@@ -1,0 +1,322 @@
+{
+  "experiment": "real-world trial (re-run)",
+  "project": "project-a",
+  "date": "2026-09-15",
+  "measured": true,
+  "baseline": "experiments/real-world/results/project-a-2026-09-15.md",
+  "comparison": "before/after — same project, same module, same worker revision, same seed, same machine",
+  "sidecrew": {
+    "head": "7dc76c18121e53d281587cc36ad677b82169fd8e",
+    "head_subject": "fix: clone node_modules into the sandbox when TypeScript proves the symlink is the problem",
+    "built_from_head": true,
+    "git_status_clean_after_build": true,
+    "note": "protocol step 0 (added after the baseline) passed; the baseline began with a stale dist"
+  },
+  "machine": {
+    "model": "Apple M2 Pro",
+    "ram_gb": 32,
+    "os": "macOS 26.6.2",
+    "node": "v22.23.2",
+    "free_ram_gb_range": [7.4, 11.2],
+    "thermal_baseline": false
+  },
+  "worker": {
+    "kind": "local",
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c7",
+    "pinned": true,
+    "temperature": 0,
+    "seed": 42,
+    "identical_to_baseline": true
+  },
+  "toolchain": {
+    "typescript": "6.0.3",
+    "jest": "30.4.1",
+    "ts-jest": "29.4.11",
+    "stryker": "8.7.1",
+    "stryker_pinned_major": 8,
+    "package_manager": "yarn 1.22.22 via npx (machine default is corepack Berry 4.9.2)",
+    "lockfile_format_preserved": "yarn lockfile v1"
+  },
+  "module": {
+    "path": "src/common/assetUtil.ts",
+    "md5": "3c7ddf353fa2769cc841208031a101d8",
+    "lines": 127,
+    "public_functions": 5,
+    "shape": "default-exported class with static property arrow functions",
+    "unchanged_since_baseline": true
+  },
+  "questions": {
+    "q1_probe_runs": {
+      "answer": "yes — all five functions found; four of five reproduce the baseline exactly",
+      "baseline_behaviour": "all five skipped: 'not a function of assetUtil.ts'",
+      "deriveLineRange_coverage": {
+        "baseline_pct": 1.5,
+        "rerun_pct": 99.2,
+        "found": 1497,
+        "total": 1509,
+        "by_shape": {
+          "export function": { "found": 23, "total": 23 },
+          "static method": { "found": 1417, "total": 1429 },
+          "static property arrow": { "found": 36, "total": 36 },
+          "export const arrow": { "found": 21, "total": 21 }
+        }
+      },
+      "classifyProbe_not_measured_works": true,
+      "probe_refuses_empty_results_file": true,
+      "new_defect": {
+        "name": "bodyRange brace-matches into a return-type annotation",
+        "function": "getSpendVsReplacement",
+        "derived_range": [100, 104],
+        "correct_range": [100, 124],
+        "reported": "NOT PLANNABLE — no mutants at all",
+        "truth_with_correct_range": { "mutants": 18, "killed": 18, "survived": 0, "score": 1.0 },
+        "consequence": "a planner following ADR-0016 drops the module's most survivable function"
+      },
+      "sibling_scripts_still_on_old_regex": [
+        "scripts/plan-ranges.mjs — failed on 5 of 5 functions ('has no function called X')"
+      ]
+    },
+    "q2_import_hint": {
+      "answer": "yes — hint and exemplar agree, and 16/16 candidates follow it",
+      "rendered_hint": "import AssetUtil from \"../src/common/assetUtil\";",
+      "exportStyleFor": { "kind": "default", "local": "AssetUtil" },
+      "counts": {
+        "baseline": { "correct_import": 2, "wrong_import": 18, "of": 20 },
+        "rerun": { "correct_import": 16, "wrong_import": 0, "of": 16 },
+        "rerun_qualified_call_sites": 16,
+        "rerun_bare_call_sites": 0
+      },
+      "caveat": "the prompt also gained a {{#function_qualified}} line, which renders only when the PLAN's signature field carries the owning type — a planner decision, not an inference by exportStyleFor",
+      "remaining_gap": {
+        "name": "the import hint covers the function's own module and nothing else",
+        "function": "getSpendVsReplacement",
+        "missing_type": "InsightsColorEnum from src/common/insights.color.enum",
+        "attempts_lost": 4,
+        "note": "the plan's notes field names the exact import path, and notes is never rendered into the prompt"
+      }
+    },
+    "q3_sandbox": {
+      "answer": "reports/ fixed; auth.config.test.ts not, and it is now the gating failure",
+      "tracked_paths_absent_from_sandbox": 354,
+      "correctly_dropped_test_files": 352,
+      "wrongly_dropped_source_files": ["src/modules/auth/auth.config.test.ts"],
+      "not_a_sidecrew_defect": {
+        "path": "test/modules/proposal/proposal.insights.e2e-spec.ts",
+        "cause": "the project's git index holds both test/modules/proposal/ and test/modules/Proposal/, folded together by APFS; the file is present under Proposal/"
+      },
+      "reports_directory_present": true,
+      "reports_files_present": ["reports.controller.ts", "reports.module.ts", "reports.service.ts", "model/"],
+      "auth_config_still_breaks_compile": true,
+      "auth_config_error": "test/util/test.setup.ts(17,32): error TS2307: Cannot find module '../../src/modules/auth/auth.config.test'",
+      "attempts_failing_on_it_alone": 12,
+      "of_attempts": 16,
+      "blocker_5_status": {
+        "name": "Stryker ENOTSUP copying the project's .claude symlinks",
+        "fixed": false,
+        "recorded_in_adr_0033": false,
+        "note": "the baseline enumerated six blockers; ADR-0033 fixes four and records two as deliberately unfixed — this one is in neither list"
+      }
+    },
+    "q4_ts2883_self_repair": {
+      "answer": "yes — fired unaided, compile stage then succeeded",
+      "evidence": "the live sandbox's node_modules is a real directory (909 entries), not the symlink ADR-0004 creates",
+      "intervention_required": false,
+      "cost": {
+        "wasted_tsc_s": 11.5,
+        "clone_cp_Rc_s": 21.1,
+        "node_modules_gb": 1.1,
+        "extra_per_candidate_s": 32.6,
+        "paid_per": "candidate (each gets a fresh sandbox)",
+        "as_pct_of_mutation_stage": "16-25%",
+        "attempts_in_run": 13,
+        "approx_run_overhead_min": 7
+      }
+    },
+    "q5_survival": {
+      "sidecrew_measured_unmodified_project": {
+        "tasks": 8,
+        "attempts": 16,
+        "compiled": 0,
+        "passed": 0,
+        "killed_ge_1": 0,
+        "non_tautological": 16,
+        "survived": 0,
+        "rate": 0.0,
+        "escalated": 8,
+        "wall_clock": "7 min 38 s",
+        "cause": "src/modules/auth/auth.config.test.ts deleted from the sandbox"
+      },
+      "with_that_one_defect_neutralised": {
+        "note": "sidecrew's own verdicts; no candidate edited, no prompt changed, no verifier touched",
+        "tasks": 8,
+        "attempts": 13,
+        "compiled_tasks": 6,
+        "compiled_attempts": 9,
+        "passed": 3,
+        "killed_ge_1": 3,
+        "non_tautological": 3,
+        "survived": 3,
+        "rate": 0.375,
+        "escalated": 5,
+        "tautology_findings": 0,
+        "wall_clock": "22 min 19 s"
+      },
+      "survivors": [
+        { "task": "getBookValue:boundary:0", "mutants": 14, "killed": 14, "survived": 0, "score": 1.0 },
+        { "task": "getBookValue:happy_path:0", "mutants": 14, "killed": 14, "survived": 0, "score": 1.0 },
+        { "task": "getNetBookValue:happy_path:0", "mutants": 17, "killed": 12, "survived": 5, "score": 0.706 }
+      ],
+      "median_mutation_score": 1.0,
+      "baseline_comparison": {
+        "baseline_measured_rate": 0.0,
+        "baseline_derived_rate": 0.4,
+        "baseline_median_score": 0.774,
+        "rerun_measured_rate": 0.0,
+        "rerun_repaired_rate": 0.375,
+        "rerun_median_score": 1.0,
+        "reading": "rate flat within noise; survivor quality up markedly; the repaired number required far less intervention than the baseline's derived one"
+      },
+      "funnel_collapse_point": {
+        "baseline": "compile — and none of it was the candidate's fault",
+        "rerun": "pass — 6 of 13 attempts compiled then asserted something untrue, which is the model's fault and the failure mode the project wants"
+      },
+      "copied_exemplar": {
+        "fired": false,
+        "byte_identical_candidates": 0,
+        "of": 13,
+        "reading": "an honest null, not a confirmation — the planner agent follows the host rule, so exemplars demonstrate getAgeOfAssetInMonthsRounded which is not a task. The condition that produced the baseline's copy cannot arise under a correctly-planned module."
+      },
+      "escalation_wording_now_accurate": true,
+      "escalation_labels": {
+        "compiled but did not pass": 3,
+        "did not compile": 2
+      }
+    }
+  },
+  "planner": {
+    "note": "step 3, measured for the first time in any trial",
+    "agent_registered_in_session": false,
+    "how_invoked": "Opus subagent given claude/agents/test-planner.md as its instructions",
+    "tokens": 145074,
+    "tokens_source": "Agent tool report; likely includes cache reads, treat as an upper bound",
+    "tool_calls": 38,
+    "wall_clock_s": 728,
+    "validation_run_s": 351,
+    "exemplars": 2,
+    "exemplar_attempts_each": 1,
+    "exemplar_failures": 0,
+    "plan_valid_on_first_validation": true,
+    "plan": {
+      "functions": 4,
+      "shapes": ["happy_path", "boundary"],
+      "tasks": 8,
+      "exemplar_host": "getAgeOfAssetInMonthsRounded",
+      "host_rationale": "the clock-reading function, so the exemplar demonstrates jest.useFakeTimers({now}); notes never reaches the worker"
+    },
+    "planner_tokens_mjs_defects": [
+      "slug is dir.replace(/\\//g,'-') and does not map '_' to '-', so it exits ENOENT on any project path containing an underscore (this project: WEB_API)",
+      "with the slug patched it reports 27,640 excluding cache reads over 6 messages — the subagent's messages are not in the main transcript (0 isSidechain entries), undercounting a subagent planner ~5x"
+    ],
+    "meta_planner_tokens_written": 0
+  },
+  "mutant_probe": {
+    "method": "scripts/probe-mutants.ts --runner jest, concurrency 1, on the repaired copy",
+    "wall_clock": "14 min 50 s",
+    "probe_tests": "mine, 29 assertions across 5 files, all confirmed passing against the real implementation; clock pinned with jest fake timers",
+    "as_reported": {
+      "functions": [
+        { "name": "getAgeOfAssetInMonthsRounded", "mutants": 12, "killed": 11, "survived": 1, "no_coverage": 0, "timeout": 0, "plannable": "yes", "ms": 214000 },
+        { "name": "getBookValue", "mutants": 14, "killed": 14, "survived": 0, "no_coverage": 0, "timeout": 0, "plannable": "yes", "ms": 199000 },
+        { "name": "getEstimatedReplacementDate", "mutants": 19, "killed": 19, "survived": 0, "no_coverage": 0, "timeout": 0, "plannable": "yes", "ms": 210000 },
+        { "name": "getNetBookValue", "mutants": 17, "killed": 14, "survived": 3, "no_coverage": 0, "timeout": 0, "plannable": "yes", "ms": 171000 },
+        { "name": "getSpendVsReplacement", "mutants": 0, "killed": 0, "survived": 0, "no_coverage": 0, "timeout": 0, "plannable": "no_mutants", "ms": 95000, "note": "WRONG — deriveLineRange defect" }
+      ],
+      "totals": { "mutants": 62, "killed": 58, "survived": 4, "no_coverage": 0, "timeout": 0 }
+    },
+    "corrected": {
+      "note": "getSpendVsReplacement re-measured with line_range [100,124]",
+      "totals": { "mutants": 80, "killed": 76, "survived": 4, "no_coverage": 0, "timeout": 0 },
+      "four_way_split": { "mutable": 5, "no_mutants": 0, "crash_only": 0, "unresolved": 0 }
+    },
+    "baseline_agreement": {
+      "baseline_totals_incl_compile_error": { "mutants": 85, "killed": 75, "survived": 5, "compile_error": 5, "no_coverage": 0 },
+      "baseline_non_compile_error": 80,
+      "per_function_identical": 4,
+      "of": 5,
+      "only_difference": "getSpendVsReplacement 18 killed here vs 17 there — my probe test is one assertion stronger"
+    },
+    "compile_error_invisible_to_probe": {
+      "reason": "Verdict.mutation has no compile_error field; probe total = killed+survived+timeout+no_coverage",
+      "evidence": "getSpendVsReplacement killed_ids run 1..17,19 — id 18 was rejected by the type checker",
+      "implication": "Stryker's typescript-checker is alive on TypeScript 6.0.3, re-confirming the baseline's question 3, but the probe cannot report it"
+    }
+  },
+  "cost_per_candidate": {
+    "concurrency": 1,
+    "concurrency_reason": "9.1 GB free / 6.5 GB per slot = 1",
+    "generate": { "median_s": 16.7, "p90_s": 23.8, "baseline_median_s": 6.3 },
+    "ttft": { "median_s": 2.84, "p90_s": 3.56, "baseline_median_s": 0.95 },
+    "completion_tokens": { "median": 560, "p90": 747, "baseline_median": 228 },
+    "prompt_tokens_median": 700,
+    "compile_successful_s": 11.5,
+    "compile_ts2883_extra_s": 32.6,
+    "mutation_s_range": [130, 200],
+    "verdict_latency": { "median_ms": 186588, "p90_ms": 244957 },
+    "peak_worker_rss_mb": 243.4,
+    "whole_run": { "tasks": 8, "attempts": 13, "wall_clock": "22 min 19 s" },
+    "regression_to_watch": "generate is 2.6x the baseline and completion tokens 2.5x — longer prompt, and the exemplar's fake-timer scaffolding copied into tasks that do not need a clock"
+  },
+  "recommendations": [
+    "TEST_FILE_PATTERN must not exclude files under src/ — the only thing between 0/8 and 3/8 on this project",
+    "bodyRange must not brace-match into a return-type annotation — it hid an 18-mutant function and called it unplannable",
+    "scripts/plan-ranges.mjs must call deriveLineRange — it failed on 5 of 5 functions here and is the script the planner agent is told to use",
+    "the sandbox must skip symlinked directories Stryker cannot copy (baseline blocker 5, unfixed and unrecorded)",
+    "the prompt needs a way to name types the signature depends on — the plan's notes already has the answer and notes is never rendered",
+    "planner-tokens.mjs needs dir.replace(/[/_]/g,'-') and a way to see subagent transcripts",
+    "Verdict.mutation should carry compile_error so the probe's four-way split can report it",
+    "a plan whose signature is unqualified on a class member should be a validation warning"
+  ],
+  "deviations": [
+    "src/modules/auth/auth.config.test.ts renamed (and its one importer updated) on a cp -Rc clone of the project, for the repaired measurement only; the unmodified project was also run and its 0/8 is reported first",
+    ".claude/agents and .claude/skills removed from that same clone (Stryker cannot copy symlinked directories)",
+    "ts-jest diagnostics:false applied to the throwaway branch's package.json jest transform — the one authorised workaround; isolatedModules deliberately not used",
+    "the test-planner agent is not registered in a Claude Code session and was driven as an Opus subagent given claude/agents/test-planner.md",
+    "getSpendVsReplacement's line range hand-corrected to [100,124] after the probe reported no_mutants; the probe's own output is reported unaltered alongside",
+    "planner-tokens.mjs run from a locally patched copy (one character in the slug regex); sidecrew's source was not modified",
+    "Stryker installed with yarn 1.22.22 via npx so the committed v1 lockfile was not rewritten into Berry format"
+  ],
+  "not_deviated_from": [
+    "no prompt was tuned",
+    "no verifier was touched",
+    "no candidate was edited",
+    "nothing in the project's src/ or test/ was modified",
+    "the model ran once per attempt at temperature 0, seed 42, pinned revision"
+  ],
+  "target_repo_hygiene": {
+    "branch": "sidecrew-trial-api-rerun",
+    "branched_from": "ai_optimization",
+    "pushed": false,
+    "merged": false,
+    "deleted": true,
+    "src_or_test_modified": false,
+    "verified_with": "git status --porcelain -- src test returned empty before branch deletion",
+    "sidecrew_dir_removed": true,
+    "worker_stopped": true,
+    "restored_to": "ai_optimization",
+    "tree_clean": true,
+    "reinstalled": "yarn install --frozen-lockfile (yarn 1)",
+    "stryker_removed_from_node_modules": true,
+    "project_tests_after": {
+      "suites": 26,
+      "tests": 1459,
+      "passed": 1458,
+      "skipped": 1,
+      "failed": 0,
+      "slices": [
+        { "pattern": "test/modules/(common|workflow)/", "suites": 9, "tests": 863, "seconds": 19.8 },
+        { "pattern": "test/modules/(asset|timetrack)/", "suites": 17, "tests": 597, "seconds": 74.0 }
+      ]
+    }
+  }
+}

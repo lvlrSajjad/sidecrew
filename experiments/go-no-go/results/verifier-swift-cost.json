@@ -1,0 +1,446 @@
+{
+  "created": "2026-09-12T09:43:11.243Z",
+  "what": "wall clock for one candidate through verifySwift (tautology → swift build → swift test → muter) on fixtures/swift-fixture",
+  "machine": {
+    "cpu": "Apple M2 Pro",
+    "ram_gb": 32,
+    "free_gb_at_start": 17.4,
+    "macos": "26.6.2",
+    "xcode_open": true,
+    "simulator_open": true,
+    "node": "v20.20.0",
+    "mlx_lm": "0.31.3",
+    "on_battery": false
+  },
+  "config": {
+    "fixture": "fixtures/swift-fixture",
+    "candidates": 9,
+    "mutant_timeout_s": 60,
+    "muter_version": "16",
+    "swift_version": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)",
+    "simulator_required": false
+  },
+  "candidates": [
+    {
+      "task_id": "slugify:happy_path:0",
+      "file": "legitimate/HappyPathXCTests.swift",
+      "function": "slugify",
+      "shape": "happy_path",
+      "framework": "xctest",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.5,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 2,
+      "timing_ms": {
+        "compile": 12680,
+        "pass": 1203,
+        "mutation": 22072,
+        "total": 36273
+      }
+    },
+    {
+      "task_id": "chunk:boundary:0",
+      "file": "legitimate/BoundaryXCTests.swift",
+      "function": "chunk",
+      "shape": "boundary",
+      "framework": "xctest",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 1,
+      "timed_out": 1,
+      "mutants": 2,
+      "timing_ms": {
+        "compile": 13088,
+        "pass": 1091,
+        "mutation": 78112,
+        "total": 92604
+      }
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "file": "legitimate/ErrorOrThrowTests.swift",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "framework": "swift-testing",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 1,
+      "timing_ms": {
+        "compile": 7932,
+        "pass": 1030,
+        "mutation": 18806,
+        "total": 27984
+      }
+    },
+    {
+      "task_id": "mapSeries:async:0",
+      "file": "legitimate/AsyncTests.swift",
+      "function": "mapSeries",
+      "shape": "async",
+      "framework": "swift-testing",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 1,
+      "timing_ms": {
+        "compile": 7156,
+        "pass": 1061,
+        "mutation": 9792,
+        "total": 18219
+      }
+    },
+    {
+      "task_id": "slugify:happy_path:1",
+      "file": "tautological/ConstantAssertionsXCTests.swift",
+      "function": "slugify",
+      "shape": "happy_path",
+      "framework": "xctest",
+      "expected": "tautological",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timed_out": null,
+      "mutants": null,
+      "timing_ms": {
+        "compile": 12532,
+        "pass": 1045,
+        "total": 13740
+      }
+    },
+    {
+      "task_id": "titleCase:happy_path:1",
+      "file": "tautological/SelfComparisonXCTests.swift",
+      "function": "titleCase",
+      "shape": "happy_path",
+      "framework": "xctest",
+      "expected": "tautological",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timed_out": null,
+      "mutants": null,
+      "timing_ms": {
+        "compile": 12592,
+        "pass": 1064,
+        "total": 13813
+      }
+    },
+    {
+      "task_id": "chunk:happy_path:1",
+      "file": "tautological/ConstantExpectTests.swift",
+      "function": "chunk",
+      "shape": "happy_path",
+      "framework": "swift-testing",
+      "expected": "tautological",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timed_out": null,
+      "mutants": null,
+      "timing_ms": {
+        "compile": 6985,
+        "pass": 1016,
+        "total": 8115
+      }
+    },
+    {
+      "task_id": "rotate:happy_path:1",
+      "file": "tautological/FunctionNeverCalledTests.swift",
+      "function": "rotate",
+      "shape": "happy_path",
+      "framework": "swift-testing",
+      "expected": "tautological",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timed_out": null,
+      "mutants": null,
+      "timing_ms": {
+        "compile": 6973,
+        "pass": 1032,
+        "total": 8117
+      }
+    },
+    {
+      "task_id": "takeWhile:happy_path:1",
+      "file": "tautological/NoAssertionsTests.swift",
+      "function": "takeWhile",
+      "shape": "happy_path",
+      "framework": "swift-testing",
+      "expected": "tautological",
+      "scope": "function",
+      "coverage": "muter-default",
+      "survived": false,
+      "stage_reached": "pass",
+      "tautological": true,
+      "mutation_score": null,
+      "killed": null,
+      "timed_out": null,
+      "mutants": null,
+      "timing_ms": {
+        "compile": 7134,
+        "pass": 1063,
+        "total": 8306
+      }
+    },
+    {
+      "task_id": "slugify:happy_path:0",
+      "file": "legitimate/HappyPathXCTests.swift",
+      "function": "slugify",
+      "shape": "happy_path",
+      "framework": "xctest",
+      "expected": "survives",
+      "scope": "file",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.125,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 8,
+      "timing_ms": {
+        "compile": 12562,
+        "pass": 1165,
+        "mutation": 22117,
+        "total": 36159
+      }
+    },
+    {
+      "task_id": "chunk:boundary:0",
+      "file": "legitimate/BoundaryXCTests.swift",
+      "function": "chunk",
+      "shape": "boundary",
+      "framework": "xctest",
+      "expected": "survives",
+      "scope": "file",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.4,
+      "killed": 1,
+      "timed_out": 1,
+      "mutants": 5,
+      "timing_ms": {
+        "compile": 12535,
+        "pass": 1095,
+        "mutation": 77965,
+        "total": 91916
+      }
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "file": "legitimate/ErrorOrThrowTests.swift",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "framework": "swift-testing",
+      "expected": "survives",
+      "scope": "file",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.09090909090909091,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 11,
+      "timing_ms": {
+        "compile": 9919,
+        "pass": 1030,
+        "mutation": 22019,
+        "total": 33193
+      }
+    },
+    {
+      "task_id": "mapSeries:async:0",
+      "file": "legitimate/AsyncTests.swift",
+      "function": "mapSeries",
+      "shape": "async",
+      "framework": "swift-testing",
+      "expected": "survives",
+      "scope": "file",
+      "coverage": "muter-default",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.5,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 2,
+      "timing_ms": {
+        "compile": 6953,
+        "pass": 1031,
+        "mutation": 9719,
+        "total": 17924
+      }
+    },
+    {
+      "task_id": "slugify:happy_path:0",
+      "file": "legitimate/HappyPathXCTests.swift",
+      "function": "slugify",
+      "shape": "happy_path",
+      "framework": "xctest",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "skip-coverage",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 0.5,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 2,
+      "timing_ms": {
+        "compile": 12838,
+        "pass": 1037,
+        "mutation": 21942,
+        "total": 36155
+      }
+    },
+    {
+      "task_id": "chunk:boundary:0",
+      "file": "legitimate/BoundaryXCTests.swift",
+      "function": "chunk",
+      "shape": "boundary",
+      "framework": "xctest",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "skip-coverage",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 1,
+      "timed_out": 1,
+      "mutants": 2,
+      "timing_ms": {
+        "compile": 12654,
+        "pass": 1033,
+        "mutation": 78195,
+        "total": 92193
+      }
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "file": "legitimate/ErrorOrThrowTests.swift",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "framework": "swift-testing",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "skip-coverage",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 1,
+      "timing_ms": {
+        "compile": 7777,
+        "pass": 1023,
+        "mutation": 19126,
+        "total": 28148
+      }
+    },
+    {
+      "task_id": "mapSeries:async:0",
+      "file": "legitimate/AsyncTests.swift",
+      "function": "mapSeries",
+      "shape": "async",
+      "framework": "swift-testing",
+      "expected": "survives",
+      "scope": "function",
+      "coverage": "skip-coverage",
+      "survived": true,
+      "stage_reached": "done",
+      "tautological": false,
+      "mutation_score": 1,
+      "killed": 1,
+      "timed_out": 0,
+      "mutants": 1,
+      "timing_ms": {
+        "compile": 6835,
+        "pass": 1023,
+        "mutation": 9825,
+        "total": 17890
+      }
+    }
+  ],
+  "summary": {
+    "per_candidate_ms": {
+      "survivor_median": 27984,
+      "survivor_p90": 92604,
+      "survivor_max": 92604,
+      "tautology_median": 8306
+    },
+    "stage_median_ms": {
+      "compile": 7932,
+      "pass": 1061,
+      "mutation": 18806
+    },
+    "mutation_scope_ms": {
+      "function_scoped_median": 27984,
+      "whole_file_median": 33193
+    },
+    "mutation_score": {
+      "function_scoped_median": 1,
+      "whole_file_median": 0.125
+    },
+    "mutants_counted": {
+      "function_scoped_median": 1,
+      "whole_file_median": 5
+    },
+    "coverage_pass_ms": {
+      "muter_default_median": 27984,
+      "skip_coverage_median": 28148
+    },
+    "by_framework_ms": {
+      "xctest_median": 36273,
+      "swift_testing_median": 18219
+    },
+    "swift_testing_kills": 2
+  },
+  "measured": true
+}

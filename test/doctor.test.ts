@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  type Check, exitCodeFor, memoryCheck, parseMemory, probeWorker, render, toStatusReport, baseUrlFor,
+  type Check, exitCodeFor, memoryCheck, parseMemory, parsePressureLevel, platformCheck, probeWorker,
+  readPressure, render, toStatusReport, baseUrlFor,
 } from "../src/doctor.js";
 import { StatusReport } from "../src/schemas.js";
 import { defaultKey, entry } from "../src/models.js";
@@ -41,6 +42,27 @@ describe("parseMemory", () => {
 // here made this test fail for the wrong reason the first time it did.
 const NEED_GB = entry(defaultKey()).ram_gb + 1.5;
 
+describe("parsePressureLevel", () => {
+  it("reads the kernel's three levels, and nothing else", () => {
+    // `kern.memorystatus_vm_pressure_level`: 1 normal, 2 warn, 4 critical. There is no 3.
+    expect(parsePressureLevel("1\n")).toBe("normal");
+    expect(parsePressureLevel("2")).toBe("warn");
+    expect(parsePressureLevel("4")).toBe("critical");
+  });
+
+  it("is unknown rather than normal for anything it does not recognise", () => {
+    // A machine that cannot answer has not answered "fine". `memoryGate` treats the two differently.
+    expect(parsePressureLevel("")).toBe("unknown");
+    expect(parsePressureLevel("3")).toBe("unknown");
+    expect(parsePressureLevel("sysctl: unknown oid")).toBe("unknown");
+  });
+
+  it("reads this machine, whatever it says", async () => {
+    // The sysctl is what the gate actually asks; a rename of it would turn the check silently off.
+    expect(["normal", "warn", "critical", "unknown"]).toContain(await readPressure());
+  });
+});
+
 describe("memoryCheck", () => {
   it("fails a machine that could never fit the default model", () => {
     expect(memoryCheck({ total_gb: 4, free_gb: 3.9 }).status).toBe("missing");
@@ -70,6 +92,36 @@ describe("memoryCheck", () => {
 });
 
 const check = (name: string, status: Check["status"]): Check => ({ name, status, detail: `${name} detail` });
+
+describe("platformCheck", () => {
+  it("is ok on Apple silicon, which is the only platform anything here was measured on", () => {
+    expect(platformCheck("darwin", "arm64")).toMatchObject({ name: "platform", status: "ok" });
+  });
+
+  it("degrades rather than fails off macOS, because the api tier and the TS verifier may still work", () => {
+    for (const os of ["linux", "win32"]) {
+      const c = platformCheck(os, "x64");
+      expect(c.status).toBe("degraded");
+      expect(c.detail).toContain("macOS");
+    }
+  });
+
+  it("names the quiet failure, since that is the whole reason the row exists", () => {
+    // Off darwin `readMemory` returns null and concurrency silently drops to one of everything.
+    // A user deserves to be told that rather than to infer it from an oddly slow run.
+    expect(platformCheck("linux", "x64").detail).toMatch(/sysctl|vm_stat/);
+  });
+
+  it("degrades an Intel Mac too: MLX needs Apple silicon whatever the RAM says", () => {
+    const c = platformCheck("darwin", "x64");
+    expect(c.status).toBe("degraded");
+    expect(c.detail).toContain("api tier");
+  });
+
+  it("is not fatal — only node, memory and tier can fail the command", () => {
+    expect(exitCodeFor([platformCheck("linux", "x64")])).toBe(0);
+  });
+});
 
 describe("exitCodeFor", () => {
   it("fails on node or memory and on nothing else", () => {

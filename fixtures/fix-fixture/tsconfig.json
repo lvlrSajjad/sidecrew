@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    // Bundler rather than NodeNext, for the reason ts-fixture's tsconfig gives: under NodeNext every
+    // relative import needs a `.js` extension, and a worker model that omits one fails for a convention
+    // it was never told about. That would show up as a survival rate and say nothing about the model.
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  // `test` is in the program on purpose. Half the gate is the project's own suite, and a change that
+  // fixes a source file by breaking its test must show up as an error somewhere `tsc` can see it.
+  "include": ["src", "test"]
+}

@@ -3,9 +3,13 @@
 // The point of the split is that almost nothing here is fatal. No Swift toolchain means the Swift
 // verifier is unavailable; it does not mean sidecrew is broken. Only node and memory can fail the
 // command, because those two decide whether a worker can run at all.
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { run, ok as exited0, firstLine, pythonBin, MLX_SERVER_MODULE } from "./exec.js";
+import { isResolvable, STRYKER_PLUGIN } from "./verifier/shared.js";
 import { CapabilityStatus, type StatusReport } from "./schemas.js";
-import { defaultKey, entry } from "./models.js";
+import { apiModel, defaultKey, entry, tierFor, type Tier } from "./models.js";
+import { apiKeyFrom, MISSING_KEY_HINT } from "./api-worker.js";
 
 export interface Check {
   name: string;
@@ -19,8 +23,14 @@ export const MIN_NODE_MAJOR = 20;
 const KV_HEADROOM_GB = 1.5;
 const GIB = 1024 ** 3;
 
-/** node and memory gate the command; every other row is a capability, not an error. */
-const FATAL_ROWS = new Set(["node", "memory"]);
+/**
+ * node, memory and tier gate the command; every other row is a capability, not an error.
+ *
+ * `tier` joined them in Phase 13 for the same reason the other two are here: it decides whether a
+ * worker can run at all. On the local tier it is always `ok`; on the api tier it is `missing` exactly
+ * when there is no credential, and a machine there has no local fallback to degrade to.
+ */
+const FATAL_ROWS = new Set(["node", "memory", "tier"]);
 
 const defaultModel = () => entry(defaultKey());
 
@@ -31,6 +41,43 @@ const nodeCheck = (): Check => {
   return major >= MIN_NODE_MAJOR
     ? { name: "node", status: "ok", detail: process.version }
     : { name: "node", status: "missing", detail: `${process.version} — sidecrew needs node ≥ ${MIN_NODE_MAJOR}` };
+};
+
+/**
+ * The platform, said plainly, because every other check answers a question that presupposes it.
+ *
+ * Off macOS the failures are quiet rather than loud, which is the worst kind: `readMemory` shells out
+ * to `sysctl hw.memsize` and `vm_stat` and returns null, `planConcurrency` reads that as "could not
+ * read this machine's memory" and drops to one of everything, and
+ * `kern.memorystatus_vm_pressure_level` — the guard ADR-0066 turns on — simply is not there. A user
+ * would get a working-looking run sized by a fallback, and no warning that the machine cannot host a
+ * worker at all.
+ *
+ * `degraded` rather than `missing` on a non-Apple Mac or another OS: the TypeScript verifier is
+ * portable and the `api` tier needs no local model, so the tool is not useless — it is unmeasured and
+ * unsupported, which is a different sentence and the one a reader deserves.
+ */
+export const platformCheck = (
+  platform: string = process.platform,
+  arch: string = process.arch,
+): Check => {
+  if (platform !== "darwin") {
+    return {
+      name: "platform",
+      status: "degraded",
+      detail: `${platform}/${arch} — sidecrew is built for macOS on Apple silicon. The local worker is MLX ` +
+        "and cannot run here, memory and pressure detection are sysctl/vm_stat, and nothing on this " +
+        "platform has been measured. The api tier plus the TypeScript verifier may work; unsupported.",
+    };
+  }
+  if (arch !== "arm64") {
+    return {
+      name: "platform",
+      status: "degraded",
+      detail: `darwin/${arch} — MLX needs Apple silicon, so this machine is api tier whatever its RAM says`,
+    };
+  }
+  return { name: "platform", status: "ok", detail: `${platform}/${arch}` };
 };
 
 export interface Memory { total_gb: number; free_gb: number }
@@ -63,8 +110,60 @@ export const parseMemory = (memsize: string, vmStat: string): Memory | null => {
  * number and the remedy; only a machine that could never fit the default model, or one whose memory we
  * cannot read at all, is a failure. The run itself refuses when there is no room at the moment it asks.
  */
-export const memoryCheck = (mem: Memory | null): Check => {
+/**
+ * Which tier this machine is, and why — ADR-0032's shape: the cause, whose it is, and the exact fix.
+ *
+ * It is its own row rather than a clause on `memory` because the two answer different questions
+ * (ADR-0008, ADR-0009): `memory` is about this moment and moves when somebody opens Xcode; the tier is
+ * about the machine and does not. A user who reads "DEGRADED memory" on a 16 GB laptop should not have
+ * to infer from it that their worker is Claude and that it is billed.
+ *
+ * On the api tier a missing credential is **fatal**, and that is the honest reading: the tier exists
+ * because the machine has no local alternative, so without a key sidecrew cannot run at all.
+ */
+export const tierCheck = (mem: Memory | null, env: NodeJS.ProcessEnv = process.env): Check => {
+  if (!mem) return { name: "tier", status: "missing", detail: "could not read installed RAM, so the tier is undecidable — sidecrew picks the tier from installed RAM (ADR-0045)" };
+
+  const rule = tierFor(mem.total_gb);
+  const installed = `${mem.total_gb.toFixed(1)} GB installed`;
+
+  if (rule.tier === "local") {
+    return { name: "tier", status: "ok", detail: `${installed} → local tier · ${rule.model} — ${rule.why}` };
+  }
+
+  const a = apiModel();
+  const why = `${installed} → api tier · ${a.model} — ${rule.why}`;
+  if (apiKeyFrom(env) === null) {
+    return {
+      name: "tier",
+      status: "missing",
+      detail: `${why}. No API key, so no worker: ${MISSING_KEY_HINT}`,
+    };
+  }
+  return {
+    name: "tier",
+    status: "ok",
+    detail:
+      `${why}. Worker inference is billed ($${a.rates_usd_per_mtok.input}/MTok in, $${a.rates_usd_per_mtok.output}/MTok out as of ${a.rates_as_of}); ` +
+      "the zero-worker-tokens guarantee is a local-tier guarantee (ADR-0045).",
+  };
+};
+
+export const memoryCheck = (mem: Memory | null, tier: Tier = "local"): Check => {
   if (!mem) return { name: "memory", status: "missing", detail: "could not read sysctl hw.memsize / vm_stat" };
+
+  // On the api tier there is no local model to size against, and sizing free RAM against one would be
+  // `doctor` answering about a worker this machine will never host. What still costs memory here is the
+  // **gate** — 70–80 % of a candidate's cost, and it runs locally on either tier — so the row reports
+  // what it can honestly say and points at the tier row for the rest.
+  if (tier === "api") {
+    return {
+      name: "memory",
+      status: "ok",
+      detail: `${mem.total_gb.toFixed(1)} GB total · ${mem.free_gb.toFixed(1)} GB free — no local worker on this tier; this is the verifier's budget (see tier)`,
+    };
+  }
+
   const model = defaultModel();
   const need = model.ram_gb + KV_HEADROOM_GB;
   const size = `${mem.total_gb.toFixed(1)} GB total · ${mem.free_gb.toFixed(1)} GB free`;
@@ -79,6 +178,27 @@ export const memoryCheck = (mem: Memory | null): Check => {
     return { name: "memory", status: "degraded", detail: `${size} — room for one ${model.key}, not two workers or a 14B` };
   }
   return { name: "memory", status: "ok", detail: size };
+};
+
+/**
+ * What the kernel thinks of the machine's memory right now, which is not what `vm_stat` free pages say.
+ *
+ * ADR-0011, from the direction Phase 6 found it: under pressure macOS compresses and evicts, so free
+ * pages go *up* and resident sizes go *down* while the machine is thrashing. `free_gb ≥ need` is
+ * therefore a necessary check and not a sufficient one — the kernel's own pressure level is the part
+ * that knows. `kern.memorystatus_vm_pressure_level` is 1 normal, 2 warn, 4 critical; it is a sysctl read
+ * rather than the `memory_pressure` command, which walks the whole VM to print the same conclusion.
+ */
+export type PressureLevel = "normal" | "warn" | "critical" | "unknown";
+
+const PRESSURE: Record<string, PressureLevel> = { "1": "normal", "2": "warn", "4": "critical" };
+
+export const parsePressureLevel = (raw: string): PressureLevel => PRESSURE[raw.trim()] ?? "unknown";
+
+/** "unknown" on anything that is not macOS, or a sysctl that is not there — never a guess at "normal". */
+export const readPressure = async (): Promise<PressureLevel> => {
+  const r = await run("sysctl", ["-n", "kern.memorystatus_vm_pressure_level"], { timeoutMs: 5_000 });
+  return exited0(r) ? parsePressureLevel(r.stdout) : "unknown";
 };
 
 export const readMemory = async (): Promise<Memory | null> => {
@@ -131,20 +251,69 @@ const workerCheck = async (port: number): Promise<Check> => {
 };
 
 /**
- * `--no-install` is the whole point: this asks what the project in cwd already has, and must never
- * download a package to answer a diagnostic.
+ * `--no-install` is the whole point: this asks what the project already has, and must never download a
+ * package to answer a diagnostic.
+ *
+ * `cwd` is the project being verified, which is not usually the one sidecrew is installed in. Phases 2
+ * and 3 both noticed the same lie: `doctor` reported `stryker MISSING` on this repo while the verifier
+ * was running Stryker candidates inside `fixtures/ts-fixture`, which has it. Both statements were
+ * true, and together they were misleading — the verifier's toolchain belongs to the project it is
+ * pointed at (ADR-0004's sandbox symlinks *that* `node_modules`), so the diagnostic has to be pointed
+ * at the same place.
  */
-const localBinCheck = async (name: string, args = ["--version"]): Promise<Check> => {
-  const r = await run("npx", ["--no-install", name, ...args], { timeoutMs: 60_000 });
+const localBinCheck = async (name: string, cwd: string | undefined, args = ["--version"]): Promise<Check> => {
+  const project = cwd ?? process.cwd();
+  const pkg = NPM_PACKAGE[name] ?? name;
+  const where = cwd === undefined ? "this project" : cwd;
+
+  // Resolution first, the binary second (ADR-0029). `npx --no-install` answers "is there a .bin entry
+  // reachable from here", which is not the same question in a workspace that hoists — the first real
+  // monorepo this was pointed at had every dependency installed at the repo root, resolvable from the
+  // workspace, and reported as missing. What matters is whether Node can load it, so ask Node.
+  if (!isResolvable(pkg, project)) {
+    return { name, status: "missing", detail: `${pkg} is not resolvable from ${where} — npm i -D ${pkg}` };
+  }
+  const r = await run("npx", ["--no-install", name, ...args], { timeoutMs: 60_000, cwd });
   return exited0(r)
     ? { name, status: "ok", detail: firstLine(r) }
-    : { name, status: "missing", detail: `not in this project's node_modules — npm i -D ${NPM_PACKAGE[name] ?? name}` };
+    : {
+      // Installed and loadable, but no runnable binary from here — a hoisted workspace whose `.bin` is
+      // at the root, usually. The verifier calls the package rather than the shell script, so this is
+      // usable; the version simply could not be read.
+      name,
+      status: "ok",
+      detail: `${pkg} resolves from ${where}; no \`${name}\` binary on the path from there, so the version was not read`,
+    };
 };
 
 const NPM_PACKAGE: Record<string, string> = {
   tsc: "typescript",
   vitest: "vitest",
+  jest: "jest",
   stryker: "@stryker-mutator/core",
+};
+
+/**
+ * Which runners Stryker can actually drive in this project (ADR-0028).
+ *
+ * `stryker` being installed is not enough: the runner is a separate plugin package, and without the
+ * right one a mutation run fails several minutes in with a Stryker error that says nothing about the
+ * candidate. `verifyTs` refuses up front for the same reason; this is the pre-flight version, so that
+ * `doctor` can say it before a plan is written rather than after a run is started.
+ */
+const strykerRunnersCheck = (cwd: string | undefined): Check => {
+  const root = cwd ?? process.cwd();
+  const found = (Object.entries(STRYKER_PLUGIN) as [string, string][])
+    .filter(([, pkg]) => isResolvable(pkg, root))
+    .map(([runner]) => runner);
+  const where = cwd === undefined ? "this project" : cwd;
+  return found.length > 0
+    ? { name: "stryker-runner", status: "ok", detail: `${found.join(", ")} — ${where} can be mutated under ${found.length === 1 ? "that runner" : "either"}` }
+    : {
+      name: "stryker-runner",
+      status: "missing",
+      detail: `neither runner plugin resolves from ${where} — npm i -D ${Object.values(STRYKER_PLUGIN).join(" or ")}`,
+    };
 };
 
 const binCheck = async (name: string, args: string[], hint: string): Promise<Check> => {
@@ -152,28 +321,41 @@ const binCheck = async (name: string, args: string[], hint: string): Promise<Che
   return exited0(r) ? { name, status: "ok", detail: firstLine(r) } : { name, status: "missing", detail: hint };
 };
 
-export interface DoctorOpts { port?: number; cwd?: string }
+export interface DoctorOpts {
+  port?: number;
+  /** The project being verified. `--project`; defaults to the current directory. */
+  cwd?: string;
+}
 
-/** Every row, probed for real. Also what `sidecrew status` will render in Phase 4. */
+/** Every row, probed for real. Also what `sidecrew_status` reports. */
 export async function collect(opts: DoctorOpts = {}): Promise<{ checks: Check[]; memory: Memory | null; port: number }> {
   const port = opts.port ?? DEFAULT_PORT;
-  const [memory, mlx, worker, tsc, vitest, stryker, swift, muter] = await Promise.all([
+  const [memory, mlx, worker, tsc, vitest, jest, stryker, swift, muter] = await Promise.all([
     readMemory(),
     mlxCheck(),
     workerCheck(port),
-    localBinCheck("tsc"),
-    localBinCheck("vitest"),
-    localBinCheck("stryker"),
+    localBinCheck("tsc", opts.cwd),
+    localBinCheck("vitest", opts.cwd),
+    localBinCheck("jest", opts.cwd),
+    localBinCheck("stryker", opts.cwd),
     binCheck("swift", ["--version"], "no Swift toolchain — the Swift verifier is unavailable"),
     binCheck("muter", ["--version"], "not installed — brew install muter-mutation-testing/formulae/muter"),
   ]);
-  return { checks: [nodeCheck(), mlx, worker, memoryCheck(memory), tsc, vitest, stryker, swift, muter], memory, port };
+  // vitest and jest are both "missing" on a project that uses the other one, and that is correct
+  // rather than alarming: they are alternatives, and `render` lists a missing capability without
+  // failing the command. Only `stryker-runner` reports on the pair as a pair.
+  const tier = memory === null ? "local" : tierFor(memory.total_gb).tier;
+  return {
+    checks: [platformCheck(), nodeCheck(), tierCheck(memory), mlx, worker, memoryCheck(memory, tier), tsc, vitest, jest, stryker, strykerRunnersCheck(opts.cwd), swift, muter],
+    memory,
+    port,
+  };
 }
 
 const MARK: Record<CapabilityStatus, string> = { ok: "ok      ", degraded: "DEGRADED", missing: "MISSING " };
 
 export const render = (checks: Check[]): string => {
-  const lines = checks.map((c) => `${MARK[c.status]} ${c.name.padEnd(10)} ${c.detail}`);
+  const lines = checks.map((c) => `${MARK[c.status]} ${c.name.padEnd(14)} ${c.detail}`);
   const degraded = checks.filter((c) => c.status === "degraded" || (c.status === "missing" && !FATAL_ROWS.has(c.name)));
   const fatal = checks.filter((c) => c.status === "missing" && FATAL_ROWS.has(c.name));
 
@@ -193,22 +375,43 @@ export const render = (checks: Check[]): string => {
 export const exitCodeFor = (checks: Check[]): number =>
   checks.some((c) => FATAL_ROWS.has(c.name) && c.status === "missing") ? 1 : 0;
 
-export const toStatusReport = (checks: Check[], memory: Memory | null, port: number): StatusReport => {
+/** What `serve` wrote down about the worker it started. `null` for one it did not start. */
+export interface WorkerIdentity { model: string | null; revision: string | null }
+
+export const toStatusReport = (
+  checks: Check[],
+  memory: Memory | null,
+  port: number,
+  identity: WorkerIdentity = { model: null, revision: null },
+): StatusReport => {
   const worker = checks.find((c) => c.name === "worker");
+  const up = worker?.status === "ok";
   const capabilities = Object.fromEntries(
     checks.filter((c) => !FATAL_ROWS.has(c.name) && c.name !== "worker").map((c) => [c.name, c.status]),
   );
   return {
-    worker: { up: worker?.status === "ok", base_url: baseUrlFor(port), model: null, revision: null },
+    // The identity comes from the worker record, never from `/v1/models`: mlx_lm answers that endpoint
+    // out of the Hugging Face cache, so it lists what is downloaded rather than what is loaded. A
+    // worker that is up but was started by someone else is honestly unidentified.
+    worker: { up, base_url: baseUrlFor(port), model: up ? identity.model : null, revision: up ? identity.revision : null },
     memory: { total_gb: memory?.total_gb ?? 0, free_gb: memory?.free_gb ?? 0 },
     capabilities,
   };
 }; 
 
+const flagValue = (argv: string[], flag: string): string | undefined => {
+  const inline = argv.find((a) => a.startsWith(`${flag}=`));
+  if (inline) return inline.slice(flag.length + 1);
+  const next = argv[argv.indexOf(flag) + 1];
+  return next && !next.startsWith("--") ? next : undefined;
+};
+
 export async function doctor(argv: string[] = []): Promise<void> {
-  const portArg = argv.find((a) => a.startsWith("--port"));
-  const port = Number(portArg?.split("=")[1] ?? argv[argv.indexOf("--port") + 1] ?? process.env.SIDECREW_PORT ?? DEFAULT_PORT);
-  const { checks, memory } = await collect({ port: Number.isFinite(port) && port > 0 ? port : DEFAULT_PORT });
+  const port = Number(flagValue(argv, "--port") ?? process.env.SIDECREW_PORT ?? DEFAULT_PORT);
+  const { checks, memory } = await collect({
+    port: Number.isFinite(port) && port > 0 ? port : DEFAULT_PORT,
+    cwd: flagValue(argv, "--project"),
+  });
 
   if (argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify({ ok: exitCodeFor(checks) === 0, checks, memory }, null, 2)}\n`);

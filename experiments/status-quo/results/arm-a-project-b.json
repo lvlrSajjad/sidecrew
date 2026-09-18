@@ -1,0 +1,125 @@
+{
+  "measured": true,
+  "arm": "A (Opus alone, no gate)",
+  "project": "project-b",
+  "floor_tokens": 48088,
+  "floor_note": "re-measured in this session: 48089 / 48087, spread 2. The project-a floor (47,927) had drifted by +162 \u2014 the floor is stable within a session and must be re-measured across them.",
+  "prompt_template": "<ask>\n\nFile(s):\n<absolute path(s) in the arm sandbox>\n\nEdit the file(s) in place.",
+  "agent_type": "general-purpose",
+  "tasks": [
+    {
+      "task_id": "rename-01",
+      "raw": 52221,
+      "marginal": 4133,
+      "diff_lines": 5
+    },
+    {
+      "task_id": "rename-02",
+      "raw": 51788,
+      "marginal": 3700,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-03",
+      "raw": 52597,
+      "marginal": 4509,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-04",
+      "raw": 52624,
+      "marginal": 4536,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-05",
+      "raw": 52794,
+      "marginal": 4706,
+      "diff_lines": 8
+    },
+    {
+      "task_id": "rename-06",
+      "raw": 57353,
+      "marginal": 9265,
+      "diff_lines": 10
+    },
+    {
+      "task_id": "rename-07",
+      "raw": 51940,
+      "marginal": 3852,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-08",
+      "raw": 51946,
+      "marginal": 3858,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-09",
+      "raw": 52723,
+      "marginal": 4635,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-10",
+      "raw": 52180,
+      "marginal": 4092,
+      "diff_lines": 8
+    },
+    {
+      "task_id": "rename-11",
+      "raw": 51991,
+      "marginal": 3903,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "rename-12",
+      "raw": 52807,
+      "marginal": 4719,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "multi-01",
+      "raw": 53439,
+      "marginal": 5351,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "multi-02",
+      "raw": 54289,
+      "marginal": 6201,
+      "diff_lines": 8
+    },
+    {
+      "task_id": "multi-03",
+      "raw": 52974,
+      "marginal": 4886,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "multi-04",
+      "raw": 54270,
+      "marginal": 6182,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "multi-05",
+      "raw": 53303,
+      "marginal": 5215,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "multi-06",
+      "raw": 53357,
+      "marginal": 5269,
+      "diff_lines": 6
+    },
+    {
+      "task_id": "multi-07",
+      "raw": 54411,
+      "marginal": 6323,
+      "diff_lines": 6
+    }
+  ]
+}

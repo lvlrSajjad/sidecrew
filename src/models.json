@@ -9,8 +9,15 @@
   "default": "qwen2.5-coder-7b-4bit",
   "tiers": [
     { "min_ram_gb": 24, "tier": "local", "model": "qwen2.5-coder-7b-4bit", "why": "hosts the 7B alongside Xcode and a simulator; zero Claude tokens for worker inference" },
-    { "min_ram_gb": 0, "tier": "api", "model": null, "why": "not enough installed RAM to host a worker next to a normal working set — ADR-0009 falls back to the Anthropic API, opt-in per machine" }
+    { "min_ram_gb": 0, "tier": "api", "model": "claude-haiku-4-5", "why": "not enough installed RAM to host a worker next to a normal working set — the worker is Haiku over the Anthropic API, decided by installed RAM (ADR-0009, ADR-0045)" }
   ],
+  "api": {
+    "_comment": "The api tier's worker (ADR-0060). `model` is pinned by full model id: a change of id is a change of configuration and gets a new measurement, never a silent upgrade. The pin is WEAKER than a local `revision` — that is a HF commit sha resolved to an immutable snapshot on disk, this is a name the provider resolves — and the §5 report says so beside the number. `temperature: 0` is accepted on this generation and is rejected with a 400 on the 4.6-and-later families, so an upgrade here is a hard failure rather than a quiet one. `rates_usd_per_mtok` are the published rates on `rates_as_of` and exist only to compute Phase 13 §5.1's $(api) line; they are not a price quote.",
+    "model": "claude-haiku-4-5",
+    "context_tokens": 200000,
+    "rates_usd_per_mtok": { "input": 1.0, "output": 5.0 },
+    "rates_as_of": "2026-09-18"
+  },
   "models": {
     "qwen2.5-coder-7b-4bit":  { "repo": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",  "revision": "019cc73c45c770444708a6dd8690c66243cc5c80", "ram_gb": 4.5, "licence": "Apache-2.0" },
     "qwen2.5-coder-14b-4bit": { "repo": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit", "revision": "29efdbab55a161237ab1e432a3abaf6c7ae2b477", "ram_gb": 8.2, "licence": "Apache-2.0" }

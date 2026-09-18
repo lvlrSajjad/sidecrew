@@ -1,0 +1,109 @@
+{
+  "measured": true,
+  "experiment": "real-world-trial",
+  "target": "project-a",
+  "date": "2026-09-15",
+  "headline": "3/8 survived on the UNMODIFIED project, on each of two modules independently (6/16 overall)",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "cpu": "Apple M2 Pro",
+    "total_gb": 32,
+    "os": "macOS 26.6.2",
+    "node": "v22.23.2 (nvm)",
+    "free_gb_at_run": 10.8
+  },
+  "sidecrew": {
+    "head": "2619f10",
+    "built_from_head": true,
+    "git_clean": true,
+    "adrs_present": ["ADR-0035", "ADR-0036"]
+  },
+  "worker": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "pinned": true,
+    "temperature": 0,
+    "seed": 42,
+    "tier": "local",
+    "claude_tokens_for_worker_inference": 0
+  },
+  "target_modifications": "none — package.json gained only 3 Stryker devDependencies; the jest key, tsconfig, all of src/ and test/, and the .claude symlinks were untouched",
+  "modules": [
+    {
+      "name": "src/common/assetUtil.ts",
+      "md5": "3c7ddf353fa2769cc841208031a101d8",
+      "lines": 127,
+      "export_style": "default class",
+      "plan": "plans/assetUtil-real/test_plan.json (reused, identical to the re-run, for comparability)",
+      "probe": { "functions": 5, "plannable": 5, "mutants_total": 80,
+        "per_function": { "getAgeOfAssetInMonthsRounded": 12, "getBookValue": 14, "getEstimatedReplacementDate": 19, "getNetBookValue": 17, "getSpendVsReplacement": 18 } },
+      "run_id": "2026-09-15T09-17-14Z-assetUtil",
+      "tasks": 8, "attempts": 13,
+      "funnel": { "tasks": 8, "compiled": 9, "passed": 3, "killed_ge_1": 3, "non_tautological": 13, "survived": 3 },
+      "survival_rate": 0.375,
+      "survivors": [
+        { "task": "getNetBookValue:happy_path:0", "mutation_score": 0.7058823529411765 },
+        { "task": "getBookValue:happy_path:0", "mutation_score": 1.0 },
+        { "task": "getBookValue:boundary:0", "mutation_score": 1.0 }
+      ],
+      "median_survivor_mutation_score": 1.0,
+      "wall_clock_s": 1192,
+      "collapse_point": "pass — 6 of the 9 attempts that compiled asserted something untrue",
+      "import_form_correct": "13/13 default import, 13/13 qualified call sites"
+    },
+    {
+      "name": "src/modules/import/common/import.file.utils.ts",
+      "lines": 150,
+      "export_style": "named class (export class ImportFileUtils)",
+      "plan": "plans/importFileUtils-real/test_plan.json (planned fresh by the test-planner agent)",
+      "probe": { "functions_probed": 7, "plannable_as_reported": 6, "plannable_after_control": 7, "mutants_total_after_control": 14,
+        "per_function": { "describeHeader": 1, "hasCellContent": 1, "isXlsxMimeType": 5, "getOutputExtension": 2, "buildReportFileName": 1, "buildResultFileName": 3, "isValidationError": 1 } },
+      "run_id": "2026-09-15T09-37-40Z-import.file.utils",
+      "tasks": 8, "attempts": 13,
+      "funnel": { "tasks": 8, "compiled": 10, "passed": 3, "killed_ge_1": 3, "non_tautological": 13, "survived": 3 },
+      "survival_rate": 0.375,
+      "survivors": [
+        { "task": "hasCellContent:boundary:0", "mutation_score": 1.0, "mutants": 1 },
+        { "task": "isXlsxMimeType:happy_path:0", "mutation_score": 1.0, "mutants": 5 },
+        { "task": "isXlsxMimeType:boundary:0", "mutation_score": 1.0, "mutants": 5 }
+      ],
+      "median_survivor_mutation_score": 1.0,
+      "wall_clock_s": 1045,
+      "collapse_point": "pass — 7 of the 10 attempts that compiled asserted something untrue",
+      "import_form_correct": "13/13 class-named import, 0/13 followed the WRONG imports_hint, 13/13 qualified call sites"
+    }
+  ],
+  "combined": { "tasks": 16, "survived": 6, "survival_rate": 0.375, "median_survivor_mutation_score": 1.0 },
+  "cost_per_candidate_ms": {
+    "module1": { "generate_median": 14837, "generate_p90": 22488, "ttft_median": 1926, "completion_tokens_median": 560, "prompt_tokens_median": 700,
+      "compile_successful_median": 32435, "compile_failed_median": 12132, "pass_median": 7375, "mutation_median": 120328, "verdict_median": 150538, "verdict_p90": 202615 },
+    "module2": { "generate_median": 9894, "generate_p90": 21088, "completion_tokens_median": 281, "prompt_tokens_median": 451,
+      "compile_successful_median": 32622, "pass_median": 9551, "mutation_median": 60798, "verdict_median": 136738, "verdict_p90": 172326 }
+  },
+  "planning_cost": {
+    "module2_only": { "agent_tool_tokens": 120407, "tool_calls": 56, "wall_clock_s": 1605, "exemplars": 2, "exemplar_attempts": 3, "failed_exemplars": 1,
+      "planner_tokens_mjs_reported": 44598, "undercount_factor": 2.7 }
+  },
+  "predictions": {
+    "1_sandbox_keeps_auth_config": "CONFIRMED — 352 tracked files absent, all test-named, zero source files absent; auth.config.test.ts present; the Proposal APFS artefact did not recur",
+    "2_probe_finds_getSpendVsReplacement": "CONFIRMED — [100,124], 18 mutants, 18 killed, 5/5 plannable, 80 mutants total",
+    "3_plan_ranges_works": "CONFIRMED — 5/5 functions, no 'has no function called X'",
+    "4_stryker_ignores_symlinks": "CONFIRMED — ignorePatterns names .claude/agents and .claude/skills; no ENOTSUP; symlinks left in place",
+    "5_ts_jest_untouched": "CONFIRMED — .sidecrew-jest.config.cjs written into the sandbox; target package.json diff is only the 3 devDeps; jest key untouched",
+    "6_ts2883_clone": "CONFIRMED — sandbox node_modules is a real 1.1 GB directory; successful compile 32.4-32.6 s vs predicted 32.6 s; failed compiles short-circuit at 12.1 s"
+  },
+  "new_defects_found": [
+    "deriveLineRange mis-derives a range when the declaration line carries braces after `extends` (TYPE_POSITION lacks it). isValidationError derived [145,145]; control at [145,149] gives 1 mutant, killed, SURVIVED. Fourth time 'no mutants at all' has been wrong when checked.",
+    "exportStyleFor has no branch for `export class C` with static members (non-default). It falls through to naming the FUNCTION, so all 8 module-2 tasks carried an uncompilable imports_hint."
+  ],
+  "hygiene": {
+    "branch": "sidecrew-trial-unmod — never pushed, never merged, deleted",
+    "restored_to": "ai_optimization",
+    "tree_clean": true,
+    "src_test_modified": false,
+    "lockfile_md5_unchanged": "3597d70b1b11fdd61e4d3ecae0e65968",
+    "node_modules_reinstalled_from_lockfile": true,
+    "project_tests_after": { "suites": 41, "passed": 1094, "skipped": 2, "total": 1096, "all_green": true },
+    "sidecrew_dir_removed": true
+  }
+}

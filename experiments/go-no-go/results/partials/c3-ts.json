@@ -1,0 +1,638 @@
+{
+  "measured": true,
+  "config": "c3",
+  "config_label": "Claude Haiku via the haiku-worker agent",
+  "fixture": "ts",
+  "language": "typescript",
+  "measured_at": "2026-09-14T18:19:00.051Z",
+  "free_gb_at_start": 5.8491058349609375,
+  "worker": {
+    "model": "claude-haiku-4-5",
+    "revision": "",
+    "base_url": "haiku-worker agent (Claude Code subagent)"
+  },
+  "peak_worker_rss_mb": null,
+  "machine_after": {
+    "free_gb": 6.184417724609375,
+    "swap_used_mb": 6724.25,
+    "xcode_open": true,
+    "simulator_open": true
+  },
+  "claude_tokens_workers": 957194,
+  "agent_invocations": 20,
+  "tasks": 20,
+  "survived": 20,
+  "survival_rate": 1,
+  "funnel": {
+    "tasks": 20,
+    "compiled": 20,
+    "passed": 20,
+    "killed_ge_1": 20,
+    "non_tautological": 20
+  },
+  "attempts": 20,
+  "retried": 0,
+  "escalated": 0,
+  "latency_ms": {
+    "median": 27488,
+    "p90": 34212
+  },
+  "generate_ms": {
+    "median": 17319,
+    "p90": 24216
+  },
+  "verify_ms": {
+    "median": 9728,
+    "p90": 13017
+  },
+  "median_mutation_score_of_survivors": 0.917,
+  "median_completion_tokens": null,
+  "failure_stages": {},
+  "claude_tokens": {
+    "planning": 129234,
+    "workers": 957194,
+    "review": null
+  },
+  "records": [
+    {
+      "task_id": "truncate:boundary:0",
+      "function": "truncate",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 49600,
+      "attempts": [
+        {
+          "task_id": "truncate:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 11,
+          "mutation_score": 0.9166666666666666,
+          "mutants": 12,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 38135,
+          "verify_ms": 11465,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "titleCase:happy_path:0",
+      "function": "titleCase",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 26218,
+      "attempts": [
+        {
+          "task_id": "titleCase:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 7,
+          "mutation_score": 0.875,
+          "mutants": 8,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 16724,
+          "verify_ms": 9494,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "countOccurrences:happy_path:0",
+      "function": "countOccurrences",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 25693,
+      "attempts": [
+        {
+          "task_id": "countOccurrences:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 5,
+          "mutation_score": 0.9,
+          "mutants": 10,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 15436,
+          "verify_ms": 10257,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "countOccurrences:boundary:0",
+      "function": "countOccurrences",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 34212,
+      "attempts": [
+        {
+          "task_id": "countOccurrences:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 3,
+          "mutation_score": 1,
+          "mutants": 10,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 13385,
+          "verify_ms": 20827,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "commonPrefix:boundary:0",
+      "function": "commonPrefix",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 31059,
+      "attempts": [
+        {
+          "task_id": "commonPrefix:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 0.8,
+          "mutants": 10,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 21253,
+          "verify_ms": 9806,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "roundTo:happy_path:0",
+      "function": "roundTo",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 27188,
+      "attempts": [
+        {
+          "task_id": "roundTo:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 2,
+          "mutation_score": 0.25,
+          "mutants": 8,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 17460,
+          "verify_ms": 9728,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 24424,
+      "attempts": [
+        {
+          "task_id": "percentChange:error_or_throw:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 6,
+          "mutation_score": 1,
+          "mutants": 6,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 16697,
+          "verify_ms": 7727,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "gcd:happy_path:0",
+      "function": "gcd",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 24111,
+      "attempts": [
+        {
+          "task_id": "gcd:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 2,
+          "mutation_score": 1,
+          "mutants": 4,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 17319,
+          "verify_ms": 6792,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "mean:happy_path:0",
+      "function": "mean",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 27554,
+      "attempts": [
+        {
+          "task_id": "mean:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 5,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 20541,
+          "verify_ms": 7013,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "mean:boundary:0",
+      "function": "mean",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 29879,
+      "attempts": [
+        {
+          "task_id": "mean:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 5,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 22805,
+          "verify_ms": 7074,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "median:happy_path:0",
+      "function": "median",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 26055,
+      "attempts": [
+        {
+          "task_id": "median:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 11,
+          "mutation_score": 0.7857142857142857,
+          "mutants": 14,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 13038,
+          "verify_ms": 13017,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "median:boundary:0",
+      "function": "median",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 40209,
+      "attempts": [
+        {
+          "task_id": "median:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 11,
+          "mutation_score": 0.7857142857142857,
+          "mutants": 14,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 27754,
+          "verify_ms": 12455,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "unique:happy_path:0",
+      "function": "unique",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 16840,
+      "attempts": [
+        {
+          "task_id": "unique:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 1,
+          "mutation_score": 1,
+          "mutants": 1,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 11765,
+          "verify_ms": 5075,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "zip:happy_path:0",
+      "function": "zip",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 21315,
+      "attempts": [
+        {
+          "task_id": "zip:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 12725,
+          "verify_ms": 8590,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "zip:boundary:0",
+      "function": "zip",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 32568,
+      "attempts": [
+        {
+          "task_id": "zip:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 3,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 20579,
+          "verify_ms": 11989,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "rotate:happy_path:0",
+      "function": "rotate",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 27488,
+      "attempts": [
+        {
+          "task_id": "rotate:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 7,
+          "mutation_score": 0.7777777777777778,
+          "mutants": 9,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 12681,
+          "verify_ms": 14807,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "rotate:boundary:0",
+      "function": "rotate",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 34185,
+      "attempts": [
+        {
+          "task_id": "rotate:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 0.4444444444444444,
+          "mutants": 9,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 24216,
+          "verify_ms": 9969,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "takeWhile:happy_path:0",
+      "function": "takeWhile",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 22669,
+      "attempts": [
+        {
+          "task_id": "takeWhile:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 7,
+          "mutation_score": 0.875,
+          "mutants": 8,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 12444,
+          "verify_ms": 10225,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "takeWhile:boundary:0",
+      "function": "takeWhile",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 28656,
+      "attempts": [
+        {
+          "task_id": "takeWhile:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 6,
+          "mutation_score": 1,
+          "mutants": 8,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 19470,
+          "verify_ms": 9186,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "firstSuccessful:async:0",
+      "function": "firstSuccessful",
+      "shape": "async",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 27607,
+      "attempts": [
+        {
+          "task_id": "firstSuccessful:async:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 5,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "generate_ms": 20667,
+          "verify_ms": 6940,
+          "error": ""
+        }
+      ]
+    }
+  ]
+}

@@ -30,19 +30,33 @@ jobs:
       - run: npm run build
 
   contracts:
-    # Two invariants that are cheap to check and expensive to notice late.
+    # Invariants that are cheap to check and expensive to notice late.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - name: package.json and server.json versions agree
+      - name: package.json, server.json and plugin.json versions agree
         run: |
           pkg=$(node -p "require('./package.json').version")
           srv=$(node -p "require('./server.json').version")
-          echo "package.json=$pkg server.json=$srv"
-          [ "$pkg" = "$srv" ] || { echo "::error::versions disagree — they move together (CLAUDE.md)"; exit 1; }
+          plg=$(node -p "require('./claude/.claude-plugin/plugin.json').version")
+          echo "package.json=$pkg server.json=$srv plugin.json=$plg"
+          [ "$pkg" = "$srv" ] && [ "$pkg" = "$plg" ] \
+            || { echo "::error::versions disagree — they move together (CLAUDE.md)"; exit 1; }
+      - name: server.json validates against the schema it pins
+        # Against the registry's own schema, fetched from the URL server.json names, rather than against
+        # a hand-written idea of it. Phase 7 found the file invalid in two independent ways — a 145-char
+        # description against a 100 limit, and pre-2025-07 package keys (`registry_name`/`name` for
+        # `registry_type`/`identifier`/`transport`) — either of which would have failed the publish.
+        run: |
+          url=$(node -p "require('./server.json').\$schema")
+          echo "schema: $url"
+          curl -sS --fail -m 30 "$url" -o /tmp/mcp-server.schema.json
+          # --strict=false: the schema uses `example`, which is not a JSON Schema keyword and which ajv
+          # refuses to see in strict mode. It is the registry's schema, not ours to clean up.
+          npx -y ajv-cli@5 validate --spec=draft7 --strict=false -s /tmp/mcp-server.schema.json -d server.json
       - name: every shipped model is permissively licensed and pinned
         run: |
           node -e '

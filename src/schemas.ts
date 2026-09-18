@@ -43,11 +43,31 @@ const NonNegInt = z.number().int().nonnegative();
 const Millis = z.number().nonnegative();
 const Sha = z.string().min(1);
 
-export const TestShape = z.object({ kind: ShapeKind, exemplar: z.string(), rules: z.string() });
+/** The ceiling on `PlannedFunction.shapes`. See the taxonomy section of `docs/specs/pipeline.md`. */
+export const MAX_SHAPES_PER_FUNCTION = 3;
+
+export const TestShape = z.object({
+  kind: ShapeKind,
+  exemplar: z.string(),
+  /**
+   * The function in `module` the exemplar tests (ADR-0015). Verifying an exemplar means mutating that
+   * function's lines, and nothing else in the plan says which they are — the exemplar is deliberately
+   * about a function `functions[]` does not list, so `functionOfTaskId` has nothing to read. Guessing
+   * would mutate the wrong lines, which is the one mistake ADR-0013 made expensive.
+   */
+  exemplar_function: z.string().min(1),
+  rules: z.string(),
+});
 export type TestShape = z.infer<typeof TestShape>;
 
-/** What the worker is told about a shape. No exemplar *path* — it gets the exemplar's text instead. */
-export const WorkerShape = TestShape.omit({ exemplar: true });
+/**
+ * What the worker is told about a shape: the kind and the rules.
+ *
+ * No exemplar *path* — it gets the exemplar's text instead — and no `exemplar_function`, which is the
+ * planner's bookkeeping and would be one more name for a 7B to confuse with the function it was asked
+ * about.
+ */
+export const WorkerShape = TestShape.omit({ exemplar: true, exemplar_function: true });
 export type WorkerShape = z.infer<typeof WorkerShape>;
 
 export const PlannedFunction = z.object({
@@ -55,7 +75,13 @@ export const PlannedFunction = z.object({
   signature: z.string().min(1),
   source_sha: Sha,
   line_range: z.tuple([NonNegInt, NonNegInt]),
-  shapes: z.array(ShapeKind).min(1),
+  /**
+   * 1–3, and both ends are load-bearing (Phase 5, spec §Shapes). A function nobody asks a question
+   * about does not belong in the plan; the fourth shape on a small pure function is where the planner
+   * starts inventing questions, and every shape costs a generate → verify round. In the contract rather
+   * than in the planner's prompt because the cost lands on the run, not on the planner.
+   */
+  shapes: z.array(ShapeKind).min(1).max(MAX_SHAPES_PER_FUNCTION),
   notes: z.string().optional(),
 });
 export type PlannedFunction = z.infer<typeof PlannedFunction>;
@@ -70,6 +96,15 @@ export const TestPlan = z.object({
     planner_tokens: NonNegInt,
     created: z.string().datetime(),
   }),
+  /**
+   * Swift only, and optional (ADR-0014). A SwiftPM package with one test target needs no answer — the
+   * verifier takes the only one. A package with several cannot be guessed at, and the planner is the
+   * only component that has read the package, so it is the only one that can name the target without
+   * guessing. Absent, `verifySwift` refuses a multi-target package rather than picking; meaningless
+   * but not illegal on a TypeScript plan, because a language-conditional required field would make
+   * every future language pay for Swift's problem.
+   */
+  test_target: z.string().min(1).optional(),
   shapes: z.array(TestShape).min(1),
   functions: z.array(PlannedFunction).min(1),
 });
@@ -94,31 +129,44 @@ export const WorkerTask = z.object({
 });
 export type WorkerTask = z.infer<typeof WorkerTask>;
 
+/**
+ * Who produced a candidate and under what conditions — shared by both workloads (ADR-0047).
+ *
+ * One stamp rather than two copies, because the tier guarantee is attached to it: `seedIsRecorded`
+ * below is the rule that a `local` candidate must say which seed it ran with, and a second workload
+ * that quietly omitted it would be a second place for non-negotiable #4 to be false.
+ */
+const WorkerStamp = z.object({
+  kind: WorkerKind,
+  model: z.string().min(1),
+  revision: z.string(),
+  // Determinism is a non-negotiable, not a default: a candidate produced at temperature > 0 is not
+  // reproducible and its verdict says nothing about the model. Both tiers can honour temperature 0.
+  temperature: z.literal(0),
+  /** null only on the api tier, which offers no seed. See the refinement below. */
+  seed: z.number().int().nullable(),
+});
+
+/**
+ * A local worker has no excuse: same seed, same output, or the bench in Phase 1 is measuring noise.
+ * The API tier cannot offer one, and pretending otherwise by writing a seed we never sent would make
+ * the record say something untrue.
+ */
+const seedIsRecorded = (c: { worker: z.infer<typeof WorkerStamp> }, ctx: z.RefinementCtx): void => {
+  if (c.worker.kind === "local" && c.worker.seed === null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["worker", "seed"], message: "a local worker must record the seed it ran with" });
+  }
+};
+
 const CandidateFields = z.object({
   task_id: z.string().min(1),
-  worker: z.object({
-    kind: WorkerKind,
-    model: z.string().min(1),
-    revision: z.string(),
-    // Determinism is a non-negotiable, not a default: a candidate produced at temperature > 0 is not
-    // reproducible and its verdict says nothing about the model. Both tiers can honour temperature 0.
-    temperature: z.literal(0),
-    /** null only on the api tier, which offers no seed. See the refinement below. */
-    seed: z.number().int().nullable(),
-  }),
+  worker: WorkerStamp,
   test_source: z.string(),
   usage: z.object({ prompt_tokens: NonNegInt, completion_tokens: NonNegInt }),
   timing: z.object({ ttft_ms: Millis, wall_ms: Millis }),
 });
 
-export const Candidate = CandidateFields.superRefine((c, ctx) => {
-  // A local worker has no excuse: same seed, same output, or the bench in Phase 1 is measuring noise.
-  // The API tier cannot offer one, and pretending otherwise by writing a seed we never sent would make
-  // the record say something untrue.
-  if (c.worker.kind === "local" && c.worker.seed === null) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["worker", "seed"], message: "a local worker must record the seed it ran with" });
-  }
-});
+export const Candidate = CandidateFields.superRefine(seedIsRecorded);
 export type Candidate = z.infer<typeof CandidateFields>;
 
 export const MutationResult = z.object({
@@ -228,6 +276,21 @@ export const BatchResult = BatchResultFields.superRefine((b, ctx) => {
       message: "a local worker cannot spend Claude tokens — it is reached over http://localhost/v1",
     });
   }
+  // The same guarantee from the other side, added in Phase 13 (ADR-0045 §6).
+  //
+  // The rule above makes a *false zero* on the local tier unrepresentable. On the api tier the lie
+  // runs the other way and is the more likely one: a run that generated candidates and reports zero
+  // worker tokens has either lost the API's usage fields or estimated them, and Phase 13 §5.0.2 voids
+  // exactly that run — "`claude_tokens.workers` is what Anthropic billed, taken from the API's usage
+  // fields rather than estimated". Without this, a broken accounting path produces a free-looking api
+  // run and nothing notices.
+  if (b.config.worker_kind === "api" && b.stats.survived + b.stats.escalated > 0 && b.stats.claude_tokens.workers === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "claude_tokens", "workers"],
+      message: `an api run that produced ${b.stats.survived + b.stats.escalated} outcome(s) cannot have cost 0 worker tokens — this is either lost or estimated usage, and the tier's whole measurement is its price`,
+    });
+  }
 });
 export type BatchResult = z.infer<typeof BatchResultFields>;
 
@@ -262,3 +325,782 @@ export const ValidationReport = z.object({
   }
 });
 export type ValidationReport = z.infer<typeof ValidationReport>;
+
+// ── Phase 7: the two queues Claude reads ──────────────────────────────────────────────────────────
+
+/**
+ * One task that ran out of attempts, as a line of `.sidecrew/runs/<id>/escalations.jsonl`.
+ *
+ * Written when the task gives up rather than assembled from `result.json` at the end (ADR-0023): a run
+ * that dies has still spent those attempts, and the queue is the record of what they bought.
+ */
+export const Escalation = z.object({
+  task_id: z.string().min(1),
+  /** `shouldRetry`'s sentence for the last attempt — why this stopped, in the words the run log used. */
+  reason: z.string().min(1),
+  /** Newest last. One entry for a failure the retry rule refused, two for everything else. */
+  attempts: z.array(z.object({
+    task_id: z.string().min(1),
+    /**
+     * null when the task threw rather than returning a verdict — the worker went away, or the verifier
+     * crashed. There is no stage to name: nothing ran. Calling it `compile` would read as "it did not
+     * compile", which is a different problem with a different fix.
+     */
+    stage_reached: Stage.nullable(),
+    error: ErrorText,
+  })).min(1),
+  escalated_at: z.string().datetime(),
+});
+export type Escalation = z.infer<typeof Escalation>;
+
+/**
+ * What `sidecrew escalate` hands to Claude: the queue, joined back to the prompts the worker had.
+ *
+ * `task` is the first attempt's `WorkerTask` verbatim — the same function source, exemplar and rules the
+ * local model was given. Claude is being asked the question the worker could not answer, so it gets the
+ * question rather than a summary of it.
+ */
+export const EscalationBatch = z.object({
+  run_id: z.string().min(1),
+  plan: z.string().min(1),
+  language: Language,
+  test_framework: TestFramework,
+  /** Which model the run recommends for these; Sonnet unless the caller says otherwise. */
+  suggested_model: z.string().min(1),
+  items: z.array(Escalation.extend({ task: WorkerTask })),
+});
+export type EscalationBatch = z.infer<typeof EscalationBatch>;
+
+/** Why one survivor is in front of Claude: it scored low, or it was drawn for the audit. */
+export const ReviewReason = z.enum(["below_threshold", "audit"]);
+export type ReviewReason = z.infer<typeof ReviewReason>;
+
+export const ReviewItem = z.object({
+  task_id: z.string().min(1),
+  mutation_score: z.number().min(0).max(1),
+  reason: ReviewReason,
+  test_path: z.string().min(1),
+  test_source: z.string(),
+  /** `estimateTokens` over `test_source`, and an estimate — the label is in `src/prompt.ts`. */
+  estimated_tokens: NonNegInt,
+});
+export type ReviewItem = z.infer<typeof ReviewItem>;
+
+/**
+ * Survivors routed to review, batched under a token cap (ADR-0024).
+ *
+ * Score ascending within a batch, because the weakest test is the one worth reading first and a model
+ * that runs out of attention should run out of it at the end.
+ */
+export const ReviewQueue = z.object({
+  run_id: z.string().min(1),
+  plan: z.string().min(1),
+  language: Language,
+  /** Per language, never shared: a Swift score is computed over one or two mutants (ADR-0018, ADR-0024). */
+  threshold: z.number().min(0).max(1),
+  audit_fraction: z.number().min(0).max(1),
+  max_batch_tokens: z.number().int().positive(),
+  counts: z.object({ survivors: NonNegInt, below_threshold: NonNegInt, audit: NonNegInt, not_reviewed: NonNegInt }),
+  batches: z.array(z.object({ estimated_tokens: NonNegInt, items: z.array(ReviewItem).min(1) })),
+});
+export type ReviewQueue = z.infer<typeof ReviewQueue>;
+
+// ── Phase 10: workload #2a, behaviour-preserving code changes ─────────────────────────────────────
+//
+// The gate is the project's own test suite plus `tsc` (ADR-0031 option A), and everything below exists
+// to make it checkable rather than merely stated. ADR-0046 is the sandbox that keeps the tests,
+// ADR-0047 the contract, ADR-0048 the gate and the seven cheap ways to pass it that are blocked by
+// name. Nothing here is mutation-shaped: `Verdict.mutation` means nothing to a code change.
+
+/** The ceiling on a task's `files` unless the plan says otherwise — the owner's "5–10" (ADR-0044 §1). */
+export const DEFAULT_MAX_GROUP_SIZE = 10;
+
+/**
+ * How far the pipeline got. Confinement comes **before** apply on purpose (ADR-0047): it is a pure
+ * function of the task's sources and the candidate's, so nothing is written to a sandbox until it has
+ * passed, and there is no partially-applied state to reason about.
+ */
+export const ChangeStage = z.enum(["generate", "confinement", "apply", "compile", "tests", "done"]);
+export type ChangeStage = z.infer<typeof ChangeStage>;
+
+/**
+ * The cheap ways to pass this gate, each blocked by name (ADR-0048).
+ *
+ * Names rather than prose because two readers branch on them: the Phase 11 funnel counts each one, so
+ * the report says *which* cheap pass a local model reached for, and the Phase 12 correction round
+ * writes its note from the rule rather than from the diff (ADR-0044 §4 rule 1).
+ */
+export const ConfinementRule = z.enum([
+  /** An edit to a file the task does not list. */
+  "path_outside_task",
+  /** An edit to tsconfig, package.json, a lockfile, or a linter/runner/bundler config — even a listed one. */
+  "build_config_edited",
+  /** An edit to a test file, `__tests__`, `__mocks__` or a snapshot — the gate's own instrument (ADR-0046). */
+  "test_file_edited",
+  /** A new `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck` or `eslint-disable`. */
+  "suppression_added",
+  /** A new `as any`, `: any` or `<any>` — the type-shaped version of the same move. */
+  "any_escape_added",
+  /** More code lines removed than the task's `max_deleted_lines` allows. */
+  "deletion_without_replacement",
+  /** A candidate that changed nothing: the suite is already green, so do nothing. */
+  "no_edit_at_all",
+]);
+export type ConfinementRule = z.infer<typeof ConfinementRule>;
+
+/**
+ * What the ask is, coarsely — and it is a contract field rather than a note because **the shape is the
+ * caveat**.
+ *
+ * Phase 11's coverage hole is about 1 survivor in 5 whose changed lines no test that ran executed, and
+ * how much that weakens a result depends entirely on this enum: for a `rename` `tsc` proves completeness
+ * and is a reasonable oracle where no test runs, while for a `null_guard` or an `api_migration` the
+ * compiler cannot tell you the behaviour survived. Every rate in this repository so far is for `rename`
+ * and `unused_import`, and quoting one for the others would be the fixture-overstates-by-2x error again.
+ *
+ * Phase 11b §4.4 refuses to apply its verdict at all unless half the tasks are the harder three, so the
+ * planner has to be able to say which it wrote.
+ */
+export const ChangeShape = z.enum([
+  /** Rename a symbol and every reference to it. `tsc` proves completeness. */
+  "rename",
+  /** Remove an import nothing uses. The other shape every measured number so far is about. */
+  "unused_import",
+  /** Add a null/undefined check the types now demand. The compiler cannot prove behaviour survived. */
+  "null_guard",
+  /** Move call sites from a deprecated API to its replacement. */
+  "api_migration",
+  /** Delete code nothing reaches. The one shape whose ask needs a deletion budget above zero. */
+  "dead_code",
+]);
+export type ChangeShape = z.infer<typeof ChangeShape>;
+
+/**
+ * Something true of a candidate that the gate does **not** decide on (ADR-0057).
+ *
+ * The distinction from `ConfinementBreach` is the whole point and it is load-bearing: a breach makes
+ * `confined` false and kills the candidate, an observation changes nothing about its fate. ADR-0048's
+ * rule is untouched, so a run carrying observations is still comparable with Phase 11's.
+ *
+ * It exists because the only measured quality gap between the local tier and the control — unrequested
+ * cosmetic edits, 4 of 23 sampled survivors against 0 of 23 (ADR-0054) — is invisible to `survives ⇔
+ * confined ∧ compile_ok ∧ tests_ok`, and a correction may only be written from the verdict (ADR-0044 §4
+ * rule 1). Without a field here there is nothing to write one from short of reading the diff, which is
+ * the line this design does not cross.
+ */
+export const ObservationKind = z.enum([
+  /** Comment lines removed that the ask did not call for. */
+  "comment_lines_removed",
+  /**
+   * Comment *text* changed while the count stayed the same — a reword (ADR-0068).
+   *
+   * ADR-0057 shipped a line delta and predicted this gap in its own "not decided" section. Phase 11b
+   * then measured it: the local 7B's single divergence from Opus across 19 real tasks was rewording a
+   * doc comment to match a renamed symbol, and **all 19 verdicts carried `observations: []`**. Phase 11
+   * had seen the same worker do the same thing to the same word. Sensitivity 0/1 on the only case in
+   * the dataset, on the model's one reproducible signature behaviour.
+   */
+  "comment_text_changed",
+  /** Blank lines added or removed beyond the edit itself — project-b's stray line. */
+  "whitespace_churn",
+]);
+export type ObservationKind = z.infer<typeof ObservationKind>;
+
+export const ChangeObservation = z.object({
+  kind: ObservationKind,
+  file: z.string().min(1),
+  /** The count, or the line. What a correction quotes — never the diff. */
+  detail: z.string().min(1),
+});
+export type ChangeObservation = z.infer<typeof ChangeObservation>;
+
+export const ConfinementBreach = z.object({
+  rule: ConfinementRule,
+  file: z.string().min(1),
+  /** The offending line, or the count that broke the budget. What a correction quotes. */
+  detail: z.string().min(1),
+});
+export type ConfinementBreach = z.infer<typeof ConfinementBreach>;
+
+/** `tsc` errors, project-wide and per file. The per-file half is ADR-0044 §1's free per-file reporting. */
+export const ErrorCounts = z.object({
+  total: NonNegInt,
+  /** Only files that have at least one error. Paths are posix, relative to the project root. */
+  by_file: z.record(z.string(), NonNegInt),
+});
+export type ErrorCounts = z.infer<typeof ErrorCounts>;
+
+/**
+ * The project before the change, captured in the same sandbox and in the same way (ADR-0046).
+ *
+ * Captured once per **step**, not once per task: the existing suite is the expensive stage, and
+ * ADR-0044 §2 re-captures it at a step boundary because step N+1's baseline is the project after step
+ * N's survivors were applied.
+ */
+export const ChangeBaseline = z.object({
+  project: z.string().min(1),
+  captured_at: z.string().datetime(),
+  errors: ErrorCounts,
+  tests: z.object({
+    ran: NonNegInt,
+    passed: NonNegInt,
+    failed: NonNegInt,
+    /**
+     * `<file>::<full name>` for every test that passed. The gate's rule is "every test that passed
+     * **before** still passes", never "everything is green" — a project with pre-existing failures is
+     * normal, and project-a has 23 suites failing on missing DB env.
+     */
+    passed_ids: z.array(z.string()),
+  }),
+  timing_ms: z.object({ compile: Millis, tests: Millis }),
+});
+export type ChangeBaseline = z.infer<typeof ChangeBaseline>;
+
+/**
+ * ADR-0044 §4 option B, as a budget rather than as a policy — *"a bounded number of Opus-written notes
+ * per task against a per-run budget"*, and the kill switch of rule 2 is the default.
+ *
+ * **Everything here defaults to off.** ADR-0044 decided the round gets built and measured, not that it
+ * gets switched on; whether it pays for itself is a number
+ * (`experiments/correction-round/README.md` §4.2), and a default of on would be this repository
+ * shipping an unmeasured mechanism it wrote a frozen rule to avoid shipping.
+ */
+export const CorrectionBudget = z.object({
+  /** The gate-visible round: one Opus note after the mechanical retry has failed (ADR-0044 §4). */
+  enabled: z.boolean().default(false),
+  /** How many corrections this run may write at all. Exhausting it falls back to escalation (option A). */
+  max_corrections: NonNegInt.default(0),
+  /** A ceiling on Opus tokens spent writing them, so a run cannot cost more than it saves by accident. */
+  max_tokens: NonNegInt.default(0),
+  /**
+   * The survivor case (ADR-0057): correct a candidate that **passed** but carries an observation.
+   *
+   * Separate from `enabled`, and off separately, because ADR-0044 §4 never contemplated it. A run that
+   * asked for the gate-visible round has not asked to spend tokens on changes that already survived.
+   */
+  on_observations: z.boolean().default(false),
+}).strict();
+export type CorrectionBudget = z.infer<typeof CorrectionBudget>;
+
+/** One task of one step: the ask, and the group of files it may touch (ADR-0044 §1). */
+export const PlannedChange = z.object({
+  task_id: z.string().min(1),
+  ask: z.string().min(1),
+  files: z.array(z.string().min(1)).min(1),
+  /**
+   * How many code lines this ask is allowed to remove. Default 0, and that is the point: *deleting the
+   * offending line* is a cheap way to pass a type-error gate, and *removing dead code* is a real 2a
+   * job. The difference is not in the diff, it is in what was asked — so the ask carries the budget.
+   */
+  max_deleted_lines: NonNegInt.default(0),
+  /** ADR-0044 §2: an escalation here stops the run rather than letting step N+1 build on sand. */
+  blocking: z.boolean().default(false),
+  /**
+   * What kind of change this is. Required, with no default: a planner that does not know what it is
+   * asking for cannot be trusted to have checked the ask is satisfiable, and a default would quietly
+   * make everything a `rename` — the shape every existing number is already about.
+   */
+  shape: ChangeShape,
+  notes: z.string().optional(),
+}).strict();
+export type PlannedChange = z.infer<typeof PlannedChange>;
+
+/** Tasks inside a step are independent and run in parallel; the run enforces the order of steps. */
+export const ChangeStep = z.object({
+  name: z.string().min(1),
+  tasks: z.array(PlannedChange).min(1),
+}).strict();
+export type ChangeStep = z.infer<typeof ChangeStep>;
+
+/**
+ * What `sidecrew fix` takes. Written by Opus — by hand in Phase 10, by the planner agent in Phase 12.
+ *
+ * **`strict` is load-bearing.** ADR-0044 §3 decided there is no `workers` field: Opus decides how the
+ * work is cut, the machine decides how many pieces are in flight. A plan carrying one does not parse,
+ * which is the difference between a decision and a sentence in a document.
+ */
+export const ChangePlan = z.object({
+  version: z.literal(1),
+  language: Language,
+  /** The project root: the thing with a package.json, a tsconfig, and an installed node_modules. */
+  project: z.string().min(1),
+  test_framework: TestFramework,
+  meta: z.object({
+    planner_model: z.string().min(1),
+    planner_tokens: NonNegInt,
+    created: z.string().datetime(),
+  }),
+  /** A plan field with a default, never a constant: the right number is what Phase 11 measures. */
+  max_group_size: z.number().int().positive().default(DEFAULT_MAX_GROUP_SIZE),
+  /** ADR-0044 §4's option B, budgeted. Absent means the whole round is off, which is the default. */
+  correction: CorrectionBudget.default({}),
+  steps: z.array(ChangeStep).min(1),
+}).strict();
+export type ChangePlan = z.infer<typeof ChangePlan>;
+
+/** What a worker is handed for a code change. The #2a counterpart of `WorkerTask`. */
+export const ChangeTask = z.object({
+  task_id: z.string().min(1),
+  language: Language,
+  test_framework: TestFramework,
+  ask: z.string().min(1),
+  files: z.array(z.object({
+    path: z.string().min(1),
+    source: z.string(),
+    source_sha: Sha,
+    /** `tsc` errors in this file at the step's baseline — the per-file half of ADR-0044 §1. */
+    errors: NonNegInt,
+  })).min(1),
+  /** The compiler's own words about this task's files, from the baseline. Empty when there are none. */
+  diagnostics: z.string(),
+  max_deleted_lines: NonNegInt,
+  notes: z.string().nullable(),
+  /**
+   * 0 first attempt, 1 the mechanical retry that carries the tool's own words (ADR-0022), 2 the
+   * correction round of ADR-0044 §4. The value `2` is unreachable until Phase 12 and the room for it is
+   * deliberate: deciding it after the schema existed would have been a migration.
+   */
+  attempt: z.number().int().min(0).max(2),
+  retry_of: z.string().nullable(),
+  previous_error: ErrorText.nullable(),
+  /** Phase 12's Opus-written note, read from the verdict and never from raw output (ADR-0044 §4 rule 1). */
+  correction: ErrorText.nullable(),
+  /** What kind of change this is, carried through from the plan so the verdict can be read by shape. */
+  shape: ChangeShape,
+}).superRefine((t, ctx) => {
+  // ADR-0044 §4 rule 3: the correction round is spent only after the mechanical retry has failed, so a
+  // note can only ride on `attempt: 2`. Enforced rather than intended, because the whole measurement is
+  // "what does a correction buy over the free retry" and an early note silently changes the question.
+  if (t.correction !== null && t.attempt !== 2) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["correction"],
+      message: `a correction rides on attempt 2 — the mechanical retry is tried first and is free (ADR-0044 §4 rule 3); this task is attempt ${t.attempt}`,
+    });
+  }
+  if (t.attempt === 2 && t.correction === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["attempt"],
+      message: "attempt 2 is the correction round; a third attempt carrying no correction is a retry the retry rule did not authorise",
+    });
+  }
+});
+export type ChangeTask = z.infer<typeof ChangeTask>;
+
+/** One file the worker rewrote, whole. See ADR-0047 §2 for why this is not a patch. */
+export const FileEdit = z.object({ path: z.string().min(1), contents: z.string() });
+export type FileEdit = z.infer<typeof FileEdit>;
+
+const ChangeCandidateFields = z.object({
+  task_id: z.string().min(1),
+  worker: WorkerStamp,
+  /** Empty when the worker answered with nothing usable — which is `no_edit_at_all`, not a crash. */
+  edits: z.array(FileEdit),
+  /** What the parser could not read as an edit. null when the whole answer parsed. */
+  unparsed: ErrorText.nullable(),
+  /**
+   * *"I cannot do this, because X"* — ADR-0044's *"the other direction"*, built in Phase 12.
+   *
+   * Workers still do not chat: a refusal is an **escalation with a reason**, not a question, and it
+   * short-circuits the gate rather than opening a turn. The point is that a worker which knows it
+   * cannot do the task stops costing 262 s of gate to fail at `compile` for a reason nobody can read.
+   *
+   * It is deliberately cheap to abuse and that is checked elsewhere: a refusal is counted in its own
+   * funnel row, so a worker that learns to refuse everything shows up as a refusal rate rather than as
+   * a survival rate that quietly stopped having a denominator.
+   */
+  refusal: ErrorText.nullable(),
+  /** The completion hit the token ceiling, so at least one file is cut off. */
+  truncated: z.boolean(),
+  usage: z.object({ prompt_tokens: NonNegInt, completion_tokens: NonNegInt }),
+  timing: z.object({ ttft_ms: Millis, wall_ms: Millis }),
+});
+
+export const ChangeCandidate = ChangeCandidateFields.superRefine(seedIsRecorded);
+export type ChangeCandidate = z.infer<typeof ChangeCandidateFields>;
+
+const ChangeVerdictFields = z.object({
+  task_id: z.string().min(1),
+  stage_reached: ChangeStage,
+  survived: z.boolean(),
+  compile_ok: z.boolean(),
+  tests_ok: z.boolean(),
+  confined: z.boolean(),
+  files_touched: z.array(z.string()),
+  errors: z.object({
+    before: ErrorCounts,
+    after: ErrorCounts,
+    /** Files that have more errors after than before, and by how many. Empty is what `compile_ok` needs. */
+    introduced: z.record(z.string(), NonNegInt),
+    /** The task's own files that still have errors, and how many. */
+    remaining_in_target: z.record(z.string(), NonNegInt),
+    /** The compiler's own words, truncated. What a correction quotes (ADR-0044 §4 rule 1). */
+    message: ErrorText.nullable(),
+  }),
+  /** null when the tests stage never ran, which is not the same as a suite that produced no report. */
+  tests: z.object({
+    /** False when the runner produced no parseable report: a machine problem, and it does not spend the retry. */
+    reported: z.boolean(),
+    ran_before: NonNegInt,
+    ran_after: NonNegInt,
+    /**
+     * How many test **executions** passed, before and after — counts, not identities (ADR-0067).
+     *
+     * `regressed` is computed by set membership over `passed_ids`, and a `test.each` block gives every
+     * one of its cases the same `fullName`. So a candidate that breaks one case of nine leaves the id
+     * in the set, records no regression, and passes `ran_after >= ran_before` because the failing case
+     * still ran. Measured on a real project: 54 ids appearing up to 9 times, covering 295 of 6,368
+     * executions.
+     *
+     * These two fields are what lets the gate compare *how much* passed rather than *which names*
+     * passed, and they are in the verdict rather than derived so the refinement below can enforce it —
+     * a gate condition a schema cannot check is a convention, not a gate (CLAUDE.md #2).
+     */
+    passed_before: NonNegInt,
+    passed_after: NonNegInt,
+    /** Names of tests that passed before and do not now. The other half of what a correction reads. */
+    regressed: z.array(z.string()),
+    message: ErrorText.nullable(),
+  }).nullable(),
+  confinement: z.array(ConfinementBreach),
+  /**
+   * True of the candidate, and **nothing here gates** (ADR-0057). `changeSurvives` does not read it and
+   * the refinement below asserts that, so the rule ADR-0048 froze stays the rule.
+   */
+  observations: z.array(ChangeObservation).default([]),
+  /** The worker said it could not do this. The gate stops at `generate`; no sandbox, no suite, no 262 s. */
+  refused: ErrorText.nullable().default(null),
+  error: ErrorText.nullable(),
+  /** A key is present only for a stage that actually ran. */
+  timing_ms: z.object({ compile: Millis.optional(), tests: Millis.optional() }),
+});
+
+/**
+ * Survive ⇔ the diff was confined ∧ it compiles ∧ every test that passed before still passes.
+ * The workload-#2a form of CLAUDE.md #2, and the one rule this workload rests on (ADR-0048).
+ */
+export const changeSurvives = (v: z.infer<typeof ChangeVerdictFields>): boolean =>
+  v.confined && v.compile_ok && v.tests_ok;
+
+/**
+ * The gate, as an iff rather than a convention — and stronger than workload #1's, because there are
+ * more ways to be quietly wrong here (ADR-0037, ADR-0048).
+ *
+ * A `ChangeVerdict` that claims a survival its own fields do not support does not serialise. In
+ * particular `tests_ok` cannot be true without a report, without the suite having run at least as much
+ * as the baseline did, and without an empty `regressed` — "the suite collected zero tests" was never
+ * going to be allowed to read as "the suite is green".
+ */
+export const ChangeVerdict = ChangeVerdictFields.superRefine((v, ctx) => {
+  const fail = (path: (string | number)[], message: string): void => {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+  };
+  if (v.confined !== (v.confinement.length === 0)) {
+    fail(["confined"], `confined must equal confinement.length === 0 (here: ${v.confinement.length === 0})`);
+  }
+  if (v.compile_ok && (Object.keys(v.errors.remaining_in_target).length > 0 || Object.keys(v.errors.introduced).length > 0)) {
+    fail(["compile_ok"], "compile_ok requires zero errors in the task's files and none introduced anywhere else");
+  }
+  if (v.tests_ok) {
+    if (v.tests === null) fail(["tests_ok"], "tests_ok cannot be true when the tests stage never ran");
+    else if (!v.tests.reported) fail(["tests_ok"], "tests_ok cannot be true when the runner produced no report");
+    else if (v.tests.regressed.length > 0) fail(["tests_ok"], "tests_ok cannot be true when a test that passed before now fails");
+    else if (v.tests.ran_after < v.tests.ran_before) fail(["tests_ok"], "tests_ok cannot be true when fewer tests ran than in the baseline");
+    else if (v.tests.ran_after === 0) fail(["tests_ok"], "a suite that collected zero tests is not a green suite");
+    // ADR-0067, and it is the clause that catches what `regressed` structurally cannot: a `test.each`
+    // case that broke while its shared id stayed in the passing set. Leniency is the dangerous
+    // direction — this one let a bad change through, where ADR-0066's failure only refused a good one.
+    else if (v.tests.passed_after < v.tests.passed_before) {
+      fail(["tests_ok"], `tests_ok cannot be true when fewer tests passed than in the baseline (${v.tests.passed_after} < ${v.tests.passed_before})`);
+    }
+  }
+  if (v.survived !== changeSurvives(v)) {
+    fail(["survived"], `survived must equal confined ∧ compile_ok ∧ tests_ok (here: ${changeSurvives(v)})`);
+  }
+  // ADR-0057: an observation is not a breach. Asserted rather than trusted, because the one way this
+  // decision gets lost is somebody later reading `observations` as a soft confinement list — and then
+  // survival stops being comparable with Phase 11's without anything failing.
+  if (v.refused !== null && v.survived) {
+    fail(["refused"], "a candidate the worker refused to write cannot have survived the gate");
+  }
+  if (v.refused !== null && v.stage_reached !== "generate") {
+    fail(["stage_reached"], `a refusal stops at generate — it never reaches a sandbox (here: ${v.stage_reached})`);
+  }
+});
+export type ChangeVerdict = z.infer<typeof ChangeVerdictFields>;
+
+/**
+ * The workload-#2a escalation queue — `.sidecrew/runs/<id>/escalations.jsonl` for a `fix` run.
+ *
+ * A separate shape rather than a widened `Escalation`, and the reason is that the two carry different
+ * evidence. Workload #1's `stage_reached` is `Stage` — compile, pass, mutation — and says nothing about
+ * confinement or a regressed test, which are the two things a 2a reader needs first. Widening `Stage`
+ * would have made every workload-#1 escalation carry four fields that are always null, and made the
+ * discriminant a runtime question (`BACKLOG.md` named this as the contract change Phase 12 owns).
+ *
+ * What a reader gets that `ChangeVerdict` alone does not: the **task** the worker was asked, verbatim,
+ * so Claude answers the question the worker could not rather than a summary of it — the same rule
+ * `EscalationBatch` follows.
+ */
+export const ChangeEscalation = z.object({
+  task_id: z.string().min(1),
+  shape: ChangeShape,
+  /** `shouldRetryChange`'s sentence for the last attempt, in the words the run log used. */
+  reason: z.string().min(1),
+  /**
+   * True when nothing here is the worker's fault — a sandbox that would not delete, a runner that
+   * produced no report (ADR-0012, ADR-0056). A rate that counts these is an understatement and the
+   * reader cannot tell; `FixResult.stats.machine_failures` counts the same thing.
+   */
+  machine_failure: z.boolean().default(false),
+  /** The worker's own words when it refused, rather than a verdict that failed for a reason nobody can read. */
+  refused: ErrorText.nullable().default(null),
+  /** Newest last. Each attempt's verdict, which is everything a correction or a human would read. */
+  attempts: z.array(z.object({
+    task_id: z.string().min(1),
+    attempt: z.number().int().min(0).max(2),
+    /** null when the task threw rather than returning a verdict: nothing ran, so no stage is honest. */
+    stage_reached: ChangeStage.nullable(),
+    /** Which confinement rules fired, by name — the most actionable sentence this gate produces. */
+    confinement: z.array(ConfinementRule),
+    /** Names of tests that passed before and do not now. Truncated by the writer, not here. */
+    regressed: z.array(z.string()),
+    error: ErrorText,
+  })).min(1),
+  escalated_at: z.string().datetime(),
+});
+export type ChangeEscalation = z.infer<typeof ChangeEscalation>;
+
+/** What `sidecrew escalate --fix` hands to Claude: the 2a queue, joined back to the tasks on disk. */
+export const ChangeEscalationBatch = z.object({
+  run_id: z.string().min(1),
+  plan: z.string().min(1),
+  language: Language,
+  test_framework: TestFramework,
+  suggested_model: z.string().min(1),
+  items: z.array(ChangeEscalation.extend({ task: ChangeTask })),
+});
+export type ChangeEscalationBatch = z.infer<typeof ChangeEscalationBatch>;
+
+/**
+ * What `sidecrew fix --validate` / `sidecrew_fix_plan_validate` reports about a change plan.
+ *
+ * Its own shape rather than `ValidationReport`, whose `checked` counts functions, shapes and exemplars —
+ * none of which a change plan has.
+ *
+ * The field that earns the schema is **`refusals`**. A plan can be well-formed and still contain a task
+ * no worker could ever pass, and the run would spend 262 s of gate per attempt discovering that. Phase
+ * 11 nearly measured one (ADR-0050 option C). So the validator refuses them by name, and the count
+ * travels into the planner-cost denominator: a task the planner refused is not a task it planned, and
+ * hiding refusals in `N` would make a careful planner look expensive
+ * (`experiments/planner-cost/README.md` §4.1).
+ */
+export const ChangeValidationReport = z.object({
+  plan: z.string().min(1),
+  valid: z.boolean(),
+  checked: z.object({ steps: NonNegInt, tasks: NonNegInt, files: NonNegInt }),
+  errors: z.array(ValidationIssue),
+  warnings: z.array(ValidationIssue),
+  /** Tasks the gate could never pass, by `task_id`, with the rule that says so. */
+  refusals: z.array(z.object({
+    task_id: z.string().min(1),
+    code: z.string().min(1),
+    message: z.string().min(1),
+  })),
+  /**
+   * How many tasks of each shape. Reported because Phase 11b §4.4 **withholds its verdict** unless at
+   * least half the tasks are the harder three, and because every rate in this repository so far is for
+   * `rename` and `unused_import`. A planner that only emits renames should be visible as one.
+   */
+  shapes: z.record(z.string(), NonNegInt),
+  /** True when the expensive half — a real `tsc` over the project — was skipped. */
+  structural_only: z.boolean(),
+}).superRefine((r, ctx) => {
+  if (r.valid !== (r.errors.length === 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["valid"], message: "valid must equal errors.length === 0" });
+  }
+});
+export type ChangeValidationReport = z.infer<typeof ChangeValidationReport>;
+
+const FixResultFields = z.object({
+  run_id: z.string().min(1),
+  plan: z.string().min(1),
+  config: z.object({
+    worker_kind: WorkerKind,
+    worker_model: z.string().min(1),
+    concurrency: z.number().int().positive(),
+    retry: NonNegInt,
+  }),
+  /** The project at the start of the run and at the end of it — the monotone gate's evidence. */
+  project: z.object({
+    errors_before: NonNegInt,
+    errors_after: NonNegInt,
+    /** The suite, re-run once after every survivor of every step has landed together. */
+    tests_ran: NonNegInt,
+    tests_passed: NonNegInt,
+    /**
+     * Tests that passed at the run's first baseline and do not pass with **all** the survivors applied.
+     *
+     * Every verdict is taken against its own step's baseline, in a sandbox holding one candidate — so
+     * nothing in the per-task gate can see two survivors that are each fine and together are not. This
+     * is the only number in the run that can, and it should always be zero: anything else is a hole in
+     * the gate, named here rather than left for a user to find.
+     */
+    combined_regressions: NonNegInt,
+  }),
+  /** One row per step, in order, with the baseline re-captured between them (ADR-0044 §2). */
+  steps: z.array(z.object({
+    name: z.string().min(1),
+    tasks: NonNegInt,
+    survived: NonNegInt,
+    escalated: NonNegInt,
+    errors_before: NonNegInt,
+    errors_after: NonNegInt,
+  })),
+  stats: z.object({
+    tasks: NonNegInt,
+    survived: NonNegInt,
+    retried: NonNegInt,
+    escalated: NonNegInt,
+    /** Attempts, not tasks — a picture of where the gate rejected things, as workload #1's funnel is. */
+    funnel: z.object({
+      answered: NonNegInt,
+      edits_parsed: NonNegInt,
+      confined: NonNegInt,
+      applied: NonNegInt,
+      compiled: NonNegInt,
+      suite_green: NonNegInt,
+    }),
+    /**
+     * The two rows that say the number is about the **edit format** rather than about the model
+     * (ADR-0047 §2). Phase 11's frozen rule §4.4 turns a quarter of attempts here into an inconclusive
+     * run and a format experiment, rather than a no-go on the workload.
+     */
+    edit_parse_failed: NonNegInt,
+    edit_truncated: NonNegInt,
+    /**
+     * Tasks that produced no verdict because the **machine** failed — a sandbox that would not delete
+     * (ADR-0056), a runner that produced no report (ADR-0012). Counted apart so a survival rate's
+     * denominator can exclude what was never the worker's to answer.
+     *
+     * Phase 11 is why this is a field: project-b's twelfth task was lost to `ENOTEMPTY` during teardown
+     * and landed in `escalated`, where it is indistinguishable from *the worker could not do this*. The
+     * report had to carry both readings — `11/12` and `11/11` — because nothing in the contract could
+     * say which was which.
+     */
+    machine_failures: NonNegInt.default(0),
+    /**
+     * The candidate cache (ADR-0065). **Off by default, and a run that used it says so**, because a
+     * cached run's `generate_ms` is not a measurement: a hit is near-zero and drags the median towards
+     * a number no worker ever achieved. Any `experiments/` figure must come from a run with
+     * `enabled: false` — a measurement of what the workers do cannot be served from a record of what
+     * they did last time.
+     */
+    cache: z.object({
+      enabled: z.boolean(),
+      hits: NonNegInt,
+      writes: NonNegInt,
+    }).default({ enabled: false, hits: 0, writes: 0 }),
+    /** Tasks where the worker said it could not do this, with a reason (ADR-0044, *the other direction*). */
+    refusals: NonNegInt.default(0),
+    /**
+     * What ADR-0044 §4's correction round cost and bought, which is the whole of Phase 12 §2.2.
+     *
+     * `written` is the denominator the budget is spent against; `survived` over `written` is `S_c`; and
+     * `on_observations` is kept apart because it is a **different mechanism** — correcting a candidate
+     * that already passed (ADR-0057) — and pooling two mechanisms into one rate is what the frozen rule
+     * forbids.
+     */
+    corrections: z.object({
+      written: NonNegInt,
+      survived: NonNegInt,
+      on_observations: NonNegInt,
+      /** Opus tokens the corrections cost. Zero written means zero here, and the schema checks it. */
+      tokens: NonNegInt,
+      /** Why the round stopped early, when it did: the budget, the token cap, or nothing. */
+      budget_exhausted: z.string().nullable(),
+    }).default({ written: 0, survived: 0, on_observations: 0, tokens: 0, budget_exhausted: null }),
+    /** Each `ConfinementRule` that fired, by name and count — which cheap pass the worker reached for. */
+    confinement_breaks: z.record(z.string(), NonNegInt),
+    latency_ms: z.object({ median: Millis, p90: Millis }),
+    /** Kept apart because for 2a the expensive stage is the project's own suite, not the worker. */
+    generate_ms: z.object({ median: Millis, p90: Millis }),
+    gate_ms: z.object({ median: Millis, p90: Millis }),
+    peak_rss_mb: z.number().nonnegative(),
+    claude_tokens: z.object({
+      planning: NonNegInt,
+      /** Zero whenever `config.worker_kind` is `local` — enforced below, not merely intended. */
+      workers: NonNegInt,
+      review: NonNegInt.nullable(),
+    }),
+  }),
+  survivors: z.array(z.object({
+    task_id: z.string().min(1),
+    files: z.array(z.string().min(1)).min(1),
+    /** The unified diff on disk. The artefact a reviewer reads; nothing gates on it (ADR-0048). */
+    diff_path: z.string().min(1),
+    errors_fixed: NonNegInt,
+  })),
+  escalations: z.array(z.object({
+    task_id: z.string().min(1),
+    attempts: z.array(z.object({ error: ErrorText })),
+  })),
+});
+
+/** The same guarantee `BatchResult` carries, in the second workload's result (ADR-0009, ADR-0045). */
+export const FixResult = FixResultFields.superRefine((r, ctx) => {
+  if (r.config.worker_kind === "local" && r.stats.claude_tokens.workers !== 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "claude_tokens", "workers"],
+      message: "a local worker cannot spend Claude tokens — it is reached over http://localhost/v1",
+    });
+  }
+  // The api tier's half of the same guarantee (ADR-0045 §6, Phase 13 §5.0.2) — see `BatchResult` for
+  // the argument. `funnel.answered` is the right denominator here because it counts candidates that
+  // came back from a worker, which is exactly what a bill would be for.
+  if (r.config.worker_kind === "api" && r.stats.funnel.answered > 0 && r.stats.claude_tokens.workers === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "claude_tokens", "workers"],
+      message: `an api run that got ${r.stats.funnel.answered} answer(s) cannot have cost 0 worker tokens — this is either lost or estimated usage, and the tier's whole measurement is its price`,
+    });
+  }
+  // A run that never switched the cache on cannot have hit it. Cheap, and it is the field an
+  // `experiments/` reader checks before quoting `generate_ms` (ADR-0065).
+  if (!r.stats.cache.enabled && (r.stats.cache.hits > 0 || r.stats.cache.writes > 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "cache"],
+      message: "the cache reports hits or writes but was not enabled for this run",
+    });
+  }
+  const c = r.stats.corrections;
+  if (c.survived > c.written) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "corrections", "survived"],
+      message: `more corrected attempts survived (${c.survived}) than corrections were written (${c.written})`,
+    });
+  }
+  if (c.written === 0 && c.tokens !== 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "corrections", "tokens"],
+      message: "a run that wrote no corrections cannot have spent Opus tokens writing them",
+    });
+  }
+  // The correction round is Opus writing notes. On the local tier the *workers* stay free (above) and
+  // this is the one place a `fix` run may legitimately spend Claude tokens, so it is accounted in
+  // `planning` rather than hidden: §2.2 prices corrections against what escalation would have cost, and
+  // a token that is not in the result is a token the measurement cannot see.
+  if (c.tokens > r.stats.claude_tokens.planning) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["stats", "corrections", "tokens"],
+      message: `corrections cost ${c.tokens} tokens but claude_tokens.planning is ${r.stats.claude_tokens.planning} — corrections are Opus tokens and must be inside the run's accounting`,
+    });
+  }
+});
+export type FixResult = z.infer<typeof FixResultFields>;

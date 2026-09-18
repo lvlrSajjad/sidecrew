@@ -2,6 +2,7 @@
   "name": "@sidecrew/ts-fixture",
   "private": true,
   "version": "0.0.0",
+  "_stryker_comment": "Pinned to ^8 deliberately (ADR-0030). @stryker-mutator/instrumenter@10 depends on @babel/plugin-proposal-decorators@8, which is ESM-only, and require()s it through its own nested @babel/core — ERR_REQUIRE_ESM on every project, with or without decorators. 8.7.1 uses 7.24.7 and works. Do not bump to 10 without re-running a real-world trial.",
   "description": "Verifier fixture: pure TypeScript functions with a Vitest suite. Phase 2 fills src/.",
   "type": "module",
   "scripts": {

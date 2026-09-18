@@ -1,0 +1,41 @@
+{
+  "measured": true,
+  "experiment": "mutant-probe",
+  "date": "2026-09-14T17:16:31.080Z",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32
+  },
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Async.swift",
+  "language": "swift",
+  "framework": "xctest",
+  "note": "`plannable` is the question; `mutants > 0` is not the same question. A mutant that crashes the process counts towards the score and never towards survival (ADR-0005), so a function whose only mutant crashes has mutants and can still never be survived. `unknown` means mutants survived this probe and nobody has looked at whether they are equivalent — plan such a function only after someone has.",
+  "probes": [
+    {
+      "function": "firstSuccessful",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 34829
+    },
+    {
+      "function": "mapSeries",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 33598
+    }
+  ]
+}

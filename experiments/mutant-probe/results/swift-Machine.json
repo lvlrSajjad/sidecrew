@@ -1,0 +1,54 @@
+{
+  "measured": true,
+  "experiment": "mutant-probe",
+  "date": "2026-09-14T17:15:22.172Z",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32
+  },
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Machine.swift",
+  "language": "swift",
+  "framework": "xctest",
+  "note": "`plannable` is the question; `mutants > 0` is not the same question. A mutant that crashes the process counts towards the score and never towards survival (ADR-0005), so a function whose only mutant crashes has mutants and can still never be survived. `unknown` means mutants survived this probe and nobody has looked at whether they are equivalent — plan such a function only after someone has.",
+  "probes": [
+    {
+      "function": "applyAll",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 32851
+    },
+    {
+      "function": "canTransition",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 35287
+    },
+    {
+      "function": "nextState",
+      "mutants": 1,
+      "killed": 0,
+      "survived": 0,
+      "timeout": 1,
+      "no_coverage": 0,
+      "plannable": "crash_only",
+      "probe_survived": false,
+      "stage_reached": "done",
+      "error": "no mutant of nextState was killed: 0 survived, 0 were never reached, 1 crashed or timed out rather than failing an assertion. The test passes against the original code and against every changed version of it.",
+      "ms": 34998
+    }
+  ]
+}

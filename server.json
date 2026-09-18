@@ -1,10 +1,22 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.lvlrSajjad/sidecrew",
-  "description": "Local worker models for coding agents behind a compile→run→mutation verifier. Claude plans; on-device MLX models write; only survivors come back.",
-  "version": "0.0.1",
+  "description": "Unit tests written by local MLX models, behind a compile→run→mutation verifier.",
+  "version": "0.0.2",
+  "repository": {
+    "url": "https://github.com/lvlrSajjad/sidecrew",
+    "source": "github"
+  },
   "packages": [
-    { "registry_name": "npm", "name": "sidecrew", "version": "0.0.1",
-      "package_arguments": [ { "type": "positional", "value": "mcp" } ] }
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "sidecrew",
+      "version": "0.0.2",
+      "transport": { "type": "stdio" },
+      "package_arguments": [
+        { "type": "positional", "value": "mcp", "value_hint": "mcp" }
+      ]
+    }
   ]
 }

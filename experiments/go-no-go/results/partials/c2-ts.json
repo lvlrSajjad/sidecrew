@@ -1,0 +1,683 @@
+{
+  "measured": true,
+  "config": "c2",
+  "config_label": "Qwen2.5-Coder-7B-Instruct-4bit",
+  "fixture": "ts",
+  "language": "typescript",
+  "measured_at": "2026-09-14T18:14:31.848Z",
+  "free_gb_at_start": 8.074600219726562,
+  "worker": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "base_url": "http://localhost:8000/v1"
+  },
+  "peak_worker_rss_mb": 205.1,
+  "tasks": 20,
+  "survived": 17,
+  "survival_rate": 0.85,
+  "funnel": {
+    "tasks": 20,
+    "compiled": 20,
+    "passed": 17,
+    "killed_ge_1": 17,
+    "non_tautological": 17
+  },
+  "attempts": 23,
+  "retried": 3,
+  "escalated": 3,
+  "latency_ms": {
+    "median": 14635,
+    "p90": 22540
+  },
+  "generate_ms": {
+    "median": 5277,
+    "p90": 9649
+  },
+  "verify_ms": {
+    "median": 7396,
+    "p90": 17263
+  },
+  "median_mutation_score_of_survivors": 1,
+  "median_completion_tokens": 150,
+  "failure_stages": {
+    "pass": 3
+  },
+  "claude_tokens": {
+    "planning": 129234,
+    "workers": 0,
+    "review": null
+  },
+  "records": [
+    {
+      "task_id": "truncate:boundary:0",
+      "function": "truncate",
+      "shape": "boundary",
+      "survived": false,
+      "retried": true,
+      "escalated": true,
+      "escalation_reason": "failed at pass",
+      "latency_ms": 14635,
+      "attempts": [
+        {
+          "task_id": "truncate:boundary:0",
+          "attempt": 0,
+          "survived": false,
+          "stage_reached": "pass",
+          "compile_ok": true,
+          "pass_ok": false,
+          "tautological": false,
+          "killed": 0,
+          "mutation_score": null,
+          "mutants": 0,
+          "prompt_tokens": 388,
+          "completion_tokens": 181,
+          "generate_ms": 7138,
+          "verify_ms": 1072,
+          "error": "vitest run test/truncate.boundary.0.test.ts failed:\n\n RUN  v2.1.9 /private/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-ts-hinptX\n\n ❯ test/truncate.boundary.0.test.ts (3 tests | 1 failed) 5ms\n   × truncate > returns the text unchanged when it fits within maxLength 4ms\n     → expected 'tex…' to be 'text' // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  1 failed | 2 passed (3)\n   Start at  20:09:20\n   Duration  210ms (transform 24ms, setup 0ms, collect 20ms, tests 5ms, environment 0ms, prepare 36ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  test/truncate.boundary.0.test.ts > truncate > returns the text unchanged when it fits within maxLength\nAssertionError: expected 'tex…' to be 'text' // Object.is equality\n\nExpected: \"text\"\nReceived: \"tex…\"\n\n ❯ test/truncate.boundary.0.test.ts:11:33\n      9| \n     10|   it(\"returns the text unchanged when it fits within maxLength\", () =>…\n     11|     expect(truncate(\"text\", 4)).toBe(\"text\");\n       |                                 ^\n     12|     expect(truncate(\"text\", 5)).toBe(\"text\");\n     13|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+        },
+        {
+          "task_id": "truncate:boundary:1",
+          "attempt": 1,
+          "survived": false,
+          "stage_reached": "pass",
+          "compile_ok": true,
+          "pass_ok": false,
+          "tautological": false,
+          "killed": 0,
+          "mutation_score": null,
+          "mutants": 0,
+          "prompt_tokens": 795,
+          "completion_tokens": 170,
+          "generate_ms": 5530,
+          "verify_ms": 895,
+          "error": "vitest run test/truncate.boundary.1.test.ts failed:\n\n RUN  v2.1.9 /private/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-ts-EyRaMk\n\n ❯ test/truncate.boundary.1.test.ts (4 tests | 2 failed) 5ms\n   × truncate > keeps a single usable character 3ms\n     → expected '…' to be 'A' // Object.is equality\n   × truncate > returns the text unchanged when it fits within maxLength 0ms\n     → expected 'tex…' to be 'text' // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  2 failed | 2 passed (4)\n   Start at  20:09:26\n   Duration  194ms (transform 20ms, setup 0ms, collect 18ms, tests 5ms, environment 0ms, prepare 30ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  test/truncate.boundary.1.test.ts > truncate > keeps a single usable character\nAssertionError: expected '…' to be 'A' // Object.is equality\n\nExpected: \"A\"\nReceived: \"…\"\n\n ❯ test/truncate.boundary.1.test.ts:10:30\n      8| \n      9|   it(\"keeps a single usable character\", () => {\n     10|     expect(truncate(\"A\", 1)).toBe(\"A\");\n       |                              ^\n     11|   });\n     12| \n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯\n\n FAIL  test/truncate.boundary.1.test.ts > truncate > returns the text unchanged when it fits within maxLength\nAssertionError: expected 'tex…' to be 'text' // Object.is equality\n\nExpected: \"text\"\nReceived: \"tex…\"\n\n ❯ test/truncate.boundary.1.test.ts:18:33\n     16| \n     17|   it(\"returns the text unchanged when it fits within maxLength\", () =>…\n     18|     expect(truncate(\"text\", 4)).toBe(\"text\");\n       |                                 ^\n     19|     expect(truncate(\"text\", 5)).toBe(\"text\");\n     20|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯"
+        }
+      ]
+    },
+    {
+      "task_id": "titleCase:happy_path:0",
+      "function": "titleCase",
+      "shape": "happy_path",
+      "survived": false,
+      "retried": true,
+      "escalated": true,
+      "escalation_reason": "failed at pass",
+      "latency_ms": 8995,
+      "attempts": [
+        {
+          "task_id": "titleCase:happy_path:0",
+          "attempt": 0,
+          "survived": false,
+          "stage_reached": "pass",
+          "compile_ok": true,
+          "pass_ok": false,
+          "tautological": false,
+          "killed": 0,
+          "mutation_score": null,
+          "mutants": 0,
+          "prompt_tokens": 344,
+          "completion_tokens": 105,
+          "generate_ms": 3513,
+          "verify_ms": 894,
+          "error": "vitest run test/titleCase.happy_path.0.test.ts failed:\n\n RUN  v2.1.9 /private/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-ts-zivMEF\n\n ❯ test/titleCase.happy_path.0.test.ts (2 tests | 1 failed) 5ms\n   × titleCase > handles multiple consecutive spaces 3ms\n     → expected '  Multiple   Spaces  ' to be 'Multiple Spaces' // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  1 failed | 1 passed (2)\n   Start at  20:09:31\n   Duration  179ms (transform 22ms, setup 0ms, collect 17ms, tests 5ms, environment 0ms, prepare 36ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  test/titleCase.happy_path.0.test.ts > titleCase > handles multiple consecutive spaces\nAssertionError: expected '  Multiple   Spaces  ' to be 'Multiple Spaces' // Object.is equality\n\nExpected: \"Multiple Spaces\"\nReceived: \"  Multiple   Spaces  \"\n\n ❯ test/titleCase.happy_path.0.test.ts:10:48\n      8| \n      9|   it(\"handles multiple consecutive spaces\", () => {\n     10|     expect(titleCase(\"  multiple   spaces  \")).toBe(\"Multiple Spaces\");\n       |                                                ^\n     11|   });\n     12| });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+        },
+        {
+          "task_id": "titleCase:happy_path:1",
+          "attempt": 1,
+          "survived": false,
+          "stage_reached": "pass",
+          "compile_ok": true,
+          "pass_ok": false,
+          "tautological": false,
+          "killed": 0,
+          "mutation_score": null,
+          "mutants": 0,
+          "prompt_tokens": 744,
+          "completion_tokens": 99,
+          "generate_ms": 3710,
+          "verify_ms": 878,
+          "error": "vitest run test/titleCase.happy_path.1.test.ts failed:\n\n RUN  v2.1.9 /private/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-ts-73kRTW\n\n ❯ test/titleCase.happy_path.1.test.ts (2 tests | 1 failed) 4ms\n   × titleCase > handles multiple consecutive spaces 3ms\n     → expected '  Multiple   Spaces  ' to be 'Multiple Spaces' // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  1 failed | 1 passed (2)\n   Start at  20:09:35\n   Duration  175ms (transform 24ms, setup 0ms, collect 18ms, tests 4ms, environment 0ms, prepare 37ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  test/titleCase.happy_path.1.test.ts > titleCase > handles multiple consecutive spaces\nAssertionError: expected '  Multiple   Spaces  ' to be 'Multiple Spaces' // Object.is equality\n\nExpected: \"Multiple Spaces\"\nReceived: \"  Multiple   Spaces  \"\n\n ❯ test/titleCase.happy_path.1.test.ts:10:48\n      8| \n      9|   it(\"handles multiple consecutive spaces\", () => {\n     10|     expect(titleCase(\"  multiple   spaces  \")).toBe(\"Multiple Spaces\");\n       |                                                ^\n     11|   });\n     12| });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+        }
+      ]
+    },
+    {
+      "task_id": "countOccurrences:happy_path:0",
+      "function": "countOccurrences",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 24241,
+      "attempts": [
+        {
+          "task_id": "countOccurrences:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 1,
+          "mutants": 10,
+          "prompt_tokens": 390,
+          "completion_tokens": 109,
+          "generate_ms": 3743,
+          "verify_ms": 20498,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "countOccurrences:boundary:0",
+      "function": "countOccurrences",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 26602,
+      "attempts": [
+        {
+          "task_id": "countOccurrences:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 5,
+          "mutation_score": 1,
+          "mutants": 10,
+          "prompt_tokens": 400,
+          "completion_tokens": 218,
+          "generate_ms": 6250,
+          "verify_ms": 20352,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "commonPrefix:boundary:0",
+      "function": "commonPrefix",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 16866,
+      "attempts": [
+        {
+          "task_id": "commonPrefix:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 0.8,
+          "mutants": 10,
+          "prompt_tokens": 369,
+          "completion_tokens": 259,
+          "generate_ms": 7504,
+          "verify_ms": 9362,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "roundTo:happy_path:0",
+      "function": "roundTo",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 15899,
+      "attempts": [
+        {
+          "task_id": "roundTo:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 0.5,
+          "mutants": 8,
+          "prompt_tokens": 379,
+          "completion_tokens": 262,
+          "generate_ms": 7565,
+          "verify_ms": 8334,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "percentChange:error_or_throw:0",
+      "function": "percentChange",
+      "shape": "error_or_throw",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 12138,
+      "attempts": [
+        {
+          "task_id": "percentChange:error_or_throw:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 6,
+          "mutation_score": 1,
+          "mutants": 6,
+          "prompt_tokens": 381,
+          "completion_tokens": 145,
+          "generate_ms": 4742,
+          "verify_ms": 7396,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "gcd:happy_path:0",
+      "function": "gcd",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 11950,
+      "attempts": [
+        {
+          "task_id": "gcd:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 2,
+          "mutation_score": 1,
+          "mutants": 4,
+          "prompt_tokens": 387,
+          "completion_tokens": 166,
+          "generate_ms": 5387,
+          "verify_ms": 6563,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "mean:happy_path:0",
+      "function": "mean",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 10551,
+      "attempts": [
+        {
+          "task_id": "mean:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 5,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": 354,
+          "completion_tokens": 103,
+          "generate_ms": 3704,
+          "verify_ms": 6847,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "mean:boundary:0",
+      "function": "mean",
+      "shape": "boundary",
+      "survived": false,
+      "retried": true,
+      "escalated": true,
+      "escalation_reason": "failed at pass",
+      "latency_ms": 12951,
+      "attempts": [
+        {
+          "task_id": "mean:boundary:0",
+          "attempt": 0,
+          "survived": false,
+          "stage_reached": "pass",
+          "compile_ok": true,
+          "pass_ok": false,
+          "tautological": false,
+          "killed": 0,
+          "mutation_score": null,
+          "mutants": 0,
+          "prompt_tokens": 413,
+          "completion_tokens": 216,
+          "generate_ms": 6381,
+          "verify_ms": 879,
+          "error": "vitest run test/mean.boundary.0.test.ts failed:\n\n RUN  v2.1.9 /private/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-ts-1DlodE\n\n ❯ test/mean.boundary.0.test.ts (5 tests | 1 failed) 5ms\n   × mean > returns the correct mean for a list with a mix of positive and negative numbers 3ms\n     → expected 0.6 to be 1 // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  1 failed | 4 passed (5)\n   Start at  20:11:41\n   Duration  172ms (transform 25ms, setup 0ms, collect 19ms, tests 5ms, environment 0ms, prepare 37ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  test/mean.boundary.0.test.ts > mean > returns the correct mean for a list with a mix of positive and negative numbers\nAssertionError: expected 0.6 to be 1 // Object.is equality\n\n- Expected\n+ Received\n\n- 1\n+ 0.6\n\n ❯ test/mean.boundary.0.test.ts:22:37\n     20| \n     21|   it(\"returns the correct mean for a list with a mix of positive and n…\n     22|     expect(mean([1, -2, 3, -4, 5])).toBe(1);\n       |                                     ^\n     23|   });\n     24| });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+        },
+        {
+          "task_id": "mean:boundary:1",
+          "attempt": 1,
+          "survived": false,
+          "stage_reached": "pass",
+          "compile_ok": true,
+          "pass_ok": false,
+          "tautological": false,
+          "killed": 0,
+          "mutation_score": null,
+          "mutants": 0,
+          "prompt_tokens": 835,
+          "completion_tokens": 139,
+          "generate_ms": 4809,
+          "verify_ms": 882,
+          "error": "vitest run test/mean.boundary.1.test.ts failed:\n\n RUN  v2.1.9 /private/var/folders/vc/hf4swrgn05z5bcxn8nzljd440000gn/T/sidecrew-ts-AadJyO\n\n ❯ test/mean.boundary.1.test.ts (3 tests | 1 failed) 4ms\n   × mean > returns the correct mean for a list with a mix of positive and negative numbers 3ms\n     → expected 0.6 to be 1 // Object.is equality\n\n Test Files  1 failed (1)\n      Tests  1 failed | 2 passed (3)\n   Start at  20:11:47\n   Duration  171ms (transform 23ms, setup 0ms, collect 18ms, tests 4ms, environment 0ms, prepare 35ms)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  test/mean.boundary.1.test.ts > mean > returns the correct mean for a list with a mix of positive and negative numbers\nAssertionError: expected 0.6 to be 1 // Object.is equality\n\n- Expected\n+ Received\n\n- 1\n+ 0.6\n\n ❯ test/mean.boundary.1.test.ts:14:37\n     12| \n     13|   it(\"returns the correct mean for a list with a mix of positive and n…\n     14|     expect(mean([1, -2, 3, -4, 5])).toBe(1);\n       |                                     ^\n     15|   });\n     16| });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯"
+        }
+      ]
+    },
+    {
+      "task_id": "median:happy_path:0",
+      "function": "median",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 17128,
+      "attempts": [
+        {
+          "task_id": "median:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 13,
+          "mutation_score": 0.9285714285714286,
+          "mutants": 14,
+          "prompt_tokens": 416,
+          "completion_tokens": 143,
+          "generate_ms": 4677,
+          "verify_ms": 12451,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "median:boundary:0",
+      "function": "median",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 17869,
+      "attempts": [
+        {
+          "task_id": "median:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 13,
+          "mutation_score": 0.9285714285714286,
+          "mutants": 14,
+          "prompt_tokens": 475,
+          "completion_tokens": 173,
+          "generate_ms": 5347,
+          "verify_ms": 12522,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "unique:happy_path:0",
+      "function": "unique",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 9657,
+      "attempts": [
+        {
+          "task_id": "unique:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 1,
+          "mutation_score": 1,
+          "mutants": 1,
+          "prompt_tokens": 322,
+          "completion_tokens": 144,
+          "generate_ms": 4576,
+          "verify_ms": 5081,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "zip:happy_path:0",
+      "function": "zip",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 12078,
+      "attempts": [
+        {
+          "task_id": "zip:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 4,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": 381,
+          "completion_tokens": 148,
+          "generate_ms": 4789,
+          "verify_ms": 7289,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "zip:boundary:0",
+      "function": "zip",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 11707,
+      "attempts": [
+        {
+          "task_id": "zip:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 3,
+          "mutation_score": 1,
+          "mutants": 5,
+          "prompt_tokens": 421,
+          "completion_tokens": 142,
+          "generate_ms": 4418,
+          "verify_ms": 7289,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "rotate:happy_path:0",
+      "function": "rotate",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 14052,
+      "attempts": [
+        {
+          "task_id": "rotate:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 7,
+          "mutation_score": 0.7777777777777778,
+          "mutants": 9,
+          "prompt_tokens": 369,
+          "completion_tokens": 150,
+          "generate_ms": 4765,
+          "verify_ms": 9287,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "rotate:boundary:0",
+      "function": "rotate",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 19558,
+      "attempts": [
+        {
+          "task_id": "rotate:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 7,
+          "mutation_score": 0.7777777777777778,
+          "mutants": 9,
+          "prompt_tokens": 409,
+          "completion_tokens": 372,
+          "generate_ms": 10112,
+          "verify_ms": 9446,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "takeWhile:happy_path:0",
+      "function": "takeWhile",
+      "shape": "happy_path",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 22540,
+      "attempts": [
+        {
+          "task_id": "takeWhile:happy_path:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 7,
+          "mutation_score": 1,
+          "mutants": 8,
+          "prompt_tokens": 388,
+          "completion_tokens": 143,
+          "generate_ms": 5277,
+          "verify_ms": 17263,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "takeWhile:boundary:0",
+      "function": "takeWhile",
+      "shape": "boundary",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 19520,
+      "attempts": [
+        {
+          "task_id": "takeWhile:boundary:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 6,
+          "mutation_score": 1,
+          "mutants": 8,
+          "prompt_tokens": 428,
+          "completion_tokens": 220,
+          "generate_ms": 9649,
+          "verify_ms": 9871,
+          "error": ""
+        }
+      ]
+    },
+    {
+      "task_id": "firstSuccessful:async:0",
+      "function": "firstSuccessful",
+      "shape": "async",
+      "survived": true,
+      "retried": false,
+      "escalated": false,
+      "escalation_reason": null,
+      "latency_ms": 20441,
+      "attempts": [
+        {
+          "task_id": "firstSuccessful:async:0",
+          "attempt": 0,
+          "survived": true,
+          "stage_reached": "done",
+          "compile_ok": true,
+          "pass_ok": true,
+          "tautological": false,
+          "killed": 2,
+          "mutation_score": 0.4,
+          "mutants": 5,
+          "prompt_tokens": 521,
+          "completion_tokens": 267,
+          "generate_ms": 11733,
+          "verify_ms": 8708,
+          "error": ""
+        }
+      ]
+    }
+  ]
+}

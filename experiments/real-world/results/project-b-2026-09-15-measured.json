@@ -1,0 +1,234 @@
+{
+  "measured": true,
+  "experiment": "real-world-trial-6-part-2",
+  "target": "project-b",
+  "date": "2026-09-15",
+  "headline": "4/10 = 0.40 on src/utils/array.ts, median survivor mutation score 0.871 — the first measured survival rate on a React project, through a compile gate that actually type-checks the candidate",
+  "second_headline": "the fail-open gate's inflation is measured, not argued: a real worker candidate fails tsc with TS2345 and passes all 7 of its tests at runtime, so the old gate would have printed 5/10",
+  "project": {
+    "stack": "React 18.2 + Vite, TypeScript 5.3.3, strict true with noImplicitAny false",
+    "test_runner": "jest 30.0.4 via ts-jest 29.3.2, preset ts-jest, diagnostics false in transform",
+    "package_manager": "pnpm 8.15.8",
+    "tracked_files": 3371,
+    "ts_tsx_lines": 576746,
+    "existing_test_files": 742,
+    "tsconfig_include": ["src", "internals/startingTemplate/**/*", "src/types/**/*"],
+    "test_dir_resolved_by_sidecrew": "test",
+    "test_dir_exists": false,
+    "jest_config_shape": "plain object (module.exports = {...}) — NOT a function and no projects key, so not one of the shapes ADR-0038's shim is untested against"
+  },
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "cpu": "Apple M2 Pro",
+    "total_gb": 32,
+    "os": "macOS 26.6.2",
+    "node": "v22.23.2 (nvm)",
+    "free_gb_range_during_session": [6, 16]
+  },
+  "sidecrew": { "head": "9396158", "built_from_head": true, "git_clean": true },
+  "worker": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "pinned": true, "temperature": 0, "seed": 42, "tier": "local",
+    "claude_tokens_for_worker_inference": 0
+  },
+  "target_modifications": "none — package.json gained only 3 Stryker devDependencies; pnpm-lock.yaml their resolutions (md5 98c513735e64e86007cfe300212b7ca4 restored); git status --porcelain -- src test empty throughout",
+  "environment_deviations": [
+    "NODE_OPTIONS=--max-old-space-size=8192 on every command that runs tsc. The unmodified result was recorded first: OOM refusal at 90 s wall, which sidecrew reports as a machine limit rather than a failed candidate.",
+    "SIDECREW_DIR=<project-a>/.sidecrew because serve was started from that directory for part 1; all run artifacts therefore live under project-a/.sidecrew/runs/",
+    "node v22.23.2 via nvm rather than the machine default 20.20.0",
+    "test-planner driven as an Opus subagent given claude/agents/test-planner.md — still not a registered agent type"
+  ],
+
+  "gate_validation_2a": {
+    "verdict": "the gate is CLOSED",
+    "illtyped_control": {
+      "candidate": "hand-written on intersection, shape copied from fixtures/ts-fixture/illtyped/silent-type-errors.test.ts",
+      "previous_trial_same_project_same_trick": "SURVIVED · compile ok · pass ok · score 1.00",
+      "this_trial": { "survived": false, "compile_ok": false, "stage_reached": "compile", "compile_ms": 75733 },
+      "errors_named": ["TS2322 line 7", "TS2322 line 8", "TS2554 line 13 Expected 2 arguments, but got 3", "TS2307 line 4 @jest/globals — NOT planted, this is prediction (e)"]
+    },
+    "derived_tsconfig": {
+      "present": true,
+      "contents": { "extends": "./tsconfig.json", "files": ["test/intersection.manual.0.test.ts"] },
+      "note": "the OPPOSITE of part 1's prediction 2, deliberately — project-a has no include and never writes this file; project-b's include does not cover test/ and so it does. The VerifierSetupError branch never fired on either project."
+    },
+    "mirror_controls": [
+      { "which": "(i) previous trial's probe test WITH @jest/globals import", "result": "failed at compile with exactly ONE error, TS2307, and nothing else — isolates prediction (e)" },
+      { "which": "(ii) same test in the project's own house style, ambient globals", "result": "SURVIVED · 6 killed / 0 survived · score 1.00 — identical to the number the previous trial measured through the broken gate" }
+    ],
+    "conclusion": "the fix widens the gate's reach and does not refuse the project"
+  },
+
+  "fail_open_inflation_measured": {
+    "task": "isSubsetDeep:happy_path:0",
+    "hand_written": false,
+    "compile": { "ok": false, "errors": ["TS2345 (attempt 0)", "TS2353 (attempt 1)"], "cause": "isSubsetDeep<T>(subset: T[], superset: T[]) infers T from the first argument, so a superset containing a shape absent from the subset does not assign — a genuine generic-inference trap" },
+    "runtime": { "verified": true, "how": "the same candidate run under the project's own jest inside a sandbox", "result": "PASS, 7 passed / 7 total" },
+    "what_the_old_gate_would_have_reported": "compile ok · pass ok, then sent to the mutation stage",
+    "killed_ge_1_measured": false,
+    "killed_ge_1_likelihood": "near-certain — the probe's weaker 2-assertion test killed 13 of isSubsetDeep's 16 mutants and these 7 assertions cover the branch structure",
+    "inflation": "1 task in 10. The broken gate would have printed 5/10 = 0.50 where the fixed gate prints 4/10 = 0.40.",
+    "significance": "the previous trial's decision to report no survival rate was load-bearing, not merely conservative"
+  },
+
+  "module": {
+    "name": "src/utils/array.ts",
+    "exported_functions": 11,
+    "export_style": "plain named exports (export function)",
+    "probe": { "source": "experiments/mutant-probe/project-b-array-unmod.json", "plannable": "11/11", "mutants_total": 96, "reused_not_rerun": true },
+    "plan": "plans/array-web/test_plan.json (planned fresh, valid on attempt 1, both exemplars survived)",
+    "exemplar_host": "intersection",
+    "scope_cut": {
+      "planned": "5 functions x 2 shapes = 10 tasks",
+      "instead_of": "10 functions x 2 shapes (11 plannable minus the exemplar host)",
+      "reason_given": "projected isDeepEqual verdict at 6 min 48 s, over the brief's ~6 min threshold",
+      "projection_was_wrong": true,
+      "actual_isDeepEqual_verdict_s": 362,
+      "actual_fixed_mutation_cost_s": 110,
+      "projected_fixed_mutation_cost_s": 165,
+      "honest_note": "the projection was 13% pessimistic; isDeepEqual's real verdict was 6 min 2 s, at the threshold rather than over it. A 10-function plan was affordable at roughly 80 minutes and was not run."
+    }
+  },
+
+  "run": {
+    "run_id": "2026-09-15T13-51-48Z-array",
+    "tasks": 10,
+    "attempts": 16,
+    "wall_clock_s": 2381,
+    "funnel": { "tasks": 10, "compiled": 14, "passed": 4, "killed_ge_1": 4, "non_tautological": 16, "survived": 4 },
+    "funnel_note": "compiled/passed/non_tautological count attempts (16); survived counts tasks (10)",
+    "survival_rate": 0.4,
+    "collapse_point": "pass — 14 of 16 attempts compiled and 4 passed; 10 of the 14 that type-checked asserted something untrue. Compile accounts for 2 of 16 attempts, both the same task. The tautology detector fired zero times and killed >= 1 cost nothing.",
+    "escalated": 6,
+    "retried": 6
+  },
+
+  "per_function": [
+    { "name": "isDeepEqual", "mutants": 31, "happy_path": "SURVIVED 0.710", "boundary": "SURVIVED 0.742", "survived": "2/2" },
+    { "name": "isSubsetDeep", "mutants": 16, "happy_path": "failed at compile x2 (the fail-open finding)", "boundary": "failed at pass x2", "survived": "0/2" },
+    { "name": "arrayDifference", "mutants": 12, "happy_path": "SURVIVED 1.000", "boundary": "failed at pass x2", "survived": "1/2" },
+    { "name": "notObjectArrays", "mutants": 6, "happy_path": "failed at pass x2", "boundary": "failed at pass x2", "survived": "0/2" },
+    { "name": "mergeUniqueByKey", "mutants": 2, "happy_path": "SURVIVED 1.000", "boundary": "failed at pass x2", "survived": "1/2" }
+  ],
+  "pooling_warning": "DO NOT pool these into one interval. killed >= 1 on mergeUniqueByKey means killing one of two mutants; on isDeepEqual it means killing one of thirty-one. The two 1.000 scores are on the 12- and 2-mutant functions and the two sub-0.75 scores are on the 31-mutant one, so the highest scores in the table are its weakest statements.",
+
+  "survivors": [
+    { "task": "arrayDifference:happy_path:0", "mutants": 12, "killed": 12, "mutation_survived": 0, "no_coverage": 0, "score": 1.0 },
+    { "task": "mergeUniqueByKey:happy_path:0", "mutants": 2, "killed": 2, "mutation_survived": 0, "no_coverage": 0, "score": 1.0 },
+    { "task": "isDeepEqual:boundary:0", "mutants": 31, "killed": 23, "mutation_survived": 6, "no_coverage": 2, "score": 0.742 },
+    { "task": "isDeepEqual:happy_path:0", "mutants": 31, "killed": 22, "mutation_survived": 5, "no_coverage": 4, "score": 0.710 }
+  ],
+  "median_survivor_mutation_score": 0.871,
+  "median_comparison": { "the-client_api": 1.0, "ts_fixture_haiku": 1.0, "why_lower_here": "two of four survivors are on a 31-mutant function where a real test cannot reach everything; isDeepEqual:happy_path killed 22 where the probe's own throwaway test killed 18. A 0.710 over 31 mutants is a stronger statement about a test than a 1.000 over 2." },
+
+  "by_shape": { "happy_path": { "survived": 3, "tasks": 5, "rate": 0.6 }, "boundary": { "survived": 1, "tasks": 5, "rate": 0.2 },
+    "note": "first shape-level breakdown on a real project. Four of five boundary tasks failed and three of those four share one mechanism (see failure_modes)." },
+
+  "cost": {
+    "one_candidate_end_to_end_2b": { "task": "intersection:happy_path", "generate_s": 8.6, "ttft_s": 2.27, "prompt_tokens": 305, "completion_tokens": 273, "compile_s": 77.1, "pass_s": 2.0, "mutation_s": 193.7, "mutants": 6, "verdict_s": 285.5, "result": "SURVIVED score 1.00" },
+    "over_the_run": {
+      "generate_median_s": 10.8, "generate_p90_s": 19.3, "ttft_median_s": 1.51,
+      "completion_tokens_median": 394, "completion_tokens_p90": 640, "prompt_tokens_median": 514,
+      "compile_succeeded_median_s": 82.7, "compile_succeeded_p90_s": 87.6, "compile_succeeded_n": 14,
+      "compile_failed_median_s": 73.8, "compile_failed_n": 2,
+      "pass_median_s": 2.1,
+      "mutation_median_s": 159.0, "mutation_p90_s": 252.6,
+      "mutation_per_task_s": { "mergeUniqueByKey (2 mutants)": 118.0, "arrayDifference (12)": 159.0, "isDeepEqual:boundary (31)": 252.6, "isDeepEqual:happy_path (31)": 266.4 },
+      "verdict_median_s": 212.7, "verdict_p90_s": 357.6
+    },
+    "new_cost_finding": "the compile stage's two modes have collapsed together. On project-a a failed compile costs a third of a success (11.8 s vs 31.4 s) because it short-circuits before ADR-0034's clone. Here a failure costs 89% of a success (73.8 s vs 82.7 s), because ADR-0037's derived-config path re-runs tsc whenever the candidate is not in the program, regardless of whether the first run found errors. On a project whose include excludes the test directory there is no longer a cheap way to discover a candidate is broken.",
+    "mutation_cost_fit": "approximately 110 s fixed + 5 s per mutant on this project"
+  },
+
+  "planning_cost": {
+    "meta_planner_tokens_in_plan": 0,
+    "meta_planner_tokens_measured": false,
+    "why": "scripts/planner-tokens.mjs cannot see a subagent's messages",
+    "agent_tool_reported_tokens": 91272,
+    "tool_calls": 21,
+    "wall_clock_s": 785,
+    "of_which_exemplar_validation_s": 563,
+    "exemplar_attempts": "2 exemplars, both survived on attempt 1, plan valid on the first validation"
+  },
+
+  "predictions": {
+    "d_adr_0038_jestConfigEntry": {
+      "verdict": "CONFIRMED, both halves",
+      "resolution_measured_directly": { "jest-config from root": "THROWS MODULE_NOT_FOUND", "jest from root": "resolves", "jest-config from jest's dir": "resolves in one hop", "jest-cli from root": "THROWS", "@jest/core from root": "THROWS" },
+      "shim_written": true,
+      "shim_absent_in_previous_trial": true,
+      "resolved_path_baked_into_shim": true,
+      "spread_breaks_nothing": "evidence is the mirror control — same candidate, before the shim existed and after, 6 mutants killed and score 1.00 both times, through a config carrying preset, a 4-entry transform, a 19-entry moduleNameMapper, setupFiles, jsdom, coverageThreshold and a computed maxWorkers",
+      "untested_shapes_still_untested": "a jest config that is a function, and one using projects — this project's is a plain object, checked not assumed",
+      "minor": "the shim writes globals['ts-jest'].diagnostics while this project sets diagnostics in transform; both honoured, no ts-jest deprecation complaint"
+    },
+    "e_candidate_imports_do_not_resolve": {
+      "verdict": "OBSERVED — first time on a real project",
+      "reported_as_own_category": true,
+      "not_in_survival_rate": true,
+      "mechanism": "@jest/globals is not a declared dependency of project-b and does not resolve from the project root. Jest supplies its own public surface at runtime, which is why the previous trial's candidate ran; tsc does not, which is why it now fails.",
+      "isolated_by": "control (i) — one error, TS2307, on a candidate that scored 1.00 in the previous trial",
+      "cannot_find_type_definition_node": "not observed — @types/node resolved fine in the sandbox",
+      "why_it_did_not_contaminate": "the project imports @jest/globals zero times; the planner read the house style, matched it in both exemplars, AND wrote the prohibition into both shapes' rules. 16 of 16 candidates imported only the function under test.",
+      "caveat": "neutralised by the plan, not by the tool — the same shape as ADR-0040's hint gap being neutralised by rules in the previous trial. Without that sentence this run could plausibly have been 0/10 with ten TS2307s."
+    },
+    "f_adr_0036_plugin_fix_transfers": {
+      "verdict": "CONFIRMED for the second trial running",
+      "evidence": "both plugins named by absolute path into .pnpm/ with the default glob kept first; no 'Unknown stryker config option jest', no 'Cannot find Checker plugin typescript'; 96 mutants generated, type-checked and killed across this run and the controls on 576,746 lines"
+    }
+  },
+
+  "failure_modes": {
+    "self_contradicting_enumeration": {
+      "tasks": ["arrayDifference:boundary:1", "mergeUniqueByKey:boundary:1"],
+      "description": "the model enumerates test NAMES and then writes an expectation matching the name rather than the function, then writes the true version of the same case a few tests later in the same file without noticing. arrayDifference:boundary:1 contradicts itself twice (tests 2 vs 6, 3 vs 5) and repeats one test four times verbatim; mergeUniqueByKey:boundary:1 is 8/10 correct with each of its two wrong tests contradicted by the test immediately after it.",
+      "mechanically_detectable": true,
+      "would_move_the_number": "both would have been survivors under a verifier-side filter dropping any assertion contradicted by another assertion on the same call in the same file — no model tokens, and it acts exactly at the collapse point"
+    },
+    "exemplar_data_transplanted_into_the_complement_function": {
+      "task": "notObjectArrays:happy_path:1 (and all 4 notObjectArrays attempts)",
+      "description": "the exemplar host is intersection; notObjectArrays is its complement. The candidate copied the exemplar's second test verbatim — same name 'keeps the order of the first array', same inputs (['c','a','b'], ['a','b','c']), same expectation ['c','a','b']. Correct for intersection; for set difference the answer is [].",
+      "consequence": "notObjectArrays went 0/2, all four attempts failing at pass",
+      "gap": "the host rule guards against an exemplar that hands over the ANSWER and says nothing about one that hands over the OPPOSITE answer, which is worse — a leaked correct answer inflates a rate, a leaked wrong answer destroys a function's tasks and looks like model error"
+    },
+    "planner_knew_and_had_nowhere_to_put_it": {
+      "task": "isSubsetDeep:boundary:1",
+      "description": "failed at pass asserting isSubsetDeep([1,1],[1,2]) is true. The plan's notes state the multiset-containment rule in as many words and notes is never rendered into the prompt.",
+      "instance": "third project-independent instance, after InsightsColorEnum and randomUUID"
+    }
+  },
+
+  "review": {
+    "threshold": 0.6,
+    "below_threshold": 0,
+    "audit_sample": 1,
+    "not_reviewed": 3,
+    "batches": 1,
+    "estimated_token_cap": 12000,
+    "selected": "isDeepEqual:boundary:0 at 0.74 (audit)"
+  },
+  "escalate": { "count": 6, "suggested_model": "sonnet" },
+
+  "threats": [
+    "n = 10 tasks, 5 functions, one module, one project, one seed. The exact binomial 95% interval on 4/10 runs from roughly 0.12 to 0.74.",
+    "the per-function rates must not be pooled; mutant density runs 2 to 31 across the five functions",
+    "the plan was cut from 10 functions to 5 on a projection that was 13% pessimistic, and the five were chosen rather than sampled",
+    "(e) was neutralised by the plan's rules, not by the tool",
+    "the exemplar host is notObjectArrays' semantic complement and that function went 0/2 — 4/10 excluding it would be 4/8 = 0.50; the honest number is 4/10 and both are stated",
+    "every tsc ran with NODE_OPTIONS=--max-old-space-size=8192; without it the compile stage does not complete at all",
+    "meta.planner_tokens is 0 and unmeasured; the real planning cost was 91,272 Agent-tool tokens and is not in result.json",
+    "the test-planner agent is still not a registered agent type and was driven as a subagent",
+    "the machine was not quiet: free RAM 6-16 GB, a planner subagent and a probe ran concurrently with parts of the setup though never with the measured run, and thermal back-off was off",
+    "array.ts is the purest file in a large React codebase and was chosen for that; nothing here says anything about components, hooks, context or anything needing a render harness",
+    "one of the four survivors has been seen by Claude (the audit sample); 'survived' means 'passed the verifier', not 'a human would merge it'"
+  ],
+
+  "new_findings": [
+    "the fail-open gate's inflation is 1 task in 10 on this module, demonstrated on real worker output: a candidate that fails tsc and passes 7/7 at runtime",
+    "the exemplar-host rule needs to exclude semantic neighbours (complements), not just syntactic twins",
+    "a self-contradicting test file is mechanically detectable and is the dominant failure mode at the collapse point",
+    "ADR-0037's derived-config path makes a failed compile cost 89% of a successful one on projects whose include excludes the test directory, against 33% elsewhere",
+    "boundary 1/5 against happy_path 3/5 — the first shape-level split on a real project"
+  ]
+}

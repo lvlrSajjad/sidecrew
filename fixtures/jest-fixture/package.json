@@ -1,0 +1,20 @@
+{
+  "name": "@sidecrew/jest-fixture",
+  "private": true,
+  "version": "0.0.0",
+  "_stryker_comment": "Pinned to ^8 deliberately (ADR-0030). @stryker-mutator/instrumenter@10 depends on @babel/plugin-proposal-decorators@8, which is ESM-only, and require()s it through its own nested @babel/core — ERR_REQUIRE_ESM on every project, with or without decorators. 8.7.1 uses 7.24.7 and works. Do not bump to 10 without re-running a real-world trial.",
+  "description": "Runner fixture: the same pure functions as ts-fixture, under Jest instead of Vitest (ADR-0028).",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^8.6.0",
+    "@stryker-mutator/jest-runner": "^8.6.0",
+    "@stryker-mutator/typescript-checker": "^8.6.0",
+    "@types/jest": "^29.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.6.0"
+  }
+}

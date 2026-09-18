@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { run, ok, firstLine } from "../src/exec.js";
+import { stageEnv } from "../src/verifier/ts.js";
 
 describe("run", () => {
   it("reports a successful command", async () => {
@@ -59,5 +60,43 @@ describe("run", () => {
 
   it("firstLine picks the first non-empty line of either stream", async () => {
     expect(firstLine(await run("node", ["--version"]))).toMatch(/^v\d+\./);
+  });
+});
+
+describe("a stage's environment is not the launcher's — ADR-0052", () => {
+  it("removes a variable the caller set to undefined, which a spread cannot express", async () => {
+    const r = await run(process.execPath, ["-e", "console.log(JSON.stringify(process.env.SIDECREW_PROBE ?? null))"], {
+      env: { SIDECREW_PROBE: undefined },
+      timeoutMs: 10_000,
+    });
+    expect(r.stdout.trim()).toBe("null");
+  });
+
+  it("keeps a variable the caller set to a value", async () => {
+    const r = await run(process.execPath, ["-e", "console.log(process.env.SIDECREW_PROBE)"], {
+      env: { SIDECREW_PROBE: "kept" },
+      timeoutMs: 10_000,
+    });
+    expect(r.stdout.trim()).toBe("kept");
+  });
+
+  it("strips every npm_* the launcher exported, so a project's cache resolves where the project put it", () => {
+    const parent = {
+      PATH: "/usr/bin",
+      npm_config_cache: "/somewhere/else",
+      npm_package_name: "sidecrew",
+      INIT_CWD: "/elsewhere",
+      NODE: "/some/node",
+      HOME: "/Users/someone",
+    };
+    const env = stageEnv(parent);
+    for (const k of ["npm_config_cache", "npm_package_name", "INIT_CWD", "NODE"]) {
+      expect(env[k], `${k} must be unset for the child`).toBeUndefined();
+      expect(k in env, `${k} must be present as an explicit undefined, or the spread will not remove it`).toBe(true);
+    }
+    // What the stage adds is unchanged, and what it has no opinion about is left alone.
+    expect(env.CI).toBe("true");
+    expect(env.NO_COLOR).toBe("1");
+    expect("HOME" in env).toBe(false);
   });
 });

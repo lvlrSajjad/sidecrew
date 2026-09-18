@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    // CommonJS, unlike ts-fixture's ESNext/Bundler, and on purpose: this fixture exists to prove the
+    // *runner* is a seam, so it is a project shaped the way Jest projects usually are rather than a
+    // copy of the vitest one with the runner swapped. ts-jest transpiles to CJS and Jest runs it.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["jest", "node"]
+  },
+  "include": ["src", "test", "legitimate"]
+}

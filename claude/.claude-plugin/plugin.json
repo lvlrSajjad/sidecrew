@@ -1,0 +1,10 @@
+{
+  "name": "sidecrew",
+  "version": "0.0.2",
+  "description": "Generate unit tests with local MLX worker models behind a compile→run→mutation verifier. Claude plans and reviews; on-device models do the narrow work; only survivors come back.",
+  "author": { "name": "Sadjad Asadi", "url": "https://github.com/lvlrSajjad" },
+  "homepage": "https://github.com/lvlrSajjad/sidecrew",
+  "repository": "https://github.com/lvlrSajjad/sidecrew",
+  "license": "MIT",
+  "keywords": ["testing", "mutation-testing", "local-llm", "mlx", "swift", "typescript"]
+}

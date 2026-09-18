@@ -1,0 +1,37 @@
+{
+  "measured": true,
+  "what": "The Agent tool reports `subagent_tokens` as a single total dominated by the harness's own system prompt and tool definitions. \u00a74.2 makes T(x) a criterion, so reporting that total for arms A and B would inflate them and flatter arm C by roughly an order of magnitude.",
+  "floor_probes": [
+    {
+      "prompt": "Reply with only the word DONE. Do not use any tools.",
+      "tokens": 47928
+    },
+    {
+      "prompt": "Reply with only the word OK. Do not use any tools.",
+      "tokens": 47926
+    }
+  ],
+  "floor_tokens": 47927,
+  "floor_spread": 2,
+  "why_it_is_stable": "the floor is the agent's system prompt plus tool definitions, which do not vary between invocations of the same agent type",
+  "rule": "T for an agent-driven arm is `subagent_tokens - 47927`, per invocation, and the raw total is reported beside it",
+  "worked_examples": [
+    {
+      "task": "rename-01 (single file)",
+      "raw": 50734,
+      "marginal": 2807
+    },
+    {
+      "task": "multi-01 (3 files)",
+      "raw": 53955,
+      "marginal": 6028
+    },
+    {
+      "task": "multi-02 (3 files, grep)",
+      "raw": 51411,
+      "marginal": 3484
+    }
+  ],
+  "caveat": "This makes arms A and B comparable with each other and with arm C's *worker* cost. It is still not a billing figure: the harness is a real cost to whoever runs it, and a person using Claude Code pays something like it. Both numbers are reported.",
+  "precedent": "Phase 6 and Phase 11 noted the same inflation as a caveat on C3; here T is a criterion, so it is corrected rather than caveated."
+}

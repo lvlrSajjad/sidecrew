@@ -1,0 +1,12 @@
+{
+  "measured": true,
+  "config": "c2b",
+  "task_id": "truncate:boundary:0",
+  "runs": 3,
+  "identical": true,
+  "lengths": [
+    744,
+    744,
+    744
+  ]
+}

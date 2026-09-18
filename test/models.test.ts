@@ -49,11 +49,15 @@ describe("tierFor", () => {
     }
   });
 
-  it("sends a 16 GB machine to the api tier with nothing to host", () => {
+  it("sends a 16 GB machine to the api tier with nothing to host — ADR-0009, ADR-0060", () => {
     expect(tierFor(16).tier).toBe("api");
-    expect(tierFor(16).model).toBeNull();
-    expect(modelForMachine(16)).toBeNull();
     expect(tierFor(8).tier).toBe("api");
+    // The rule names a model now (ADR-0060 filled in ADR-0045 §2's pin), and it is still nothing this
+    // machine *hosts*: a hosted id is not a key in `models` and nothing downloads it. `modelForMachine`
+    // answers about hosting, so it is still null, and the id is reached through `apiModel()`.
+    expect(tierFor(16).model).toBe("claude-haiku-4-5");
+    expect(modelForMachine(16)).toBeNull();
+    expect(modelForMachine(8)).toBeNull();
   });
 
   it("reads 'installed 32 GB' from a measurement that is a little under it", () => {

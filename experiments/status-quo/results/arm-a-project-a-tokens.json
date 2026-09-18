@@ -1,0 +1,62 @@
+{
+  "measured": true,
+  "arm": "A (Opus alone)",
+  "project": "project-a",
+  "floor_tokens": 47927,
+  "tasks": [
+    {
+      "task_id": "rename-01",
+      "raw": 50734,
+      "marginal": 2807,
+      "files": 1
+    },
+    {
+      "task_id": "multi-01",
+      "raw": 53955,
+      "marginal": 6028,
+      "files": 3
+    },
+    {
+      "task_id": "multi-02",
+      "raw": 51411,
+      "marginal": 3484,
+      "files": 3
+    },
+    {
+      "task_id": "rename-02",
+      "raw": 50961,
+      "marginal": 3034,
+      "files": 1
+    },
+    {
+      "task_id": "rename-03",
+      "raw": 50888,
+      "marginal": 2961,
+      "files": 1
+    },
+    {
+      "task_id": "rename-04",
+      "raw": 50850,
+      "marginal": 2923,
+      "files": 1
+    },
+    {
+      "task_id": "rename-05",
+      "raw": 52340,
+      "marginal": 4413,
+      "files": 1
+    },
+    {
+      "task_id": "rename-06",
+      "raw": 51203,
+      "marginal": 3276,
+      "files": 1
+    },
+    {
+      "task_id": "rename-07",
+      "raw": 50706,
+      "marginal": 2779,
+      "files": 1
+    }
+  ]
+}

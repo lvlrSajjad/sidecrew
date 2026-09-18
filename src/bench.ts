@@ -3,12 +3,13 @@
 // Everything written here is labelled `"measured": true` and carries the machine it came from, because
 // a tok/s without a machine is not a number anyone can use, and the go/no-go rule compares across runs.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { run, ok as exited0, firstLine, pythonBin } from "./exec.js";
 import { DEFAULT_PORT, baseUrlFor, readMemory, type Memory } from "./doctor.js";
 import { entries, entry, short, tierFor, type ModelEntry } from "./models.js";
-import { memoryGate, readRecord, serve, stop } from "./serve.js";
+import { currentGate, readRecord, serve, stop } from "./serve.js";
 import { complete, decodeTokensPerSecond, type Completion } from "./worker.js";
 
 export const RESULTS_DIR = "experiments/go-no-go/results";
@@ -244,6 +245,7 @@ export interface BenchOneOpts {
   requests?: number;
   quiet?: boolean;
   force?: boolean;
+  allowUnpinned?: boolean;
 }
 
 /** Start the model, warm it, measure it, stop it. Owns the worker it starts, and always stops it. */
@@ -255,7 +257,7 @@ export const benchOne = async (opts: BenchOneOpts): Promise<ModelBench> => {
   say(`\n── ${model.key} ──`);
   const [swapBefore, pageSize] = await Promise.all([swapouts(), pageSizeBytes()]);
   const loadStart = Date.now();
-  const record = await serve({ modelKey: model.key, port, quiet: opts.quiet, force: opts.force });
+  const record = await serve({ modelKey: model.key, port, quiet: opts.quiet, force: opts.force, allowUnpinned: opts.allowUnpinned });
   const load_ms = Date.now() - loadStart;
 
   const sampler = new RssSampler(record.pid);
@@ -356,6 +358,27 @@ export interface BenchReport {
 export const resultPath = (date = new Date(), dir = RESULTS_DIR, tag?: string): string =>
   join(dir, `bench-${date.toISOString().slice(0, 10)}${tag ? `-${tag}` : ""}.json`);
 
+/**
+ * A measurement is not allowed to overwrite a measurement.
+ *
+ * `--tag` has existed since Phase 1 and is how two runs sit beside each other, but it was a flag
+ * somebody had to remember: forget it and the second run of the day silently replaces the first, with
+ * the file's own `created` field the only evidence anything was lost. Phase 6 runs three or four
+ * configurations, most of them on one day, and its decision rule compares them — so the cost of
+ * forgetting went from "redo a run" to "compare a number against itself".
+ *
+ * Refusing is the whole fix, and the message names the flag rather than explaining the problem.
+ */
+export const refuseToClobber = (path: string, tag?: string): void => {
+  if (!existsSync(path)) return;
+  throw new Error(
+    `${path} already exists and a measurement does not overwrite a measurement. ` +
+    (tag === undefined
+      ? "Pass --tag <name> to put this run beside it — one tag per configuration."
+      : `Pass a different --tag; this one (${tag}) has already been used today.`),
+  );
+};
+
 const sha256 = async (text: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Buffer.from(digest).toString("hex").slice(0, 16);
@@ -369,6 +392,8 @@ export interface BenchOpts {
   requests?: number;
   outDir?: string;
   force?: boolean;
+  /** ADR-0027: bench a model whose cached weights are not the pinned commit. The report records it. */
+  allowUnpinned?: boolean;
   /** Distinguishes a run from another on the same date — e.g. the working set it was taken under. */
   tag?: string;
 }
@@ -392,15 +417,14 @@ export async function bench(opts: BenchOpts = {}): Promise<BenchReport> {
   for (const model of wanted) {
     // Free RAM is re-read per model: the previous model has just been stopped and its pages returned,
     // and asking once at the start would judge the 14B against memory the 7B was still holding.
-    const now = await readMemory();
-    const gate = memoryGate(model, now);
+    const gate = await currentGate(model);
     if (!gate.ok && !opts.force) {
       skipped.push({ key: model.key, reason: gate.reason });
       process.stdout.write(`skipping ${model.key}: ${gate.reason}\n`);
       continue;
     }
     try {
-      results.push(await benchOne({ model, port, prompt, determinism: true, requests: opts.requests, force: opts.force }));
+      results.push(await benchOne({ model, port, prompt, determinism: true, requests: opts.requests, force: opts.force, allowUnpinned: opts.allowUnpinned }));
     } catch (e) {
       skipped.push({ key: model.key, reason: String((e as Error).message) });
       process.stdout.write(`${model.key} failed: ${String((e as Error).message)}\n`);
@@ -429,6 +453,7 @@ export async function bench(opts: BenchOpts = {}): Promise<BenchReport> {
   const dir = opts.outDir ?? RESULTS_DIR;
   await mkdir(dir, { recursive: true });
   const path = resultPath(new Date(), dir, opts.tag);
+  refuseToClobber(path, opts.tag);
   await writeFile(path, `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(`\n${renderBench(report)}\n\nwrote ${path}\n`);
   return report;
@@ -445,7 +470,7 @@ export async function benchDeterminism(opts: BenchOpts = {}): Promise<Determinis
 
   const existing = await readRecord(port);
   const started = existing === null;
-  const record = existing ?? await serve({ modelKey: opts.modelKey, port });
+  const record = existing ?? await serve({ modelKey: opts.modelKey, port, allowUnpinned: opts.allowUnpinned });
   const model = servedModelId(record);
 
   try {

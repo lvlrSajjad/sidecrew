@@ -1,0 +1,112 @@
+{
+  "measured": true,
+  "config": "c2",
+  "input": "fixture",
+  "label": "fixtures/fix-fixture",
+  "plan": "fixtures/fix-fixture/plans/fix-type-errors.json",
+  "commit": "7076f6ac2691dd4d5c152ea70f50b9774aa1a5c4",
+  "repo_dirty": true,
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32,
+    "free_gb": 19.16,
+    "at": "2026-09-18T03:46:02.711Z"
+  },
+  "result": {
+    "run_id": "2026-09-18T03-45-44Z-fix-fixture",
+    "plan": "<path>",
+    "config": {
+      "worker_kind": "local",
+      "worker_model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+      "concurrency": 1,
+      "retry": 1
+    },
+    "project": {
+      "errors_before": 3,
+      "errors_after": 0,
+      "tests_ran": 12,
+      "tests_passed": 11,
+      "combined_regressions": 0
+    },
+    "steps": [
+      {
+        "name": "guard the rate lookup",
+        "tasks": 1,
+        "survived": 1,
+        "escalated": 0,
+        "errors_before": 3,
+        "errors_after": 2
+      },
+      {
+        "name": "default the optional fields",
+        "tasks": 2,
+        "survived": 2,
+        "escalated": 0,
+        "errors_before": 2,
+        "errors_after": 0
+      }
+    ],
+    "stats": {
+      "tasks": 3,
+      "survived": 3,
+      "retried": 0,
+      "escalated": 0,
+      "funnel": {
+        "answered": 3,
+        "edits_parsed": 3,
+        "confined": 3,
+        "applied": 3,
+        "compiled": 3,
+        "suite_green": 3
+      },
+      "edit_parse_failed": 0,
+      "edit_truncated": 0,
+      "confinement_breaks": {},
+      "latency_ms": {
+        "median": 5891,
+        "p90": 5993
+      },
+      "generate_ms": {
+        "median": 5126,
+        "p90": 5233
+      },
+      "gate_ms": {
+        "median": 758,
+        "p90": 761
+      },
+      "peak_rss_mb": 161.2,
+      "claude_tokens": {
+        "planning": 0,
+        "workers": 0,
+        "review": null
+      }
+    },
+    "survivors": [
+      {
+        "task_id": "rates",
+        "files": [
+          "src/rates.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 1
+      },
+      {
+        "task_id": "cart",
+        "files": [
+          "src/cart.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 1
+      },
+      {
+        "task_id": "report",
+        "files": [
+          "src/report.ts"
+        ],
+        "diff_path": "<path>",
+        "errors_fixed": 1
+      }
+    ],
+    "escalations": []
+  }
+}

@@ -35,6 +35,50 @@ const target = (entry: Pick<CandidateEntry, "source" | "function">) => ({
   functionName: entry.function,
 });
 
+describe("the compile stage must prove it checked the candidate — ADR-0037", () => {
+  // `tsconfig.narrow-include.json` is the fixture with `include: ["src"]`, so the candidate written to
+  // `test/` is outside every include glob — the shape a real React project had. Before ADR-0037 the
+  // stage reported `compile ok` without opening the candidate at all.
+  const NARROW = "tsconfig.narrow-include.json";
+
+  it(
+    "fails a candidate that passes at runtime and does not type-check",
+    { timeout: 10 * 60_000 },
+    async () => {
+      // Measured before the fix: survived, compile ok, pass ok, mutation score 0.8. A candidate that
+      // does not compile, through a gate whose first conjunct is "compiles".
+      const source = await readFile(`${FIXTURES}/illtyped/silent-type-errors.test.ts`, "utf8");
+      const verdict = await verifyTs(candidate("chunk:happy_path:0", source), {
+        target: { projectDir: FIXTURES, sourceFile: "src/arrays.ts", functionName: "chunk", tsconfig: NARROW },
+        concurrency: 1,
+      });
+      expect(verdict.compile_ok).toBe(false);
+      expect(verdict.survived).toBe(false);
+      expect(verdict.stage_reached).toBe("compile");
+      // All three, and nothing about the file list `--listFiles` prints to find them.
+      expect(verdict.error).toContain("TS2322");
+      expect(verdict.error).toContain("TS2554");
+      expect(verdict.error ?? "").not.toMatch(/^\/.*lib\.es5\.d\.ts$/m);
+    },
+  );
+
+  it(
+    "still survives a good candidate on that same project",
+    { timeout: 10 * 60_000 },
+    async () => {
+      // The fix must widen the program, not refuse the project. Same verdict as the normal tsconfig.
+      const source = await readFile(`${FIXTURES}/legitimate/boundary.test.ts`, "utf8");
+      const verdict = await verifyTs(candidate("chunk:boundary:0", source), {
+        target: { projectDir: FIXTURES, sourceFile: "src/arrays.ts", functionName: "chunk", tsconfig: NARROW },
+        concurrency: 1,
+      });
+      expect(verdict.compile_ok, verdict.error ?? "").toBe(true);
+      expect(verdict.stage_reached).toBe("done");
+      expect(verdict.survived).toBe(true);
+    },
+  );
+});
+
 describe("verifyTs on the fixture", () => {
   it("survives the four legitimate candidates and none of the four tautologies", async () => {
     for (const entry of await catalogue()) {
@@ -141,6 +185,27 @@ describe("verifyTs on the fixture", () => {
       { target: target({ source: "src/strings.ts", function: "truncate" }) },
     );
     expect(pinsTheBug.survived).toBe(true);
+  }, 300_000);
+
+  it("says `nothing here could be mutated` on TypeScript, not just on Swift", async () => {
+    // ADR-0005 named the two ways `killed == 0` happens and said the second was reachable on
+    // TypeScript. Measured in Phase 5, it is: under strict TS, every mutant of `machine.ts`'s
+    // `nextState` is a type error — `??` to `&&` changes the return type, an emptied body returns
+    // nothing — so Stryker's type checker drops all of them and the function has no mutants at all.
+    // A correct, thorough test of it therefore cannot survive, and the retry loop must not spend the
+    // one retry rewriting it. `fixtures/ts-fixture/README.md` explains why the module has no plan.
+    const verdict = await verifyTs(
+      candidate("nextState:happy_path:0", 'import { nextState } from "../src/machine";\nimport { it, expect } from "vitest";\nit("moves a draft order to placed", () => { expect(nextState("draft", "place")).toBe("placed"); expect(nextState("shipped", "cancel")).toBe("shipped"); });\n'),
+      { target: target({ source: "src/machine.ts", function: "nextState" }) },
+    );
+    expect(verdict.compile_ok).toBe(true);
+    expect(verdict.pass_ok).toBe(true);
+    expect(verdict.tautological).toBe(false);
+    const m = verdict.mutation!;
+    // All four zero — the branch a retry loop reads to tell this apart from "the test caught none".
+    expect([m.killed, m.survived, m.timeout, m.no_coverage]).toEqual([0, 0, 0, 0]);
+    expect(verdict.survived).toBe(false);
+    expect(verdict.error).toMatch(/could be mutated|was killed/);
   }, 300_000);
 
   it("refuses a project it cannot run, rather than blaming the candidate for it", async () => {

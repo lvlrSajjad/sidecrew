@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "language": "swift",
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Async.swift",
+  "test_framework": "swift-testing",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 104540,
+    "created": "2026-09-14T19:30:00.000Z"
+  },
+  "test_target": "SwiftFixtureTests",
+  "shapes": [
+    {
+      "kind": "async",
+      "exemplar": "exemplars/async.swift",
+      "exemplar_function": "mapSeries",
+      "rules": "Await the result and assert it. Assert ordering where order is part of the contract. No timers and no clock."
+    }
+  ],
+  "functions": [
+    {
+      "name": "firstSuccessful",
+      "signature": "Async.firstSuccessful(_ tasks: [() async throws -> T]) async throws -> T",
+      "source_sha": "184a83a68f97af5a1cc30902ca09fad488ee00982b12ab3dbadc630a85f7d682",
+      "line_range": [
+        22,
+        36
+      ],
+      "shapes": [
+        "async"
+      ],
+      "notes": "Tries in order and returns the first success; throws AllTasksFailed carrying every failure, including when the list is empty."
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "measured": true,
+  "arm": "A (Opus alone, no gate)",
+  "project": "project-a",
+  "floor_tokens": 47927,
+  "tasks": [
+    {
+      "task_id": "rename-01",
+      "files": 1,
+      "raw": 50734,
+      "marginal": 2807,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "rename-02",
+      "files": 1,
+      "raw": 50961,
+      "marginal": 3034,
+      "diff_lines": 11,
+      "empty": false
+    },
+    {
+      "task_id": "rename-03",
+      "files": 1,
+      "raw": 50888,
+      "marginal": 2961,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-04",
+      "files": 1,
+      "raw": 50850,
+      "marginal": 2923,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-05",
+      "files": 1,
+      "raw": 52340,
+      "marginal": 4413,
+      "diff_lines": 11,
+      "empty": false
+    },
+    {
+      "task_id": "rename-06",
+      "files": 1,
+      "raw": 51203,
+      "marginal": 3276,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-07",
+      "files": 1,
+      "raw": 50706,
+      "marginal": 2779,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "rename-08",
+      "files": 1,
+      "raw": 51374,
+      "marginal": 3447,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-09",
+      "files": 1,
+      "raw": 51240,
+      "marginal": 3313,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-10",
+      "files": 1,
+      "raw": 51370,
+      "marginal": 3443,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-11",
+      "files": 1,
+      "raw": 51514,
+      "marginal": 3587,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-12",
+      "files": 1,
+      "raw": 51284,
+      "marginal": 3357,
+      "diff_lines": 9,
+      "empty": false
+    },
+    {
+      "task_id": "multi-01",
+      "files": 3,
+      "raw": 53955,
+      "marginal": 6028,
+      "diff_lines": 11,
+      "empty": false
+    },
+    {
+      "task_id": "multi-02",
+      "files": 3,
+      "raw": 51411,
+      "marginal": 3484,
+      "diff_lines": 13,
+      "empty": false
+    },
+    {
+      "task_id": "multi-03",
+      "files": 2,
+      "raw": 54978,
+      "marginal": 7051,
+      "diff_lines": 21,
+      "empty": false
+    },
+    {
+      "task_id": "multi-04",
+      "files": 2,
+      "raw": 52190,
+      "marginal": 4263,
+      "diff_lines": 15,
+      "empty": false
+    },
+    {
+      "task_id": "multi-05",
+      "files": 2,
+      "raw": 55515,
+      "marginal": 7588,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "multi-06",
+      "files": 2,
+      "raw": 57119,
+      "marginal": 9192,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "multi-07",
+      "files": 2,
+      "raw": 51112,
+      "marginal": 3185,
+      "diff_lines": 13,
+      "empty": false
+    }
+  ]
+}

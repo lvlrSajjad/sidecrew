@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "language": "swift",
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Machine.swift",
+  "test_framework": "swift-testing",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 104540,
+    "created": "2026-09-14T19:30:00.000Z"
+  },
+  "test_target": "SwiftFixtureTests",
+  "shapes": [
+    {
+      "kind": "happy_path",
+      "exemplar": "exemplars/happy_path.swift",
+      "exemplar_function": "canTransition",
+      "rules": "One or two representative inputs. Assert the exact return value, never its type or its count."
+    },
+    {
+      "kind": "stateful_sequence",
+      "exemplar": "exemplars/stateful_sequence.swift",
+      "exemplar_function": "canTransition",
+      "rules": "Drive a sequence of operations and assert the state after each. Include one step the machine rejects."
+    }
+  ],
+  "functions": [
+    {
+      "name": "applyAll",
+      "signature": "Machine.applyAll(_ state: OrderState, _ events: [OrderEvent]) -> OrderState",
+      "source_sha": "3090142cfd7b65a8e2e80e97db99fa21db50041ef83ab1505b9c6b41b0f8f783",
+      "line_range": [
+        26,
+        35
+      ],
+      "shapes": [
+        "happy_path",
+        "stateful_sequence"
+      ],
+      "notes": "A left fold of nextState, which is total \u2014 a rejected event is skipped rather than ending the fold."
+    }
+  ]
+}

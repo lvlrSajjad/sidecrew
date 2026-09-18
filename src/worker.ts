@@ -238,8 +238,14 @@ async function attempt(opts: CompleteOpts, body: string): Promise<Completion> {
   };
 }
 
-/** completion_tokens per second of decoding — the generation rate, with prefill excluded. */
-export const decodeTokensPerSecond = (c: Completion): number | null => {
+/**
+ * completion_tokens per second of decoding — the generation rate, with prefill excluded.
+ *
+ * Structural rather than over `Completion`, so `runBatch`'s thermal guard can compute it from a
+ * `Candidate` (ADR-0025). One formula, one place: a back-off that compared a differently-derived rate
+ * against `bench`'s `decode_tok_s` would be comparing two numbers, not one number twice.
+ */
+export const decodeTokensPerSecond = (c: { usage: Usage; wall_ms: number; ttft_ms: number }): number | null => {
   const decodeMs = c.wall_ms - c.ttft_ms;
   if (c.usage.completion_tokens <= 1 || decodeMs <= 0) return null;
   // The first token arrived at ttft; the remaining n-1 are what the decode window actually produced.

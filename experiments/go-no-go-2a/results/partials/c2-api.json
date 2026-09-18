@@ -1,0 +1,176 @@
+{
+  "measured": true,
+  "config": "c2",
+  "input": "api",
+  "label": "project-a (Nest, jest)",
+  "plan": "experiments/go-no-go-2a/plans/project-a.json",
+  "commit": "1c33bd3a3ca541e6f490fa7d38b305018021bbc8",
+  "repo_dirty": false,
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32,
+    "free_gb": 22.5,
+    "at": "2026-09-18T00:15:35.679Z"
+  },
+  "result": {
+    "run_id": "2026-09-17T23-10-58Z-project-a",
+    "plan": "<project-a>.json",
+    "config": {
+      "worker_kind": "local",
+      "worker_model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+      "concurrency": 1,
+      "retry": 1
+    },
+    "project": {
+      "errors_before": 1,
+      "errors_after": 1,
+      "tests_ran": 6368,
+      "tests_passed": 6159,
+      "combined_regressions": 0
+    },
+    "steps": [
+      {
+        "name": "behaviour-preserving renames",
+        "tasks": 12,
+        "survived": 12,
+        "escalated": 0,
+        "errors_before": 1,
+        "errors_after": 1
+      }
+    ],
+    "stats": {
+      "tasks": 12,
+      "survived": 12,
+      "retried": 0,
+      "escalated": 0,
+      "funnel": {
+        "answered": 12,
+        "edits_parsed": 12,
+        "confined": 12,
+        "applied": 12,
+        "compiled": 12,
+        "suite_green": 12
+      },
+      "edit_parse_failed": 0,
+      "edit_truncated": 0,
+      "confinement_breaks": {},
+      "latency_ms": {
+        "median": 278800,
+        "p90": 295471
+      },
+      "generate_ms": {
+        "median": 13470,
+        "p90": 18418
+      },
+      "gate_ms": {
+        "median": 263474,
+        "p90": 285778
+      },
+      "peak_rss_mb": 165.2,
+      "claude_tokens": {
+        "planning": 0,
+        "workers": 0,
+        "review": null
+      }
+    },
+    "survivors": [
+      {
+        "task_id": "rename-01",
+        "files": [
+          "src/common/file.constants.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-01.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-02",
+        "files": [
+          "src/modules/notification/engine/common/notification.setting.utils.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-02.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-03",
+        "files": [
+          "src/modules/user/model/user.update.password.dto.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-03.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-04",
+        "files": [
+          "src/modules/cache/memory.cache.module.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-04.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-05",
+        "files": [
+          "src/modules/company/model/company.configuration.allotted-time.dto.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-05.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-06",
+        "files": [
+          "src/common/db.dialect.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-06.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-07",
+        "files": [
+          "src/modules/project/project.activity.service.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-07.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-08",
+        "files": [
+          "src/modules/assessment/interceptor/question.reference.file.interceptor.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-08.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-09",
+        "files": [
+          "src/modules/cache/redis.cache.module.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-09.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-10",
+        "files": [
+          "src/modules/workorder-rating/model/workorder.rating.create.dto.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-10.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-11",
+        "files": [
+          "src/modules/warranty/warranty.status.util.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-11.diff",
+        "errors_fixed": 0
+      },
+      {
+        "task_id": "rename-12",
+        "files": [
+          "src/common/requestRouting.util.ts"
+        ],
+        "diff_path": "<project-a>/diffs/rename-12.diff",
+        "errors_fixed": 0
+      }
+    ],
+    "escalations": []
+  }
+}

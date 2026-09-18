@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "language": "typescript",
+  "module": "fixtures/ts-fixture/src/strings.ts",
+  "test_framework": "vitest",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 32309,
+    "created": "2026-09-14T15:10:00.000Z"
+  },
+  "shapes": [
+    {
+      "kind": "happy_path",
+      "exemplar": "exemplars/happy_path.test.ts",
+      "exemplar_function": "slugify",
+      "rules": "One or two representative inputs. Assert the exact return value, never its type or its length."
+    },
+    {
+      "kind": "boundary",
+      "exemplar": "exemplars/boundary.test.ts",
+      "exemplar_function": "slugify",
+      "rules": "Empty input, one element, and the value either side of each limit. One test per boundary, exact values."
+    }
+  ],
+  "functions": [
+    {
+      "name": "truncate",
+      "signature": "truncate(text: string, maxLength: number): string",
+      "source_sha": "d4848b3f7168ec4d2c18485fd64a6f07a9819622125210a9fe0ac03d7787553e",
+      "line_range": [
+        16,
+        24
+      ],
+      "shapes": [
+        "boundary"
+      ],
+      "notes": "The one-character ellipsis counts towards maxLength, so a cut string is exactly maxLength long. maxLength <= 0 gives \"\"."
+    },
+    {
+      "name": "titleCase",
+      "signature": "titleCase(input: string): string",
+      "source_sha": "8a1eb23b36d5c0a4f11cfb14e0405035261dd94307f0f943b8e9971fdf5b26ed",
+      "line_range": [
+        26,
+        29
+      ],
+      "shapes": [
+        "happy_path"
+      ],
+      "notes": "Every whitespace-separated word: first letter up, the rest down. The whitespace between words is preserved as it was."
+    },
+    {
+      "name": "countOccurrences",
+      "signature": "countOccurrences(haystack: string, needle: string): number",
+      "source_sha": "8ca6d029bf3241ce6dbc3c845d3dcfe61c958c886f6bb2543e5350a0b8de99fd",
+      "line_range": [
+        31,
+        42
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Non-overlapping: \"aaa\" contains \"aa\" once. An empty needle counts as none."
+    },
+    {
+      "name": "commonPrefix",
+      "signature": "commonPrefix(a: string, b: string): string",
+      "source_sha": "14a484e8a51aa3475e35a9fc55f381bc417a21707ba87bd95cdec670fdc9e20e",
+      "line_range": [
+        44,
+        50
+      ],
+      "shapes": [
+        "boundary"
+      ],
+      "notes": "Character-wise; returns \"\" when the first characters differ, and the whole of the shorter string when one is a prefix of the other."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "measured": true,
+  "why": "The quiet-machine reference every run's baseline is checked against. A run whose captured baseline does not match its project's row here is discarded and redone \u2014 see the protocol note in ../README.md. A reference is valid only for the commit it was measured at.",
+  "measured_after": "ADR-0052. Every earlier row was taken before `stageEnv()` stripped the launcher's npm variables, and the four contaminated arms that produced ~2415 passing are void.",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32
+  },
+  "node": "v22.23.2 (both projects declare engines >= 22.18.0 \u2014 ADR-0049)",
+  "projects": {
+    "project-a": {
+      "stack": "Nest, jest, ts-jest",
+      "commit": "77953e627f",
+      "tsc_errors": 1,
+      "tsc_errors_note": "TS2883 in one logger file, present only in the sandbox because node_modules is symlinked; the real checkout reports 0. No task lists that file. ADR-0050.",
+      "tests_ran": 6368,
+      "tests_passed": 6156,
+      "tests_failed": 192,
+      "suites_total": 354,
+      "suites_failed": 24,
+      "suites_failed_note": "pre-existing, missing DB env and timezone-sensitive date tests \u2014 the case ADR-0046 cites",
+      "tsc_ms": 16793,
+      "suite_ms": 245575,
+      "reproduced": 3,
+      "tests_passed_observed": [
+        6156,
+        6156,
+        6156,
+        6159
+      ],
+      "flakiness_note": "Three tests are timing- or order-sensitive: 6156 three times, then 6159. The guard therefore bands `passed` at 1% (\u00b162) and holds `ran` exact \u2014 the contamination it exists to catch was a 61% loss, two orders of magnitude outside the band."
+    },
+    "project-b": {
+      "stack": "React, jest, ts-jest",
+      "commit": "acbb631b8",
+      "tsc_errors": 0,
+      "tests_ran": 8795,
+      "tests_passed": 8787,
+      "tests_failed": 4,
+      "tsc_ms": 63379,
+      "suite_ms": 192754,
+      "reproduced": 1
+    }
+  },
+  "superseded": {
+    "project-a@76e8b7b8cd": {
+      "tests_ran": 6349,
+      "tests_passed": 6140,
+      "why": "the project moved under the experiment overnight"
+    },
+    "project-b@2f70f7d8f": {
+      "tests_ran": 8768,
+      "tests_passed": 8761,
+      "why": "the project moved under the experiment overnight"
+    }
+  }
+}

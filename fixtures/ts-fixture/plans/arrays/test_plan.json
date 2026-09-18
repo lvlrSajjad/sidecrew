@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "language": "typescript",
+  "module": "fixtures/ts-fixture/src/arrays.ts",
+  "test_framework": "vitest",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 32308,
+    "created": "2026-09-14T15:10:00.000Z"
+  },
+  "shapes": [
+    {
+      "kind": "happy_path",
+      "exemplar": "exemplars/happy_path.test.ts",
+      "exemplar_function": "chunk",
+      "rules": "One or two representative inputs. Assert the exact return value, never its type or its length."
+    },
+    {
+      "kind": "boundary",
+      "exemplar": "exemplars/boundary.test.ts",
+      "exemplar_function": "chunk",
+      "rules": "Empty input, one element, and the value either side of each limit. One test per boundary, exact values."
+    }
+  ],
+  "functions": [
+    {
+      "name": "unique",
+      "signature": "unique<T>(xs: readonly T[]): T[]",
+      "source_sha": "4afad3d5e83df5adc648bda95aefa080c8a6217fad5368f788e572f8f97179ab",
+      "line_range": [
+        11,
+        14
+      ],
+      "shapes": [
+        "happy_path"
+      ],
+      "notes": "First occurrence wins and order is preserved. SameValueZero, so NaN counts as equal to NaN here."
+    },
+    {
+      "name": "zip",
+      "signature": "zip<A, B>(as: readonly A[], bs: readonly B[]): Array<[A, B]>",
+      "source_sha": "4d5cfe6f484e5cec9e12667608db1bab695c05fef8384df98e4d36c0739c6d50",
+      "line_range": [
+        16,
+        22
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Stops at the shorter input; the extra elements of the longer one are dropped, not padded."
+    },
+    {
+      "name": "rotate",
+      "signature": "rotate<T>(xs: readonly T[], by: number): T[]",
+      "source_sha": "4cafbcc338a42fdf6dc937b4b78a38dc3cb1b65413e563ed2e84ba61b2973e2d",
+      "line_range": [
+        24,
+        29
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Left by `by`, and negative rotates right. `by` is taken modulo the length, so a rotation larger than the array wraps."
+    },
+    {
+      "name": "takeWhile",
+      "signature": "takeWhile<T>(xs: readonly T[], predicate: (item: T, index: number) => boolean): T[]",
+      "source_sha": "1bd4979dbbf435bedab786c90fb003167e5da69fb9a8ff2c6ff093decd82ae4d",
+      "line_range": [
+        31,
+        40
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "The leading run only: it stops at the first failure and never looks past it. The predicate receives the index."
+    }
+  ]
+}

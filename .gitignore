@@ -4,6 +4,51 @@ dist/
 *.tsbuildinfo
 .stryker-tmp/
 reports/
+.sidecrew-mutation/
 .build/
 .swiftpm/
+# Muter copies the package to a sibling <name>_mutated/ and writes muter_logs/, and cleans up neither.
+# The verifier removes both; a `muter run` by hand in the fixture does not.
+muter_logs/
+*_mutated/
 .DS_Store
+# Editor state. Not ours to carry, and # Agent worktrees. Checkouts of this repo, so committing them would nest the repo in itself.
+.claude/worktrees/
+.idea/ in particular records local absolute paths.
+.idea/
+.vscode/
+
+# ── client code never enters git ──────────────────────────────────────────────────────────────────
+# The workload-#2a experiments run against real client projects, and three kinds of artefact quote
+# those projects **verbatim**: the rendered prompt (the files as they are on disk), the worker's answer
+# (the whole file back), and the review pack (a unified diff of both). The measurements — funnel
+# counts, S, A, latencies, the ADRs — contain none of it, and those are the parts worth keeping.
+#
+# `.gitignore` only stops a file being added; it does not remove one already committed, and a push
+# sends the whole history regardless. See docs/DECISIONS.md ADR-0051.
+experiments/go-no-go-2a/c3/*/prompts/
+experiments/go-no-go-2a/c3/*/answers/
+experiments/go-no-go-2a/c3/*/tasks/
+experiments/go-no-go-2a/review/*-pack.md
+experiments/go-no-go-2a/results/coverage-*/
+experiments/go-no-go-2a/results/overnight.log
+# Change plans point at an absolute path into a client checkout and their asks quote the client's own
+# symbol names (FULL_WARRANTY_TYPE_CODE, CENSORED_FIELDS). CLAUDE.md #7: local paths stay local, and a
+# plan that quotes a client project is never committed. They live on disk; the results that reference
+# them carry the numbers, which are ours.
+experiments/go-no-go-2a/plans/
+# The fixture is our own code, so its handshake is safe and stays in the repo.
+!experiments/go-no-go-2a/c3/fixture/prompts/
+!experiments/go-no-go-2a/c3/fixture/answers/
+!experiments/go-no-go-2a/c3/fixture/tasks/
+!experiments/go-no-go-2a/review/fixture-pack.md
+
+# Phase 11b arms quote the client's source by construction — a diff of their code is their code.
+# Only the measurements (counts, tokens, verdicts) are ours to commit. CLAUDE.md #7, ADR-0051.
+experiments/status-quo/arms/
+experiments/status-quo/review/*-pack.md
+# A run log prints the run id, which is built from the project directory's name.
+experiments/status-quo/results/*.log
+
+# python bytecode from the experiment scripts
+scripts/__pycache__/

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "language": "swift",
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Numbers.swift",
+  "test_framework": "xctest",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 104540,
+    "created": "2026-09-14T19:30:00.000Z"
+  },
+  "test_target": "SwiftFixtureXCTests",
+  "shapes": [
+    {
+      "kind": "happy_path",
+      "exemplar": "exemplars/happy_path.swift",
+      "exemplar_function": "clamp",
+      "rules": "One or two representative inputs. Assert the exact return value, never its type or its count."
+    },
+    {
+      "kind": "boundary",
+      "exemplar": "exemplars/boundary.swift",
+      "exemplar_function": "clamp",
+      "rules": "Empty input, one element, and the value either side of each limit. One test per boundary, exact values."
+    },
+    {
+      "kind": "error_or_throw",
+      "exemplar": "exemplars/error_or_throw.swift",
+      "exemplar_function": "clamp",
+      "rules": "The inputs the contract rejects. Assert that it throws, the error type, and that the message names the offending value."
+    }
+  ],
+  "functions": [
+    {
+      "name": "percentChange",
+      "signature": "Numbers.percentChange(from: Double, to: Double) throws -> Double",
+      "source_sha": "7a6f9560b147741c1bf2c097c311ab7dc596a153af5eb64bc1ce94b669537c29",
+      "line_range": [
+        30,
+        34
+      ],
+      "shapes": [
+        "error_or_throw"
+      ],
+      "notes": "Throws RangeError when `from` is 0. The denominator is |from|, so a rise from -10 to -5 is +0.5."
+    },
+    {
+      "name": "mean",
+      "signature": "Numbers.mean(_ values: [Double]) -> Double",
+      "source_sha": "b759e293936d33254d13d016a172f0c76114e06af5f470c9f468ddf9321ffd81",
+      "line_range": [
+        48,
+        54
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "An empty list has a mean of 0, which is a decision rather than a mathematical fact."
+    },
+    {
+      "name": "median",
+      "signature": "Numbers.median(_ values: [Double]) -> Double",
+      "source_sha": "c390cc1b496b19f899b10b1d13e4cc359e33cfe38719229220c0d043c8aaa062",
+      "line_range": [
+        56,
+        62
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Sorts a copy \u2014 the input is never reordered. An even count gives the mean of the middle two; empty gives 0."
+    }
+  ]
+}

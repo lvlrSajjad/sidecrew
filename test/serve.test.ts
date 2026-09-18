@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import {
-  memoryGate, serveArgs, workerFiles, alive, readPid, readRecord, serve, stop,
+  awaitMemory, memoryGate, serveArgs, sidecrewDir, workerFiles, alive, readPid, readRecord, serve, stop,
   SERVE_HEADROOM_GB, SIDECREW_DIR,
 } from "../src/serve.js";
 import { entry } from "../src/models.js";
@@ -41,6 +41,51 @@ describe("memoryGate", () => {
     expect(gate.ok).toBe(false);
     expect(gate.reason).toMatch(/--force/);
   });
+
+  it("refuses under kernel memory pressure however free the machine claims to be — ADR-0026", () => {
+    // ADR-0011 from the direction Phase 6 found it: under pressure macOS compresses and evicts, so
+    // vm_stat's reclaimable pages go *up* while the machine thrashes. `free_gb ≥ need` is necessary and
+    // not sufficient, and the kernel's own level is the half that knows.
+    const plenty = { total_gb: 32, free_gb: 20 };
+    expect(memoryGate(model, plenty, "normal").ok).toBe(true);
+    expect(memoryGate(model, plenty, "warn").ok).toBe(false);
+    expect(memoryGate(model, plenty, "critical").ok).toBe(false);
+    expect(memoryGate(model, plenty, "warn").reason).toMatch(/compresses pages/);
+  });
+
+  it("does not treat an unreadable pressure level as normal, or as a refusal", () => {
+    // "unknown" is what a non-macOS machine and a missing sysctl both give. Guessing "warn" would refuse
+    // every run on a machine with plenty of room; guessing "normal" would claim a check that never ran.
+    // Neither: the free-RAM half still decides, and the reason says only what was measured.
+    const gate = memoryGate(model, { total_gb: 32, free_gb: 20 }, "unknown");
+    expect(gate.ok).toBe(true);
+    expect(gate.reason).not.toMatch(/pressure/);
+  });
+
+  it("points at --wait now that waiting is a thing it can do", () => {
+    expect(memoryGate(model, { total_gb: 32, free_gb: 1 }).reason).toMatch(/--wait/);
+  });
+});
+
+describe("awaitMemory", () => {
+  it("asks once and refuses when there is nothing to wait for", async () => {
+    // waitMs 0 is the behaviour every caller had before Phase 7: ask the machine, take the answer.
+    const huge = { key: "impossible", repo: "org/impossible", revision: "", ram_gb: 1_000_000, licence: "MIT" };
+    const gate = await awaitMemory(huge);
+    expect(gate.ok).toBe(false);
+  });
+
+  it("keeps asking until the deadline, and says it is waiting", async () => {
+    const huge = { key: "impossible", repo: "org/impossible", revision: "", ram_gb: 1_000_000, licence: "MIT" };
+    const waits: number[] = [];
+    const startedAt = Date.now();
+    const gate = await awaitMemory(huge, { waitMs: 400, pollMs: 50, onWait: (ms) => waits.push(ms) });
+    // It never lowers the bar — a queue that eventually says yes to a machine with no room would be a
+    // gate with a timeout rather than a gate.
+    expect(gate.ok).toBe(false);
+    expect(waits.length).toBeGreaterThan(0);
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(350);
+  }, 10_000);
 });
 
 describe("serveArgs", () => {
@@ -60,10 +105,29 @@ describe("serveArgs", () => {
 
 describe("workerFiles", () => {
   it("keys every file by port, so two workers never share one", () => {
-    const a = workerFiles(8000);
-    const b = workerFiles(8001);
+    const a = workerFiles(8000, SIDECREW_DIR);
+    const b = workerFiles(8001, SIDECREW_DIR);
     expect(a.pid).toBe(join(SIDECREW_DIR, "worker-8000.pid"));
     expect(new Set([a.pid, a.log, a.record, b.pid, b.log, b.record]).size).toBe(6);
+  });
+});
+
+describe("sidecrewDir — ADR-0029", () => {
+  it("prefers SIDECREW_DIR, because two different trees is the case walking up cannot solve", () => {
+    // A tool run against somebody else's repo has its worker state in one tree and its target in
+    // another. Nothing above the target leads to the worker record, so there has to be a way to say it.
+    expect(sidecrewDir("/anywhere", { SIDECREW_DIR: "/state/.sidecrew" })).toBe("/state/.sidecrew");
+  });
+
+  it("finds the nearest .sidecrew at or above the directory it is asked about", () => {
+    // `serve` at a repo root and `run` in one of its workspaces is the common case, and it used to mean
+    // the second found no record — which used to mean it guessed.
+    expect(sidecrewDir(process.cwd(), {})).toBe(join(process.cwd(), SIDECREW_DIR));
+    expect(sidecrewDir(join(process.cwd(), "src", "verifier"), {})).toBe(join(process.cwd(), SIDECREW_DIR));
+  });
+
+  it("falls back to a relative .sidecrew where a fresh serve would create one", () => {
+    expect(sidecrewDir("/", {})).toBe(SIDECREW_DIR);
   });
 });
 
@@ -142,10 +206,14 @@ afterEach(async () => {
   delete process.env.FAKE_MLX_LOAD_MS;
 });
 
+// `allowUnpinned: true` throughout: these are lifecycle tests, and on a machine with an empty Hugging
+// Face cache — every CI runner — `resolveForServe` cannot honour the pin and ADR-0027 refuses to start.
+// The refusal has its own test below; making it a precondition of the other nine would test it nine
+// times and the lifecycle zero.
 describe("serve → status → stop", () => {
   it("starts a detached worker, waits for it to answer, and records what it started", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
-    const record = await serve({ modelKey: entry("qwen2.5-coder-7b-4bit").key, port, dir, quiet: true, force: true, readyTimeoutMs: 20_000 });
+    const record = await serve({ modelKey: entry("qwen2.5-coder-7b-4bit").key, port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 20_000 });
 
     expect(record.port).toBe(port);
     expect(alive(record.pid)).toBe(true);
@@ -164,11 +232,11 @@ describe("serve → status → stop", () => {
 
   it("writes a log next to the pidfile, and appends across restarts", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
-    await serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 20_000 });
+    await serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 20_000 });
     await stop({ port, dir, quiet: true });
 
     process.env.FAKE_MLX_EXIT = "1";
-    await serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 5_000 }).catch(() => {});
+    await serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 5_000 }).catch(() => {});
     const log = await readFile(workerFiles(port, dir).log, "utf8");
     expect(log).toContain("refusing to start");
   }, 30_000);
@@ -176,7 +244,7 @@ describe("serve → status → stop", () => {
   it("cleans up the pidfile when the worker dies before it answers", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
     process.env.FAKE_MLX_EXIT = "1";
-    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 10_000 }))
+    await expect(serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 10_000 }))
       .rejects.toThrow(/exited before it answered|tail -n 40/);
     // A pidfile left behind would make `stop` chase a pid that is gone, or worse, a recycled one.
     expect(await readPid(port, dir)).toBeNull();
@@ -190,7 +258,7 @@ describe("serve → status → stop", () => {
     process.env.FAKE_MLX_LOAD_MS = "2500";
 
     const startedAt = Date.now();
-    await serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 30_000 });
+    await serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 30_000 });
     const waited = Date.now() - startedAt;
 
     expect(waited).toBeGreaterThanOrEqual(2_400);
@@ -207,7 +275,7 @@ describe("serve → status → stop", () => {
   it("says which of the two failures it hit when a listening worker never loads", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
     process.env.FAKE_MLX_LOAD_MS = "600000";
-    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 3_000 }))
+    await expect(serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 3_000 }))
       .rejects.toThrow(/listening but could not generate/);
   }, 30_000);
 
@@ -216,7 +284,7 @@ describe("serve → status → stop", () => {
     // pidfile already deleted — so nothing is left that `sidecrew stop` could find it by.
     process.env.SIDECREW_PYTHON = stubPython;
     process.env.FAKE_MLX_LOAD_MS = "600000";
-    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 2_000 })).rejects.toThrow();
+    await expect(serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 2_000 })).rejects.toThrow();
 
     // The port is free again, which it would not be if the worker were still listening.
     const probe = createServer();
@@ -230,21 +298,21 @@ describe("serve → status → stop", () => {
   it("gives up on a worker that never answers, rather than hanging", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
     process.env.FAKE_MLX_DELAY_MS = "60000";
-    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 1_500 }))
+    await expect(serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 1_500 }))
       .rejects.toThrow(/did not answer/);
   }, 20_000);
 
   it("is idempotent: serving what is already served says so instead of fighting for the port", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
-    const first = await serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 20_000 });
-    const second = await serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 20_000 });
+    const first = await serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 20_000 });
+    const second = await serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 20_000 });
     expect(second.pid).toBe(first.pid);
   }, 40_000);
 
   it("refuses to serve a different model on a port that is already taken", async () => {
     process.env.SIDECREW_PYTHON = stubPython;
-    await serve({ modelKey: "qwen2.5-coder-7b-4bit", port, dir, quiet: true, force: true, readyTimeoutMs: 20_000 });
-    await expect(serve({ modelKey: "qwen2.5-coder-14b-4bit", port, dir, quiet: true, force: true }))
+    await serve({ modelKey: "qwen2.5-coder-7b-4bit", port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 20_000 });
+    await expect(serve({ modelKey: "qwen2.5-coder-14b-4bit", port, dir, quiet: true, force: true, allowUnpinned: true }))
       .rejects.toThrow(/already serves qwen2\.5-coder-7b-4bit/);
   }, 40_000);
 
@@ -258,7 +326,7 @@ describe("serve → status → stop", () => {
     await new Promise<void>((r) => squatter.listen(port, "127.0.0.1", () => r()));
     try {
       process.env.SIDECREW_PYTHON = stubPython;
-      await expect(serve({ port, dir, quiet: true, force: true }))
+      await expect(serve({ port, dir, quiet: true, force: true, allowUnpinned: true }))
         .rejects.toThrow(/sidecrew did not start it.*--port/s);
     } finally {
       await new Promise<void>((r) => squatter.close(() => r()));
@@ -282,4 +350,47 @@ describe("serve → status → stop", () => {
   it("reports honestly when there is nothing to stop", async () => {
     expect(await stop({ port, dir, quiet: true })).toBe(false);
   });
+});
+
+describe("the pin is a refusal, not a warning — ADR-0027", () => {
+  // An empty Hugging Face cache is the strongest version of unpinned: mlx_lm would download whatever
+  // `main` is today, and two survival rates taken a week apart would not be comparable with nothing
+  // saying so. `HF_HUB_CACHE` is the seam `hubCacheDir` reads, so this needs no network and no weights.
+  let emptyCache: string;
+
+  beforeAll(async () => { emptyCache = await mkdtemp(join(tmpdir(), "sidecrew-nocache-")); });
+  afterAll(async () => { await rm(emptyCache, { recursive: true, force: true }); });
+  afterEach(() => { delete process.env.HF_HUB_CACHE; });
+
+  it("refuses to start, and names both the fix and the escape", async () => {
+    process.env.SIDECREW_PYTHON = stubPython;
+    process.env.HF_HUB_CACHE = emptyCache;
+
+    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 5_000 }))
+      .rejects.toThrow(/refusing to start/);
+    // The reason has to be the one that matters: not "this is untidy" but "your numbers stop comparing".
+    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 5_000 }))
+      .rejects.toThrow(/cannot be compared|non-negotiable #4/);
+    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 5_000 }))
+      .rejects.toThrow(/sidecrew models --pin/);
+    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 5_000 }))
+      .rejects.toThrow(/--allow-unpinned/);
+  }, 30_000);
+
+  it("refuses before it spawns anything, so nothing is left holding the port", async () => {
+    process.env.SIDECREW_PYTHON = stubPython;
+    process.env.HF_HUB_CACHE = emptyCache;
+    await expect(serve({ port, dir, quiet: true, force: true, readyTimeoutMs: 5_000 })).rejects.toThrow();
+    expect(await readPid(port, dir)).toBeNull();
+    expect(await readRecord(port, dir)).toBeNull();
+  }, 30_000);
+
+  it("starts anyway with --allow-unpinned, and records that it is not reproducible", async () => {
+    process.env.SIDECREW_PYTHON = stubPython;
+    process.env.HF_HUB_CACHE = emptyCache;
+    const record = await serve({ port, dir, quiet: true, force: true, allowUnpinned: true, readyTimeoutMs: 20_000 });
+    // `Candidate.worker.revision` is taken from here, so the evidence travels with every candidate.
+    expect(record.pinned).toBe(false);
+    expect(await stop({ port, dir, quiet: true })).toBe(true);
+  }, 40_000);
 });

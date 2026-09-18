@@ -1,0 +1,323 @@
+{
+  "experiment": "real-world trial",
+  "project": "project-a",
+  "date": "2026-09-15",
+  "measured": true,
+  "machine": {
+    "model": "Apple M2 Pro",
+    "ram_gb": 32,
+    "os": "macOS 26.6.2",
+    "node": "v22.23.2",
+    "free_ram_gb_range": [
+      6.4,
+      8.7
+    ]
+  },
+  "worker": {
+    "kind": "local",
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "pinned": true,
+    "temperature": 0,
+    "seed": 42
+  },
+  "toolchain": {
+    "typescript": "6.0.3",
+    "jest": "30.4.1",
+    "ts-jest": "29.4.11",
+    "stryker": "8.7.1",
+    "stryker_pinned_major": 8
+  },
+  "project_facts": {
+    "ts_files_in_src": 2132,
+    "existing_spec_files": 353,
+    "package_manager": "yarn (lockfile v1, node-modules linker)",
+    "function_shapes": {
+      "export_function": 23,
+      "export_function_files": 15,
+      "static_method": 1429,
+      "static_property_arrow": 36,
+      "export_const_arrow": 16
+    },
+    "deriveLineRange_coverage_pct": 1.5,
+    "tsc_noemit_project_default_heap_s": 18.2,
+    "tsc_oom": false,
+    "node_options_set": false
+  },
+  "module": {
+    "path": "src/common/assetUtil.ts",
+    "lines": 127,
+    "public_functions": 5,
+    "imports": 1,
+    "existing_dedicated_test": false,
+    "shape": "default-exported class with static property arrow functions"
+  },
+  "questions": {
+    "q1_pipeline_completes": {
+      "answer": "runs, but every verdict is a false negative",
+      "blockers": 6
+    },
+    "q2_adr0032_spec_naming_fix": {
+      "answer": "confirmed by observation",
+      "candidate_filename": "test/getBookValue.manual.0.spec.ts",
+      "no_coverage_in_probe_pass": 0,
+      "probe_pass_mutants": 85
+    },
+    "q3_typescript_checker_on_ts6": {
+      "answer": "yes",
+      "evidence": "CompileError verdicts produced",
+      "compile_errors_in_probe_pass": 5
+    },
+    "q4_survival": {
+      "sidecrew_measured": {
+        "survived": 0,
+        "tasks": 10
+      },
+      "derived": {
+        "survived": 4,
+        "tasks": 10,
+        "rate": 0.4,
+        "median_mutation_score": 0.774
+      }
+    }
+  },
+  "blockers": [
+    {
+      "n": 1,
+      "where": "src/verifier/shared.ts:122 DECLARATION.typescript",
+      "what": "only matches top-level export function; 1.5% of this codebase",
+      "blocks": "protocol step 2 (probe); run path survives via plan line_range"
+    },
+    {
+      "n": 2,
+      "where": "src/plan.ts:246 importsHint",
+      "what": "emits a named import of the function; module is a default-exported static class",
+      "blocks": "18/20 candidates at compile"
+    },
+    {
+      "n": 3,
+      "where": "src/verifier/ts.ts:108 NEVER_COPY + TEST_FILE_PATTERN",
+      "what": "sandbox drops src/modules/reports/** and src/modules/auth/auth.config.test.ts",
+      "blocks": "every compile stage",
+      "files_wrongly_dropped": 6
+    },
+    {
+      "n": 4,
+      "where": "ADR-0004 symlinked node_modules",
+      "what": "TS2883 on the project own source; proven by control (real node_modules -> exit 0)",
+      "blocks": "every compile stage"
+    },
+    {
+      "n": 5,
+      "where": "sandbox copies project symlinks",
+      "what": "Stryker ENOTSUP copying .claude/skills and .claude/agents",
+      "blocks": "every mutation stage"
+    },
+    {
+      "n": 6,
+      "where": "ADR-0028 ts-jest finding, unapplied",
+      "what": "ts-jest type-checks Stryker instrumentation (TS2554); isolatedModules fix broken by TS6 (TS5011); diagnostics:false works",
+      "blocks": "every mutation stage"
+    }
+  ],
+  "mutant_probe": {
+    "method": "substituted for probe-mutants.ts (blocker 1); shipped verifier stages, by hand, one function at a time",
+    "functions": [
+      {
+        "name": "getAgeOfAssetInMonthsRounded",
+        "mutants": 13,
+        "killed": 11,
+        "survived": 1,
+        "compile_error": 1,
+        "no_coverage": 0,
+        "plannable": "yes",
+        "mutation_stage_s": 93
+      },
+      {
+        "name": "getNetBookValue",
+        "mutants": 18,
+        "killed": 14,
+        "survived": 3,
+        "compile_error": 1,
+        "no_coverage": 0,
+        "plannable": "yes",
+        "mutation_stage_s": 98
+      },
+      {
+        "name": "getBookValue",
+        "mutants": 14,
+        "killed": 14,
+        "survived": 0,
+        "compile_error": 0,
+        "no_coverage": 0,
+        "plannable": "yes",
+        "mutation_stage_s": 105
+      },
+      {
+        "name": "getEstimatedReplacementDate",
+        "mutants": 20,
+        "killed": 19,
+        "survived": 0,
+        "compile_error": 1,
+        "no_coverage": 0,
+        "plannable": "yes",
+        "mutation_stage_s": 126
+      },
+      {
+        "name": "getSpendVsReplacement",
+        "mutants": 20,
+        "killed": 17,
+        "survived": 1,
+        "compile_error": 2,
+        "no_coverage": 0,
+        "plannable": "yes",
+        "mutation_stage_s": 104
+      }
+    ],
+    "totals": {
+      "mutants": 85,
+      "killed": 75,
+      "survived": 5,
+      "compile_error": 5,
+      "no_coverage": 0
+    },
+    "four_way_split": {
+      "mutable": 5,
+      "no_mutants": 0,
+      "crash_only": 0,
+      "unresolved": 0
+    }
+  },
+  "funnel": {
+    "as_sidecrew_reported": {
+      "tasks": 10,
+      "compiled": 0,
+      "passed": 0,
+      "killed_ge_1": 0,
+      "non_tautological": 0,
+      "survived": 0,
+      "escalated": 10,
+      "attempts": 20
+    },
+    "derived": {
+      "note": "same 20 candidates; sandbox repaired and import form mechanically corrected; no prompt change, no model re-run, no verifier edit",
+      "tasks": 10,
+      "compiled": 10,
+      "passed": 4,
+      "killed_ge_1": 4,
+      "non_tautological": 4,
+      "survived": 4,
+      "rate": 0.4,
+      "attempts": {
+        "total": 20,
+        "compiled": 20,
+        "passed": 7
+      }
+    }
+  },
+  "import_hint_tally": {
+    "followed_wrong_hint": 18,
+    "followed_exemplar": 2,
+    "note": "both of the 2 are getBookValue:happy_path, byte-identical copies of the exemplar for that same function"
+  },
+  "survivors": [
+    {
+      "task": "getBookValue:boundary",
+      "mutants": 14,
+      "killed": 12,
+      "survived": 2,
+      "no_coverage": 0,
+      "compile_error": 0,
+      "score": 0.857,
+      "tautological": false
+    },
+    {
+      "task": "getAgeOfAssetInMonthsRounded:boundary",
+      "mutants": 13,
+      "killed": 10,
+      "survived": 2,
+      "no_coverage": 0,
+      "compile_error": 1,
+      "score": 0.833,
+      "tautological": false,
+      "note": "the retry earned it; attempt 0 failed"
+    },
+    {
+      "task": "getBookValue:happy_path",
+      "mutants": 14,
+      "killed": 10,
+      "survived": 2,
+      "no_coverage": 2,
+      "compile_error": 0,
+      "score": 0.714,
+      "tautological": false,
+      "note": "BYTE-IDENTICAL to its exemplar"
+    },
+    {
+      "task": "getEstimatedReplacementDate:happy_path",
+      "mutants": 20,
+      "killed": 13,
+      "survived": 5,
+      "no_coverage": 1,
+      "compile_error": 1,
+      "score": 0.684,
+      "tautological": false
+    }
+  ],
+  "median_survivor_mutation_score": 0.774,
+  "cost_ms": {
+    "generate": {
+      "median": 6325.5,
+      "p90": 8992
+    },
+    "ttft": {
+      "median": 952,
+      "p90": 1364
+    },
+    "compile_as_run": {
+      "median": 10597,
+      "p90": 10924,
+      "note": "aborts early on the deleted files"
+    },
+    "compile_successful_control_ms": 17700,
+    "mutation_per_function_ms": {
+      "median": 104000,
+      "p90": 126000
+    },
+    "whole_run_s": 368,
+    "per_candidate_latency_ms": {
+      "median": 33680,
+      "p90": 41301
+    }
+  },
+  "completion_tokens": {
+    "median": 228.5,
+    "p90": 349
+  },
+  "peak_worker_rss_mb": 180.4,
+  "claude_tokens": {
+    "planning": 0,
+    "workers": 0,
+    "review": 0,
+    "note": "plan hand-written, so planning cost is unmeasured"
+  },
+  "deviations": [
+    "step 3 test-planner agent not invoked; plan hand-written",
+    "step 2 substituted (blocker 1)",
+    "dist rebuilt from committed source before the run",
+    "node 22.23.2 installed to satisfy engines",
+    "repaired sandbox used for derived measurements",
+    "candidate import line mechanically rewritten for the derived funnel",
+    "NODE_OPTIONS deliberately unset; no OOM"
+  ],
+  "hygiene": {
+    "branch": "sidecrew-trial-api",
+    "pushed": false,
+    "merged": false,
+    "deleted": true,
+    "src_modified": false,
+    "tracked_config_overwritten": false,
+    "lockfile_format_preserved": "yarn v1"
+  },
+  "probe_artifact_note": "experiments/mutant-probe/project-a.json records measured:true over an empty probes array"
+}

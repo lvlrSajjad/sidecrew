@@ -1,0 +1,80 @@
+{
+  "measured": true,
+  "experiment": "mutant-probe",
+  "date": "2026-09-14T17:13:38.551Z",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32
+  },
+  "module": "fixtures/swift-fixture/Sources/SwiftFixture/Arrays.swift",
+  "language": "swift",
+  "framework": "xctest",
+  "note": "`plannable` is the question; `mutants > 0` is not the same question. A mutant that crashes the process counts towards the score and never towards survival (ADR-0005), so a function whose only mutant crashes has mutants and can still never be survived. `unknown` means mutants survived this probe and nobody has looked at whether they are equivalent — plan such a function only after someone has.",
+  "probes": [
+    {
+      "function": "chunk",
+      "mutants": 2,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 1,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 95179
+    },
+    {
+      "function": "rotate",
+      "mutants": 1,
+      "killed": 0,
+      "survived": 0,
+      "timeout": 1,
+      "no_coverage": 0,
+      "plannable": "crash_only",
+      "probe_survived": false,
+      "stage_reached": "done",
+      "error": "no mutant of rotate was killed: 0 survived, 0 were never reached, 1 crashed or timed out rather than failing an assertion. The test passes against the original code and against every changed version of it.",
+      "ms": 36337
+    },
+    {
+      "function": "takeWhile",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 34442
+    },
+    {
+      "function": "unique",
+      "mutants": 0,
+      "killed": 0,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "no_mutants",
+      "probe_survived": false,
+      "stage_reached": "done",
+      "error": "muter generated no mutants of unique (lines 18-26). Its operators are RelationalOperatorReplacement, RemoveSideEffects, ChangeLogicalConnector and SwapTernary, and this function contains none of them, so no test of it can kill one. This is not a fault in the test.",
+      "ms": 42118
+    },
+    {
+      "function": "zipShortest",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 40647
+    }
+  ]
+}

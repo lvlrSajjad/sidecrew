@@ -1,0 +1,14 @@
+{
+  "measured": true,
+  "experiment": "mutant-probe",
+  "date": "2026-09-15T01:49:24.195Z",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32
+  },
+  "module": "<project>/project-a/src/common/assetUtil.ts",
+  "language": "typescript",
+  "framework": "jest",
+  "note": "`plannable` is the question; `mutants > 0` is not the same question. A mutant that crashes the process counts towards the score and never towards survival (ADR-0005), so a function whose only mutant crashes has mutants and can still never be survived. `unknown` means mutants survived this probe and nobody has looked at whether they are equivalent — plan such a function only after someone has.",
+  "probes": []
+}

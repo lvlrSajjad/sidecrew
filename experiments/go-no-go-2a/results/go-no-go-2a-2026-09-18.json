@@ -1,0 +1,446 @@
+{
+  "measured": true,
+  "experiment": "go-no-go-2a",
+  "phase": 11,
+  "date": "2026-09-18",
+  "commit": "7076f6ac2691dd4d5c152ea70f50b9774aa1a5c4",
+  "protocol": "experiments/go-no-go-2a/README.md \u2014 \u00a74 frozen 2026-09-16, copied verbatim before the first run",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32,
+    "chip": "Apple Silicon",
+    "node": "v22.23.2"
+  },
+  "worker_local": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "temperature": 0,
+    "seed": "RUN_SEED"
+  },
+  "worker_api": {
+    "model": "claude-haiku-4-5",
+    "via": "haiku-worker agent harness (Phase 6's shape)"
+  },
+  "precondition_4_0": {
+    "controls_fail_the_real_gate": {
+      "holds": true,
+      "evidence": "all 7 ConfinementRule controls refused by verifyChange in this run's own pipeline; 4 of them satisfy tsc completely, so confinement alone stops them"
+    },
+    "survivors_prove_the_suite_ran": {
+      "holds": true,
+      "evidence": "every survivor: reported=true, ran_after >= ran_before > 0, confinement checker names the files compared"
+    },
+    "a_survivor_reverifies_from_scratch": {
+      "holds": true,
+      "evidence": "scripts/reverify-2a.py applies the recorded diff with patch and runs the project's own tsc and suite, sharing no code with the verifier; same verdict"
+    }
+  },
+  "determinism_observed": {
+    "note": "the same C2 candidate reproduced byte-identically 4 times across 16 hours (md5 e390e6cc); C3 3 times (44edc207)",
+    "c2_runs": 4,
+    "c3_runs": 3
+  },
+  "results": {
+    "fixture": {
+      "label": "fixtures/fix-fixture \u2014 3 planted type errors, vitest, 12 tests",
+      "caveat": "our own code, our own project. Overstates real-world; workload #1's fixture did so by >2x.",
+      "S": {
+        "c2": {
+          "k": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.292,
+            1.0
+          ]
+        },
+        "c3": {
+          "k": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.292,
+            1.0
+          ]
+        }
+      },
+      "A": {
+        "c2": {
+          "k": 1,
+          "n": 3,
+          "rate": 0.333,
+          "ci95": [
+            0.008,
+            0.906
+          ]
+        },
+        "c3": {
+          "k": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.292,
+            1.0
+          ]
+        }
+      },
+      "verdict": "NO-GO",
+      "why": "\u00a74.3's approval guard is a veto: A(C2)=0.333 < 0.90*A(C3)=0.900. Survival alone was perfect and identical to the control.",
+      "what_the_reviewer_rejected": "2 of 3 C2 survivors deleted a 7-line docblock while making a correct one-line fix. C3 deleted none."
+    },
+    "project-a": {
+      "label": "unmodified commercial Nest/jest codebase \u2014 354 suites, 6368 tests, 24 suites failing at baseline (missing DB env)",
+      "tasks": "12 hand-written rename tasks, disjoint files, validated with --dry-run",
+      "S": {
+        "c2": {
+          "k": 12,
+          "n": 12,
+          "rate": 1.0,
+          "ci95": [
+            0.735,
+            1.0
+          ]
+        },
+        "c3": {
+          "k": 12,
+          "n": 12,
+          "rate": 1.0,
+          "ci95": [
+            0.735,
+            1.0
+          ]
+        }
+      },
+      "A": {
+        "c2": {
+          "k": 9,
+          "n": 10,
+          "rate": 0.9,
+          "ci95": [
+            0.555,
+            0.997
+          ]
+        },
+        "c3": {
+          "k": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.692,
+            1.0
+          ]
+        }
+      },
+      "verdict": "GO",
+      "margin": "zero \u2014 A(C2)=0.900 against a required 0.90*A(C3)=0.900. One further rejection is 0.80 and a NO-GO.",
+      "what_the_reviewer_rejected": "1 of 10 C2 survivors reworded a doc comment ('Normalises' -> 'Canonicalises') while renaming. Same signature as the fixture.",
+      "funnel_c2": {
+        "answered": 12,
+        "edits_parsed": 12,
+        "confined": 12,
+        "applied": 12,
+        "compiled": 12,
+        "suite_green": 12
+      },
+      "funnel_c3": {
+        "answered": 12,
+        "edits_parsed": 12,
+        "confined": 12,
+        "applied": 12,
+        "compiled": 12,
+        "suite_green": 12
+      },
+      "edit_parse_failed": {
+        "c2": 0,
+        "c3": 0
+      },
+      "edit_truncated": {
+        "c2": 0,
+        "c3": 0
+      },
+      "confinement_breaks": {
+        "c2": {},
+        "c3": {}
+      },
+      "retries": {
+        "c2": 0,
+        "c3": 0
+      },
+      "latency_ms": {
+        "generate": {
+          "c2": {
+            "median": 13470,
+            "p90": 18418
+          },
+          "c3": {
+            "median": 13842,
+            "p90": 20906
+          }
+        },
+        "gate": {
+          "c2": {
+            "median": 263474,
+            "p90": 285778
+          },
+          "c3": {
+            "median": 252570,
+            "p90": 276247
+          }
+        }
+      },
+      "peak_worker_rss_mb": {
+        "c2": 165.2,
+        "c3": null
+      },
+      "claude_tokens": {
+        "c2_workers": 0,
+        "c3_workers": 93532,
+        "c3_note": "the Agent tool's subagent_tokens total \u2014 an upper bound, not the api tier's price (ADR-0045 \u00a77)"
+      }
+    },
+    "project-b": {
+      "label": "unmodified commercial React/jest codebase \u2014 772 suites, 8795 tests",
+      "tasks": "12 hand-written: 6 unused-import removals + 6 renames, disjoint files, validated with --dry-run",
+      "measured_after": "the first attempt was void (ADR-0055: a 3.8 GB jest haste-map cache shared across 24 differently-rooted sandboxes). Clearing it, with no code change, turned 0/12 into 11/12 \u2014 the same tasks, candidates and gate.",
+      "S": {
+        "c2": {
+          "k": 11,
+          "n": 12,
+          "rate": 0.917,
+          "ci95": [
+            0.615,
+            0.998
+          ]
+        },
+        "c3": {
+          "k": 12,
+          "n": 12,
+          "rate": 1.0,
+          "ci95": [
+            0.735,
+            1.0
+          ]
+        }
+      },
+      "A": {
+        "c2": {
+          "k": 9,
+          "n": 10,
+          "rate": 0.9,
+          "ci95": [
+            0.555,
+            0.997
+          ]
+        },
+        "c3": {
+          "k": 10,
+          "n": 10,
+          "rate": 1.0,
+          "ci95": [
+            0.692,
+            1.0
+          ]
+        }
+      },
+      "verdict": "GO",
+      "margin": "zero \u2014 A(C2)=0.900 against a required 0.90*A(C3)=0.900, the same knife edge as project-a",
+      "s_c2_caveat": "the 12th task was lost to ENOTEMPTY during sandbox teardown (ADR-0056), not to the change: funnel `answered` is 11, so that candidate never reached the gate. Excluding it as a machine failure the way ADR-0012 excludes a runner that produced no report gives S(C2)=11/11=1.00.",
+      "what_the_reviewer_rejected": "1 of 10 C2 survivors removed the unused import correctly and inserted a gratuitous blank line. Its C3 twin made the identical removal without one; the blind reviewer accepted that and rejected this.",
+      "funnel_c2": {
+        "answered": 11,
+        "edits_parsed": 11,
+        "confined": 11,
+        "applied": 11,
+        "compiled": 11,
+        "suite_green": 11
+      },
+      "funnel_c3": {
+        "answered": 12,
+        "edits_parsed": 12,
+        "confined": 12,
+        "applied": 12,
+        "compiled": 12,
+        "suite_green": 12
+      },
+      "edit_parse_failed": {
+        "c2": 0,
+        "c3": 0
+      },
+      "edit_truncated": {
+        "c2": 0,
+        "c3": 0
+      },
+      "confinement_breaks": {
+        "c2": {},
+        "c3": {}
+      },
+      "latency_ms": {
+        "generate": {
+          "c2": {
+            "median": 7286,
+            "p90": 8964
+          },
+          "c3": {
+            "median": 12153,
+            "p90": 19812
+          }
+        },
+        "gate": {
+          "c2": {
+            "median": 201305,
+            "p90": 207616
+          },
+          "c3": {
+            "median": 218736,
+            "p90": 222595
+          }
+        }
+      },
+      "claude_tokens": {
+        "c2_workers": 0,
+        "c3_workers": 87621
+      }
+    }
+  },
+  "coverage_hole": {
+    "measured": true,
+    "what": "\u00a75's reported number, never a criterion (ADR-0048): the fraction of survivors whose changed lines no test that ran executed. Those survivors were admitted by `tsc` alone.",
+    "method": "jest --coverage over the unmodified project, scoped with --collectCoverageFrom to the plan's own 12 files; a survivor's changed lines are the '-' side of its recorded diff, matched against executed statements.",
+    "project-a": {
+      "c2": {
+        "k": 2,
+        "n": 12,
+        "rate": 0.167,
+        "ci95": [
+          0.021,
+          0.484
+        ]
+      },
+      "c3": {
+        "k": 2,
+        "n": 12,
+        "rate": 0.167,
+        "ci95": [
+          0.021,
+          0.484
+        ]
+      },
+      "identical_across_arms": true,
+      "why_identical": "both arms edited the same 12 files, so coverage of the changed lines is a property of the project rather than of the worker",
+      "uncovered_tasks": [
+        "rename-05",
+        "rename-10"
+      ],
+      "also": "4 further survivors had only some of their changed lines executed (1 of 2, or 3 of 5)",
+      "reproduced": {
+        "note": "recomputed from a second, independent coverage run at the end of the matrix: 2/12 on both arms again",
+        "runs": 2
+      }
+    },
+    "reading": "1 survivor in 6 on this project was admitted by the compiler alone. For a rename that is a mild claim \u2014 tsc proves a rename is complete, which is most of what the ask was. For a null guard or an API migration it would be a much weaker one, and the number belongs beside any rate quoted publicly.",
+    "project-b": {
+      "c2": {
+        "k": 2,
+        "n": 11,
+        "rate": 0.182,
+        "ci95": [
+          0.023,
+          0.518
+        ]
+      },
+      "c3": {
+        "k": 3,
+        "n": 12,
+        "rate": 0.25,
+        "ci95": [
+          0.055,
+          0.572
+        ]
+      },
+      "note": "differs between arms only because C2 has 11 survivors to C3's 12"
+    }
+  },
+  "gate_cost_per_candidate_ms": {
+    "project-a": {
+      "tsc": 16793,
+      "suite": 245575,
+      "total": 262368
+    },
+    "project-b": {
+      "tsc": 63379,
+      "suite": 192754,
+      "total": 256133
+    },
+    "why_it_matters": "ADR-0044 \u00a74's correction round has to re-run this gate; ~4.3 minutes a candidate is its budget"
+  },
+  "defects_found": [
+    {
+      "adr": "0049",
+      "what": "doctor checks node against sidecrew's floor, never the target project's engines",
+      "impact": "all 352 suites failed to load under node 20; jest collected zero tests"
+    },
+    {
+      "adr": "0050",
+      "what": "the #2a sandbox does reach ADR-0034's TS2883 case, contrary to its own comment",
+      "impact": "a sandbox-only tsc error; near-missed making a task unsatisfiable",
+      "status": "proposed, not applied mid-run"
+    },
+    {
+      "adr": "0052",
+      "what": "npx exports npm's state; the project's test dependency resolved a different cache and ~170 suites died",
+      "impact": "the BASELINE was corrupted, so the gate got quietly weaker rather than breaking",
+      "severity": "the most serious \u2014 invisible in every summary statistic"
+    },
+    {
+      "adr": "0053",
+      "what": "a test whose name is generated read as a regression",
+      "impact": "would have failed every candidate on project-b for a property of its test titles"
+    },
+    {
+      "adr": "0055",
+      "what": "a jest haste-map cache shared across differently-rooted sandboxes",
+      "impact": "0/12 became 11/12 when it was cleared, with no code change \u2014 confirmed by intervention",
+      "severity": "would make any large multi-task plan on a jest project return a gate that refuses everything"
+    },
+    {
+      "adr": "0056",
+      "what": "ENOTEMPTY during per-task sandbox teardown is recorded as an escalation",
+      "impact": "cost one task on project-b; indistinguishable from a worker failure in every summary the run prints"
+    }
+  ],
+  "threats": [
+    "n is small: 12 tasks a project, 10 reviewed a configuration. A(C2) on project-a is 9/10 with a 95% interval of [0.555, 0.997].",
+    "One machine, one seed, one night. Latency columns carry contention from four discarded arms.",
+    "The blind reviewer is a model (Sonnet) with no session context, not a human. It independently caught the documentation edits in both the fixture and project-a without being told to look.",
+    "project-a's tasks are all renames, because every compiler-reported dead symbol in that codebase is a DI property or a write-only field, not removable. So S(project-a) measures renames, not workload #2a in general.",
+    "C3's token figures are the Agent tool's totals and are an upper bound on the api tier (ADR-0045 \u00a77).",
+    "The first blind pass on project-a rejected a valid change because the pack showed a redacted file path against an unredacted diff. That pass was discarded; the reported A is from the corrected pack."
+  ],
+  "the_behavioural_difference": {
+    "claim": "across three inputs and two task shapes, the only thing separating the local 7B from the network control was unrequested cosmetic edits the gate cannot see",
+    "c2_rejected": {
+      "k": 4,
+      "n": 23,
+      "rate": 0.174,
+      "ci95": [
+        0.05,
+        0.388
+      ]
+    },
+    "c3_rejected": {
+      "k": 0,
+      "n": 23,
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        0.148
+      ]
+    },
+    "instances": [
+      "fixture: deleted a 7-line docblock, 2 of 3",
+      "project-a: reworded a doc comment (Normalises -> Canonicalises), 1 of 10",
+      "project-b: inserted a gratuitous blank line, 1 of 10"
+    ],
+    "caveat": "reported for interest and NOT pooled into any verdict; \u00a74.3 is applied per project"
+  }
+}

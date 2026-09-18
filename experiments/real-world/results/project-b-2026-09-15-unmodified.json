@@ -1,0 +1,96 @@
+{
+  "measured": true,
+  "experiment": "real-world-trial",
+  "target": "project-b",
+  "date": "2026-09-15",
+  "headline": "The pipeline runs end to end on project-b for the first time (two prior attempts produced zero candidates ever). But the compile gate is a no-op on this project: a candidate with two deliberate type errors SURVIVED with score 1.00. No survival rate is reported, because the contract that defines 'survived' is not being enforced here.",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local", "cpu": "Apple M2 Pro", "total_gb": 32, "os": "macOS 26.6.2",
+    "node": "v22.23.2 (nvm)", "free_gb_at_run": 6.4
+  },
+  "project": {
+    "framework": "React 18.2 + Vite", "package_manager": "pnpm 8.15.8", "test_runner": "jest 30.0.4",
+    "typescript": "5.3.3", "lines": 576606,
+    "module": "src/utils/array.ts", "module_lines": 157, "exported_functions": 11,
+    "existing_test": "src/utils/tests/array.test.ts — the module HAS gained a test since the brief was written",
+    "ts_jest_diagnostics": "the project sets diagnostics:false itself, so ADR-0036 fix 1 was never needed here"
+  },
+  "sidecrew": { "head": "2619f10", "built_from_head": true },
+  "worker": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "revision": "019cc73c45c7",
+    "pinned": true, "temperature": 0, "seed": 42, "tier": "local"
+  },
+  "doctor": {
+    "stryker": "ok 8.7.1", "stryker_runner": "ok — jest, . can be mutated under that runner",
+    "jest": "ok 30.0.4", "tsc": "ok 5.3.3", "vitest": "MISSING", "memory": "DEGRADED 6.4 GB free"
+  },
+  "predictions": {
+    "a_stryker_loads_plugins": {
+      "verdict": "CONFIRMED",
+      "evidence": "generated sidecrew.stryker.config.mjs carries absolute plugins paths into node_modules/.pnpm/ for BOTH @stryker-mutator/jest-runner and @stryker-mutator/typescript-checker, with the default glob '@stryker-mutator/*' kept first. Stryker ran to completion: 6 mutants, 6 killed, score 1.00. Neither 'Unknown stryker config option \"jest\"' nor 'Cannot find Checker plugin \"typescript\"' occurred.",
+      "note": "ADR-0036 fix 2 was built against a six-file reproduction; this is its first real project."
+    },
+    "b_candidate_imports_do_not_resolve": {
+      "verdict": "REFUTED on this project",
+      "evidence": "A candidate whose first line is `import { describe, it, expect } from '@jest/globals'` SURVIVED: compile ok, pass ok, 6/6 mutants killed. @jest/globals is genuinely NOT a declared dependency and does NOT resolve via node's resolver from the project root, but jest's own resolver supplies it at runtime.",
+      "caveat": "The TS2307 that would otherwise have fired is suppressed by prediction (c) — tsc never type-checks the candidate. So (b) is refuted in observable effect, but one of the two mechanisms that would have caught it is itself broken."
+    },
+    "c_tsc_does_not_check_the_candidate": {
+      "verdict": "CONFIRMED — and it is a hole in the gate",
+      "mechanism": "testDirFor returns 'test', a directory that does not exist in this project (its tests live in src/utils/tests/). tsconfig.json has include: [\"src\", \"internals/startingTemplate/**/*\", \"src/types/**/*\"]. The candidate is written to test/<name>.test.ts, outside every include glob, so `tsc --noEmit -p tsconfig.json` type-checks the project and not the candidate.",
+      "control_1": {
+        "candidate": "const deliberateTypeError: string = 42; thisFunctionDoesNotExistAnywhere(deliberateTypeError);",
+        "expected_errors": ["TS2322", "TS2304"],
+        "result": "compile ok — failed only at the pass stage, as a runtime ReferenceError"
+      },
+      "control_2": {
+        "candidate": "const wrongType: string = 42 (module scope) and const alsoWrong: number = 'not a number' (inside the test) — both type errors, neither throws at runtime",
+        "result": "SURVIVED · compile ok · pass ok · 6 mutants killed · score 1.00"
+      },
+      "consequence": "On this project the 'compiles' conjunct of `survive <=> compiles AND passes AND kills >= 1 AND non-tautological` is not enforced. A survivor can reach Claude's review having never been type-checked, and would fail the project's own CI tsc step."
+    },
+    "d_tsc_ooms_without_more_heap": {
+      "verdict": "CONFIRMED, and better handled than predicted",
+      "evidence": "Without NODE_OPTIONS, tsc --noEmit ran out of memory after 48.9 s (predicted ~52 s).",
+      "handling": "sidecrew did NOT report it as a failed candidate. It refused with a distinct error naming the cause as a machine limit rather than the candidate, and printing the exact remedy plus the fact that it passes the environment through.",
+      "deviation_recorded": "NODE_OPTIONS=--max-old-space-size=8192 was set for every subsequent verify. This is an environment change, not a verifier change.",
+      "doctor_gap": "doctor still cannot see this coming — it reports tsc ok without knowing the heap the project needs."
+    }
+  },
+  "new_defect_found": {
+    "title": "ADR-0036's two fixes do not compose: fix 1 is silently disabled on exactly the package manager fix 2 exists to support",
+    "mechanism": "src/verifier/ts.ts:776 gates the jest shim on `runner === \"jest\" && isResolvable(\"ts-jest\", projectDir) && isResolvable(\"jest-config\", projectDir)`. Under pnpm's strict layout jest-config is a transitive dependency of jest and is NOT resolvable from the project root, so the shim is skipped. Measured here: ts-jest resolves, jest-config does not.",
+    "impact_here": "None — project-b sets ts-jest diagnostics:false in its own config, so it never needed the shim.",
+    "impact_elsewhere": "A pnpm project on ts-jest with diagnostics left at the default would get no remedy and no explanation, and would fail exactly as ADR-0028 describes. Fix 2 makes pnpm reach the mutation stage; fix 1 then cannot help it when it gets there.",
+    "not_fixed": "No verifier code was touched during this trial."
+  },
+  "mutant_probe": {
+    "functions": 11, "plannable_yes": 11, "plannable_no_mutants": 0, "crash_only": 0, "unresolved": 0,
+    "mutants_total": 96, "killed_total": 77, "median_ms_per_function": 213908,
+    "per_function": {
+      "arrayDifference": { "mutants": 12, "killed": 12 },
+      "intersection": { "mutants": 6, "killed": 6 },
+      "intersectionObjectArrays": { "mutants": 12, "killed": 10 },
+      "isDeepEqual": { "mutants": 31, "killed": 18 },
+      "isSubsetDeep": { "mutants": 16, "killed": 13 },
+      "mergeUniqueByKey": { "mutants": 2, "killed": 2 },
+      "not": { "mutants": 6, "killed": 6 },
+      "notObjectArrays": { "mutants": 6, "killed": 5 },
+      "toArray": { "mutants": 1, "killed": 1 },
+      "union": { "mutants": 2, "killed": 2 },
+      "unionObjectArrays": { "mutants": 2, "killed": 2 }
+    },
+    "significance": "The first measurement of any kind this project has produced. ADR-0030's trial and the one before it never got a single candidate to a verdict."
+  },
+  "survival_rate": null,
+  "survival_rate_withheld_because": "Prediction (c) shows the compile stage does not type-check the candidate on this project. Any survival rate measured here would be over a weaker contract than sidecrew's stated one, and not comparable with project-a's 0.375. Fix the gate, then measure.",
+  "cost_ms": {
+    "compile_successful": 34833, "compile_ooms_without_heap": 48880,
+    "pass": 1939, "mutation_one_function": 174677, "whole_verdict_survivor": 211614
+  },
+  "hygiene": {
+    "branch": "sidecrew-trial-web — never pushed, never merged, deleted",
+    "restored_to": "ai_optimization",
+    "lockfile_md5_original": "98c513735e64e86007cfe300212b7ca4"
+  }
+}

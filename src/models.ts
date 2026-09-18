@@ -25,10 +25,37 @@ export interface TierRule {
   /** Installed RAM at or above this, in GB, selects this rule. Rules are tried largest first. */
   min_ram_gb: number;
   tier: Tier;
-  /** The models.json key to run, or null on the api tier, which hosts nothing. */
+  /**
+   * On `local`, the models.json key to host. On `api`, the pinned model id (ADR-0060) — which is not
+   * a key in `models` and is not downloaded, which is why `modelForMachine` answers null there.
+   */
   model: string | null;
   why: string;
 }
+
+/**
+ * The api tier's worker, pinned by full model id (ADR-0045 §2, ADR-0060).
+ *
+ * Deliberately not a `ModelEntry`: a hosted model has no repo, no revision and no resident footprint,
+ * and giving it those fields with empty values would invite code to treat the two pins as equally
+ * strong. They are not — `revision` is an immutable commit, this is a name a provider resolves.
+ */
+export interface ApiModel {
+  model: string;
+  context_tokens: number;
+  rates_usd_per_mtok: { input: number; output: number };
+  rates_as_of: string;
+}
+
+export const apiModel = (): ApiModel => {
+  const { model, context_tokens, rates_usd_per_mtok, rates_as_of } = models.api;
+  return { model, context_tokens, rates_usd_per_mtok, rates_as_of };
+};
+
+/** What the run's billed tokens cost, at the rates recorded on `rates_as_of`. Phase 13 §5.1's $(api). */
+export const apiCostUsd = (usage: { prompt_tokens: number; completion_tokens: number }, m: ApiModel = apiModel()): number =>
+  (usage.prompt_tokens / 1e6) * m.rates_usd_per_mtok.input +
+  (usage.completion_tokens / 1e6) * m.rates_usd_per_mtok.output;
 
 const FILE = new URL("./models.json", import.meta.url);
 
@@ -62,10 +89,16 @@ export const tierFor = (totalGb: number): TierRule => {
   return rule;
 };
 
-/** The model this machine should run, or null when its tier hosts nothing locally. */
+/**
+ * The model this machine should **host**, or null when its tier hosts nothing locally.
+ *
+ * Null on the api tier even though its rule now names a model: that name is a hosted id (ADR-0060),
+ * not a key in `models`, and nothing downloads it. Callers that want it ask `apiModel()`.
+ */
 export const modelForMachine = (totalGb: number): ModelEntry | null => {
   const rule = tierFor(totalGb);
-  return rule.model === null ? null : entry(rule.model);
+  if (rule.tier === "api" || rule.model === null) return null;
+  return entry(rule.model);
 };
 
 // ── the Hugging Face cache ────────────────────────────────────────────────────────────────────────
@@ -275,6 +308,13 @@ export const renderModels = (rs: ModelRow[], totalGb: number | null): string => 
       `this machine: ${totalGb!.toFixed(0)} GB installed → ${rule.tier} tier${rule.model ? ` · ${rule.model}` : ""}`,
       `  ${rule.why}`,
     );
+    if (rule.tier === "api") {
+      const a = apiModel();
+      lines.push(
+        `  worker inference is billed: $${a.rates_usd_per_mtok.input}/MTok in, $${a.rates_usd_per_mtok.output}/MTok out (rates as of ${a.rates_as_of})`,
+        "  the zero-worker-tokens guarantee is a local-tier guarantee and does not hold here (ADR-0045)",
+      );
+    }
   }
   const unpinned = rs.filter((r) => r.snapshot && !r.pinned_and_present);
   if (unpinned.length) {

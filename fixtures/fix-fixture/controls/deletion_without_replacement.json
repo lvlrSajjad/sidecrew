@@ -1,0 +1,10 @@
+{
+  "rule": "deletion_without_replacement",
+  "why": "Deleting the offending line is the cheapest possible fix for an error on that line. The suite catches this one too — `rates.test.ts` imports `rateFor` — but the gate must refuse it for the right reason and before the expensive stage, because a project with no test of the deleted code would not catch it at all.",
+  "edits": [
+    {
+      "path": "src/rates.ts",
+      "contents": "import { roundTo } from \"./money\";\n\n/**\n * Planted error #1 — **TS2538**, `undefined` used as an index type.\n *\n * At runtime this is already correct: `rates[undefined]` is `undefined` and `?? 0` catches it, which is\n * exactly the behaviour `test/rates.test.ts` pins. Only the types are wrong, which is what makes it a\n * behaviour-preserving fix rather than a bug fix — see the fixture README.\n */\n\nexport function convert(amount: number, rates: Record<string, number>, code: string | undefined): number {\n  return roundTo(amount * rateFor(rates, code), 2);\n}\n"
+    }
+  ]
+}

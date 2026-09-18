@@ -9,12 +9,12 @@ export default {
   disableTypeChecks: false,
   coverageAnalysis: "perTest",
   reporters: ["json"],
-  jsonReporter: { fileName: "reports/mutation/mutation.json" },
+  jsonReporter: { fileName: ".sidecrew-mutation/mutation.json" },
   mutate: ["src/**/*.ts"],
   // Safe only because the sandbox is per candidate, so this file is always cold. Pointed at a shared
   // location it silently hands one candidate the kills another candidate earned — measured, ADR-0004.
   incremental: true,
-  incrementalFile: "reports/stryker-incremental.json",
+  incrementalFile: ".sidecrew-mutation/stryker-incremental.json",
   concurrency: 2,
   // A score is a signal for review, never a pass/fail — ADR-0006. Nothing here may fail the run.
   thresholds: { high: 80, low: 60, break: null },

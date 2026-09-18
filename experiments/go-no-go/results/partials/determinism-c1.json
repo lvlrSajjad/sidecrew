@@ -1,0 +1,12 @@
+{
+  "measured": true,
+  "config": "c1",
+  "task_id": "truncate:boundary:0",
+  "runs": 3,
+  "identical": false,
+  "lengths": [
+    555,
+    630,
+    624
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "language": "typescript",
+  "module": "fixtures/ts-fixture/src/numbers.ts",
+  "test_framework": "vitest",
+  "meta": {
+    "planner_model": "claude-opus-5",
+    "planner_tokens": 32309,
+    "created": "2026-09-14T15:10:00.000Z"
+  },
+  "shapes": [
+    {
+      "kind": "happy_path",
+      "exemplar": "exemplars/happy_path.test.ts",
+      "exemplar_function": "clamp",
+      "rules": "One or two representative inputs. Assert the exact return value, never its type or its length."
+    },
+    {
+      "kind": "boundary",
+      "exemplar": "exemplars/boundary.test.ts",
+      "exemplar_function": "clamp",
+      "rules": "Empty input, one element, and the value either side of each limit. One test per boundary, exact values."
+    },
+    {
+      "kind": "error_or_throw",
+      "exemplar": "exemplars/error_or_throw.test.ts",
+      "exemplar_function": "clamp",
+      "rules": "The inputs the contract rejects. Assert the error type, and that the message names the offending value."
+    }
+  ],
+  "functions": [
+    {
+      "name": "roundTo",
+      "signature": "roundTo(value: number, decimals: number): number",
+      "source_sha": "990b8b6057db949768a619f4c4bd9b69a1616982b07701014accddd5731e685e",
+      "line_range": [
+        9,
+        15
+      ],
+      "shapes": [
+        "happy_path"
+      ],
+      "notes": "Half away from zero, so -0.5 rounds to -1 rather than to 0. Negative decimals round to tens and hundreds."
+    },
+    {
+      "name": "percentChange",
+      "signature": "percentChange(from: number, to: number): number",
+      "source_sha": "8b35baaf8e9af26ebf5c1ed3b27dc26d4c451e9249525c2153344b63fd748419",
+      "line_range": [
+        17,
+        21
+      ],
+      "shapes": [
+        "error_or_throw"
+      ],
+      "notes": "Throws RangeError when `from` is 0. The denominator is |from|, so a rise from -10 to -5 is +0.5."
+    },
+    {
+      "name": "gcd",
+      "signature": "gcd(a: number, b: number): number",
+      "source_sha": "d9d86f3264b22e192005b5a77989a517527811158c0f248aa555f6cbed754188",
+      "line_range": [
+        23,
+        33
+      ],
+      "shapes": [
+        "happy_path"
+      ],
+      "notes": "Of the magnitudes, and of the truncated values: gcd(-12, 8) is 4 and gcd(0, 0) is 0."
+    },
+    {
+      "name": "mean",
+      "signature": "mean(values: readonly number[]): number",
+      "source_sha": "54d14db4b51e8481d3d345f0aaef302bdbd0832559024df2bd6e4b7ac72c45be",
+      "line_range": [
+        35,
+        41
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "An empty list has a mean of 0, which is a decision rather than a mathematical fact."
+    },
+    {
+      "name": "median",
+      "signature": "median(values: readonly number[]): number",
+      "source_sha": "3db46fdcc37173f98361072ca6f70745ced53503dbb46399b5ac71a2e53ce2e6",
+      "line_range": [
+        43,
+        50
+      ],
+      "shapes": [
+        "happy_path",
+        "boundary"
+      ],
+      "notes": "Numeric sort on a copy \u2014 the input is never reordered. An even count gives the mean of the middle two; empty gives 0."
+    }
+  ]
+}

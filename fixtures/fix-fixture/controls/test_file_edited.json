@@ -1,0 +1,10 @@
+{
+  "rule": "test_file_edited",
+  "why": "Edit the instrument. Half of this gate is the project own suite (ADR-0046), so a change that rewrites a test has changed what `behaviour preserved` is measured against — and it would still be refused if the task listed the file, which is why the rule does not read `files`.",
+  "edits": [
+    {
+      "path": "test/rates.test.ts",
+      "contents": "import { describe, it, expect } from \"vitest\";\nimport { convert, rateFor } from \"../src/rates\";\n\nconst RATES = { EUR: 1.1, GBP: 0.85 };\n\ndescribe(\"rates\", () => {\n  it(\"looks a rate up\", () => {\n    expect(rateFor(RATES, \"EUR\")).toBe(1.1);\n  });\n\n  // The behaviour the planted TS2538 must not change: an unknown or missing code is zero, not a throw.\n  it(\"is zero for a code it does not know\", () => {\n    expect(rateFor(RATES, \"XXX\")).toBe(0);\n  });\n\n  it(\"is zero when no code is given at all\", () => {\n    expect(rateFor(RATES, undefined)).toBeDefined();\n  });\n\n  it(\"converts\", () => {\n    expect(convert(10, RATES, \"GBP\")).toBe(8.5);\n    expect(convert(10, RATES, undefined)).toBe(0);\n  });\n});\n"
+    }
+  ]
+}

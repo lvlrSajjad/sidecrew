@@ -1,0 +1,161 @@
+{
+  "measured": true,
+  "arm": "B (Sonnet alone, no gate)",
+  "project": "project-a",
+  "floor_tokens": 53420,
+  "floor_note": "per-model: Sonnet 53420 vs Opus 47927",
+  "tasks": [
+    {
+      "task_id": "rename-01",
+      "files": 1,
+      "raw": 57503,
+      "marginal": 4083,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "rename-02",
+      "files": 1,
+      "raw": 57535,
+      "marginal": 4115,
+      "diff_lines": 11,
+      "empty": false
+    },
+    {
+      "task_id": "rename-03",
+      "files": 1,
+      "raw": 57185,
+      "marginal": 3765,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-04",
+      "files": 1,
+      "raw": 57568,
+      "marginal": 4148,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-05",
+      "files": 1,
+      "raw": 57456,
+      "marginal": 4036,
+      "diff_lines": 11,
+      "empty": false
+    },
+    {
+      "task_id": "rename-06",
+      "files": 1,
+      "raw": 57697,
+      "marginal": 4277,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-07",
+      "files": 1,
+      "raw": 57483,
+      "marginal": 4063,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "rename-08",
+      "files": 1,
+      "raw": 57793,
+      "marginal": 4373,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-09",
+      "files": 1,
+      "raw": 57786,
+      "marginal": 4366,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-10",
+      "files": 1,
+      "raw": 57879,
+      "marginal": 4459,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-11",
+      "files": 1,
+      "raw": 57199,
+      "marginal": 3779,
+      "diff_lines": 5,
+      "empty": false
+    },
+    {
+      "task_id": "rename-12",
+      "files": 1,
+      "raw": 58438,
+      "marginal": 5018,
+      "diff_lines": 9,
+      "empty": false
+    },
+    {
+      "task_id": "multi-01",
+      "files": 3,
+      "raw": 58000,
+      "marginal": 4580,
+      "diff_lines": 11,
+      "empty": false
+    },
+    {
+      "task_id": "multi-02",
+      "files": 3,
+      "raw": 57596,
+      "marginal": 4176,
+      "diff_lines": 13,
+      "empty": false
+    },
+    {
+      "task_id": "multi-03",
+      "files": 2,
+      "raw": 60892,
+      "marginal": 7472,
+      "diff_lines": 21,
+      "empty": false
+    },
+    {
+      "task_id": "multi-04",
+      "files": 2,
+      "raw": 58710,
+      "marginal": 5290,
+      "diff_lines": 15,
+      "empty": false
+    },
+    {
+      "task_id": "multi-05",
+      "files": 2,
+      "raw": 56841,
+      "marginal": 3421,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "multi-06",
+      "files": 2,
+      "raw": 63070,
+      "marginal": 9650,
+      "diff_lines": 7,
+      "empty": false
+    },
+    {
+      "task_id": "multi-07",
+      "files": 2,
+      "raw": 57169,
+      "marginal": 3749,
+      "diff_lines": 13,
+      "empty": false
+    }
+  ]
+}

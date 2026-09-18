@@ -1,0 +1,11 @@
+{
+  // The same project with an `include` that does NOT cover the test directory — the shape a real React
+  // project had, where `testDirFor` returned `test/` (a directory it does not have; its tests live in
+  // `src/utils/tests/`) while `include` was `["src", …]`.
+  //
+  // Before ADR-0037 the compile stage type-checked the project, never opened the candidate, and reported
+  // `compile ok` regardless: a candidate carrying three type errors survived with a mutation score of
+  // 0.8. It exists so that fail-open is reproduced here rather than only on somebody's private repo.
+  "extends": "./tsconfig.json",
+  "include": ["src"]
+}

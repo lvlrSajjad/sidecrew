@@ -1,0 +1,106 @@
+{
+  "measured": true,
+  "experiment": "mutant-probe",
+  "date": "2026-09-15T09:02:41.820Z",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "total_gb": 32
+  },
+  "module": "<project>/project-a/src/modules/import/common/import.file.utils.ts",
+  "language": "typescript",
+  "framework": "jest",
+  "note": "`plannable` is the question; `mutants > 0` is not the same question. A mutant that crashes the process counts towards the score and never towards survival (ADR-0005), so a function whose only mutant crashes has mutants and can still never be survived. `unknown` means mutants survived this probe and nobody has looked at whether they are equivalent — plan such a function only after someone has.",
+  "probes": [
+    {
+      "function": "buildReportFileName",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 115856
+    },
+    {
+      "function": "buildResultFileName",
+      "mutants": 3,
+      "killed": 3,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 121732
+    },
+    {
+      "function": "describeHeader",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 116813
+    },
+    {
+      "function": "getOutputExtension",
+      "mutants": 2,
+      "killed": 2,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 125853
+    },
+    {
+      "function": "hasCellContent",
+      "mutants": 1,
+      "killed": 1,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 109979
+    },
+    {
+      "function": "isValidationError",
+      "mutants": 0,
+      "killed": 0,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "no_mutants",
+      "probe_survived": false,
+      "stage_reached": "done",
+      "error": "no mutant of isValidationError was killed: 0 survived, 0 were never reached, 0 timed out. The test passes against the original code and against every changed version of it.",
+      "ms": 106855
+    },
+    {
+      "function": "isXlsxMimeType",
+      "mutants": 5,
+      "killed": 5,
+      "survived": 0,
+      "timeout": 0,
+      "no_coverage": 0,
+      "plannable": "yes",
+      "probe_survived": true,
+      "stage_reached": "done",
+      "error": null,
+      "ms": 127716
+    }
+  ]
+}

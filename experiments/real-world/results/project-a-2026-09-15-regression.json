@@ -1,0 +1,160 @@
+{
+  "measured": true,
+  "experiment": "real-world-trial-6-part-1-regression",
+  "target": "project-a",
+  "date": "2026-09-15",
+  "purpose": "regression check that ADR-0037 did not break the one project that works; NOT a new measurement",
+  "headline": "no regression — module 1 reproduced 3/8 attempt-for-attempt; module 2 came back 4/8 because ADR-0040 changed its prompt; 7/16 against the control's 6/16",
+  "machine": {
+    "host": "MOs-MacBook-Pro.local",
+    "cpu": "Apple M2 Pro",
+    "total_gb": 32,
+    "os": "macOS 26.6.2",
+    "node": "v22.23.2 (nvm)",
+    "free_gb_at_run": 15.4,
+    "note": "quieter than every earlier trial on this stack, which ran at 6-9 GB free"
+  },
+  "sidecrew": {
+    "head": "9396158",
+    "built_from_head": true,
+    "git_clean": true,
+    "adrs_present": ["ADR-0037", "ADR-0038", "ADR-0039", "ADR-0040"]
+  },
+  "worker": {
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "revision": "019cc73c45c770444708a6dd8690c66243cc5c80",
+    "pinned": true,
+    "temperature": 0,
+    "seed": 42,
+    "tier": "local",
+    "claude_tokens_for_worker_inference": 0
+  },
+  "target_modifications": "none — package.json gained only 3 Stryker devDependencies; yarn.lock their resolutions (v1 preserved, md5 3597d70b1b11fdd61e4d3ecae0e65968 restored); src/ and test/ empty in git status throughout",
+  "environment_deviations": [
+    "node v22.23.2 via nvm rather than the machine default 20.20.0, which fails this project's engines",
+    "yarn 1.22.22 via npx rather than the machine's corepack-shimmed Berry"
+  ],
+  "comparability_correction": {
+    "finding": "prediction 1 was not answerable as asked for module 2",
+    "why": "ADR-0040 added the namedClass branch to exportStyleFor, which renders the imports_hint. Module 1 (export default class) hits the pre-existing default branch and its prompt bytes are unchanged. Module 2 (export class) hits the new branch and its prompt bytes changed, so temperature-0 determinism licenses no expectation that its result reproduces.",
+    "observed_how": "both hints read out of --dry-run rendered prompts before either run started",
+    "module_1_hint": "import AssetUtil from \"../src/common/assetUtil\"",
+    "module_2_hint": "import { ImportFileUtils } from \"../src/modules/import/common/import.file.utils\"",
+    "module_2_hint_before_adr_0040": "import { hasCellContent } from \"../src/modules/import/common/import.file.utils\""
+  },
+  "predictions": {
+    "1_same_result": {
+      "verdict": "CONFIRMED for module 1, NOT TESTABLE for module 2",
+      "module_1": "identical: 3/8, 13 attempts, same funnel, same three survivors at the same scores, same 560/700 token medians, same five TS2339 lines",
+      "module_2": "DIFFERENT: 4/8 rather than 3/8. Direction better. Task hasCellContent:happy_path, which the control quoted in full as a failed candidate. Attributable to the ADR-0040 prompt change, not to ADR-0037."
+    },
+    "2_derived_tsconfig_never_fires": {
+      "verdict": "CONFIRMED",
+      "premise": "project-a tsconfig.json has no include, no exclude and no files, so tsc defaults to every file under the config dir and the candidate in test/ is already in the program",
+      "observed": ".sidecrew-tsconfig.json ABSENT from a kept sandbox; .sidecrew-jest.config.cjs and sidecrew.stryker.config.mjs PRESENT",
+      "kept_sandbox_verify": "re-verified getBookValue:boundary survivor, SURVIVED score 1.00, 14 killed"
+    },
+    "3_import_hint_agrees_with_rules": {
+      "verdict": "CONFIRMED",
+      "correct_import_rate": "12/12",
+      "control_rate": "13/13",
+      "note": "100% over 12 attempts rather than 13; not a decline"
+    }
+  },
+  "adr_0039_reprobe": {
+    "range_derived": { "isValidationError": [145, 149] },
+    "range_in_control": [145, 145],
+    "hand_written_control_range_in_previous_trial": [145, 149],
+    "probe_file": "experiments/mutant-probe/project-a-import-adr0039.json",
+    "plannable": "7/7",
+    "plannable_in_control": "6/7",
+    "mutants_total": 14,
+    "per_function": {
+      "isXlsxMimeType": 5, "buildResultFileName": 3, "getOutputExtension": 2,
+      "describeHeader": 1, "hasCellContent": 1, "buildReportFileName": 1, "isValidationError": 1
+    },
+    "no_mutants_at_all_tally": "still wrong 4 times out of 4 times checked; ADR-0039 is the fix for the fourth, not a fifth instance",
+    "caveat": "isValidationError is plannable now and still absent from plans/importFileUtils-real/test_plan.json, so module 2's denominator covers 4 of 7 helpers rather than 5 of 7"
+  },
+  "modules": [
+    {
+      "name": "src/common/assetUtil.ts",
+      "export_style": "default class",
+      "plan": "plans/assetUtil-real/test_plan.json (reused exactly, not re-planned)",
+      "prompt_bytes_changed_by_this_commit": false,
+      "role": "the clean regression check on ADR-0037",
+      "run_id": "2026-09-15T12-27-29Z-assetUtil",
+      "tasks": 8,
+      "attempts": 13,
+      "funnel": { "tasks": 8, "compiled": 9, "passed": 3, "killed_ge_1": 3, "non_tautological": 13, "survived": 3 },
+      "survival_rate": 0.375,
+      "control_survival_rate": 0.375,
+      "survivors": [
+        { "task": "getNetBookValue:happy_path:0", "mutation_score": 0.7058823529411765, "killed": 12, "mutants_survived": 5 },
+        { "task": "getBookValue:happy_path:0", "mutation_score": 1.0, "killed": 14, "mutants_survived": 0 },
+        { "task": "getBookValue:boundary:0", "mutation_score": 1.0, "killed": 14, "mutants_survived": 0 }
+      ],
+      "median_survivor_mutation_score": 1.0,
+      "escalated": 5,
+      "wall_clock_s": 1115,
+      "collapse_point": "pass — 6 of the 9 attempts that compiled asserted something untrue",
+      "mutant_density_per_function": "12-19",
+      "reproduced_attempt_for_attempt": true
+    },
+    {
+      "name": "src/modules/import/common/import.file.utils.ts",
+      "export_style": "named class (export class ImportFileUtils)",
+      "plan": "plans/importFileUtils-real/test_plan.json (reused exactly, not re-planned)",
+      "prompt_bytes_changed_by_this_commit": true,
+      "role": "a fresh draw on a strictly better prompt, NOT a reproduction check",
+      "run_id": "2026-09-15T12-50-05Z-import.file.utils",
+      "tasks": 8,
+      "attempts": 12,
+      "control_attempts": 13,
+      "funnel": { "tasks": 8, "compiled": 10, "passed": 4, "killed_ge_1": 4, "non_tautological": 12, "survived": 4 },
+      "survival_rate": 0.5,
+      "control_survival_rate": 0.375,
+      "survivors": [
+        { "task": "hasCellContent:happy_path:0", "mutation_score": 1.0, "mutants": 1, "new_vs_control": true },
+        { "task": "hasCellContent:boundary:0", "mutation_score": 1.0, "mutants": 1 },
+        { "task": "isXlsxMimeType:happy_path:0", "mutation_score": 1.0, "mutants": 5 },
+        { "task": "isXlsxMimeType:boundary:0", "mutation_score": 1.0, "mutants": 5 }
+      ],
+      "median_survivor_mutation_score": 1.0,
+      "escalated": 4,
+      "wall_clock_s": 975,
+      "collapse_point": "pass, plus 2 of 12 attempts at compile",
+      "mutant_density_per_function": "1-5",
+      "density_caveat": "killed >= 1 is a much weaker statement here than on module 1; hasCellContent has exactly one mutant so its score is 1.00 or 0.00 with nothing between",
+      "compile_failures": {
+        "TS2341": "buildResultFileName — TIMESTAMP_LENGTH is private; same as the control's fourth quoted failure",
+        "TS2304": "buildReportFileName — Cannot find name 'randomUUID' x7; NEW. The prompt renders the function's body, which calls randomUUID(), and never the module's import of it. Same cause as the control's InsightsColorEnum failure."
+      }
+    }
+  ],
+  "part_1_total": { "survived": 7, "tasks": 16, "rate": 0.4375, "control": { "survived": 6, "tasks": 16, "rate": 0.375 } },
+  "pooling_warning": "do not turn 7/16 into a single confidence interval. Module 1's functions carry 12-19 mutants and module 2's carry 1-5, so killed >= 1 is a much lower bar on module 2, where 3 of 4 survivors sit on 1- and 5-mutant functions.",
+  "adr_0037_specific_confirmations": {
+    "listFiles_is_free": { "compile_ok_median_s": 31.4, "control_s": 32.4, "compile_failed_median_s": 11.8, "control_s_failed": 12.1, "note": "marginally faster; the machine had 6 GB more free RAM" },
+    "stripFileList_does_not_leak": "tsc printed the whole program's file list alongside 5 diagnostics on a 3,000-file project and the verdict text contains only the diagnostics, byte-for-byte the control's quoted failure. This was the most plausible way for ADR-0037 to regress a working project."
+  },
+  "cost": {
+    "module_1": { "generate_s": 14.9, "ttft_s": 1.22, "completion_tokens": 560, "prompt_tokens": 700, "compile_ok_s": 31.4, "compile_failed_s": 11.8, "pass_s": 6.9, "mutation_s": 113.4, "verdict_median_s": 152.6, "verdict_p90_s": 187.2 },
+    "module_2": { "generate_s": 8.2, "ttft_s": 1.01, "completion_tokens": 267, "prompt_tokens": 401, "compile_ok_s": 31.8, "compile_failed_s": 11.1, "pass_s": 8.7, "mutation_s": 47.9, "verdict_median_s": 121.6, "verdict_p90_s": 153.9 },
+    "control_comparison": "every figure within a few per cent of the control and mostly slightly faster, consistent with 6 GB more free RAM"
+  },
+  "peak_rss_finding": {
+    "this_run_mb": [4538.2, 4400.5],
+    "control_mb": [170.5, 166.3],
+    "rerun_mb": 243.4,
+    "explanation": "RSS measures how much of the model macOS is keeping resident, not how big the worker is. Live ps -o rss on the same unchanged worker read 187.2 MB while free memory was 6.3 GB, and 4538.2 MB was its peak when free memory was 15-16 GB.",
+    "consequence": "earlier trials' 170-243 MB figures measured a machine under pressure, not a small worker. peak_rss_mb in BatchResult cannot be read as 'what this worker needs', which is how two earlier reports quote it.",
+    "status": "BACKLOG, not an ADR"
+  },
+  "new_findings": [
+    "the rendered prompt shows a function's body and never the imports that body depends on — now twice, on two projects and two modules: InsightsColorEnum and randomUUID. notes is where a planner would put it and notes is never rendered.",
+    "peak_rss_mb measures memory pressure rather than the worker",
+    "protocol: when a commit under test changes a rendered prompt, identify which modules it changes before the run and report those as fresh draws rather than reproductions"
+  ],
+  "gate_for_part_2": "PASSED — no regression, part 2 proceeded"
+}
