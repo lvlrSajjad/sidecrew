@@ -393,6 +393,23 @@ survival rate, no approval rate, no price. The thermal guard has still never *fi
 gave it no reason to, which is not the same as saying a back-off would land correctly. `docs/plan/PHASES.md` is
 the roadmap; `docs/research/` is why it looks like this.
 
+## Working on sidecrew itself
+
+```bash
+npm i && npm run lint && npm test
+```
+
+**The fixtures under `fixtures/` have their own dependencies and they are not in the repository** — they
+are build artefacts. A clean clone therefore runs the suite with a handful of fixture-dependent cases
+**skipped**, and each skip says which command enables it. To run everything:
+
+```bash
+for f in fixtures/*/; do [ -f "$f/package.json" ] && npm --prefix "$f" i; done
+```
+
+Tests that need a real toolchain — a live worker, Stryker, Muter, a project's own suite — are
+`*.slow.test.ts` and run only with `SIDECREW_SLOW=1`. CI runs the fast set.
+
 ## Releasing
 
 Same as simframe: bump `package.json`, `server.json` and `claude/.claude-plugin/plugin.json` together, tag, push; CI checks all three agree and the release workflow publishes to npm and the MCP Registry.

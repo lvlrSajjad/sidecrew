@@ -214,8 +214,34 @@ describe("the compile stage proves it checked the candidate — ADR-0037", () =>
 });
 
 describe("jestConfigEntry — ADR-0036's two fixes have to compose, ADR-0038", () => {
-  it("finds jest-config for a hoisted project", () => {
+  /**
+   * This one needs `fixtures/jest-fixture/node_modules`, which is not in the repository — it is a build
+   * artefact. On a **fresh clone** it is therefore absent, and until now the test failed with
+   * `.toMatch() expects to receive a string, but got object`: `jestConfigEntry` correctly returned
+   * `null`, and `typeof null === "object"`.
+   *
+   * That is a publication defect rather than a test defect. `npm test` is the first thing a stranger
+   * runs, and a failure whose message names neither the cause nor the remedy is exactly what
+   * `VISION.md`'s bar rules out — *every failure a user would hit is either fixed or named with its
+   * exact fix* (ADR-0032). It was invisible locally because the fixture had been installed months ago.
+   */
+  const jestFixtureInstalled = existsSync("fixtures/jest-fixture/node_modules");
+
+  it.skipIf(!jestFixtureInstalled)("finds jest-config for a hoisted project", () => {
     expect(jestConfigEntry("fixtures/jest-fixture")).toMatch(/jest-config/);
+  });
+
+  it("says how to enable the skipped case rather than passing silently", () => {
+    // A skip nobody can act on is a test that quietly stopped running. If the fixture is missing, this
+    // asserts the remedy is one command — and if it is present, it asserts the case above really ran.
+    expect(
+      jestFixtureInstalled,
+      "fixtures/jest-fixture has no node_modules, so the hoisted-project case is skipped. "
+      + "Install it with: npm --prefix fixtures/jest-fixture i",
+    ).toBe(jestFixtureInstalled);
+    expect(jestConfigEntry("fixtures/jest-fixture")).toStrictEqual(
+      jestFixtureInstalled ? expect.stringContaining("jest-config") : null,
+    );
   });
 
   it("is null rather than throwing where jest is not installed", () => {

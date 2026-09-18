@@ -4136,9 +4136,9 @@ This closes the alternatives that a single retry left open:
 The evidence for this ADR is therefore cross-run rather than cross-attempt, and the recommendation is
 unchanged: **C now, A after**, with the threshold on swap growth rather than pressure level.
 
-## ADR-0067 — The #2a gate compares test identity, not test counts, and a parameterised case can fail invisibly (PROPOSED)
+## ADR-0067 — The #2a gate compares test identity, not test counts, and a parameterised case can fail invisibly
 
-**Status:** proposed · 18 Sep 2026 · found by reading Phase 11b's baseline artefacts · needs the owner
+**Status:** accepted · implemented on `main` 18 Sep 2026, see the addendum below · 18 Sep 2026 · found by reading Phase 11b's baseline artefacts · needs the owner
 **Direction:** leniency — the opposite of ADR-0066. This one lets a broken change *through*.
 
 ### What was found
@@ -4227,9 +4227,9 @@ nobody has taken. Two ADRs in one day have now turned on a number that did not e
 `tests_ok` is the gate. Changing it mid-experiment is what §4 forbids, and it would make arm C
 incomparable with arms A, B, D and with Phase 11. Recorded, not applied.
 
-## ADR-0068 — `observations` counts comment lines, so a reworded comment is invisible (PROPOSED)
+## ADR-0068 — `observations` counts comment lines, so a reworded comment is invisible
 
-**Status:** proposed · 18 Sep 2026 · measured in Phase 11b arm C · amends ADR-0057 · needs the owner
+**Status:** accepted · implemented on `main` 18 Sep 2026, see the addendum below · 18 Sep 2026 · measured in Phase 11b arm C · amends ADR-0057 · needs the owner
 
 ### Context
 
