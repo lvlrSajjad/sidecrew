@@ -8,7 +8,15 @@ Read `prompts/phase-8-publish.md`, then `docs/plan/ROADMAP.md` Priority 4, then 
 
 ---
 
-## 1. The only thing actually blocking publication is the repository, not the work
+> **Superseded in part, 19 Sep 2026: the scrub is done and the repository is published.**
+> `origin/main` is `6e841c8`, 19 commits, **0 client references in any commit or object path**.
+> §1 below is kept as the record of what was removed and why, because Phase 14 has to know what is
+> *not* in the repository it is publishing. The live rule now is narrower and sharper:
+> **the local `private-history` branch carries 44 contaminated files across 107 commits and must
+> never be pushed or merged into `main`.** The offline copy is
+> `~/sidecrew-history-backup/sidecrew-full-history-20260919-0142.bundle`, verified by restoring it.
+
+## 1. What was removed, and the one case that decided the method
 
 `origin/main` is **84 commits behind and clean. Nothing has leaked.** That is the good news and it is
 the whole reason a careful scrub is still possible.
@@ -21,7 +29,16 @@ Measured 18 Sep 2026, so the size of the job is known:
 | commits whose diff touches that name | **31 of 102** |
 | largest clusters | 15 in `experiments/real-world/results`, 6 in `experiments/mutant-probe` |
 
-**This is a history rewrite, not a `sed`.** A push distributes every blob in history; `git rm` in a
+**It was a rebuild, not a filter or a `sed`.** With 76 of 89 local commits contaminated there was
+little intact history left to preserve, so the content was replayed onto the last published commit as
+one clean tree: **325 files kept, 629 dropped, 14 renamed, 32 anonymised.**
+
+**The case that justified the allowlist**, and Phase 14 should keep it in mind for anything it adds:
+45 generated test files under `experiments/mutant-probe/*/` imported the client's modules and encoded
+their business rules, and **contained the client's name nowhere in their contents**. Every name-based
+scrub would have published all 45. An allowlist miss loses a file; a denylist miss publishes one.
+
+The original reasoning, kept: A push distributes every blob in history; `git rm` in a
 later commit does not remove it; forks, caches and code search pick it up within hours. CLAUDE.md #7
 is the rule and ROADMAP Priority 4 is the method: **an allowlist rebuild, never a denylist** — a
 denylist that misses one blob has failed completely while appearing to work.
