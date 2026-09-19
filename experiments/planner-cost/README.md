@@ -276,3 +276,36 @@ Same machine as §5. The measurement taken under this amendment is written to
 `results/planner-cost-2026-09-19.json` with `"measured": true`, and it names the subagent transcript
 it summed — a total whose provenance is a count rather than a list is the failure this whole file is
 about.
+
+---
+
+## Note, 2026-09-20, written **before** the `N ≈ 40` arm reported — it is not a clean replicate
+
+§4.4 asks for `P` at two plan sizes, *"each in its own clean session"*, so that `P`'s dependence on
+`N` becomes a curve rather than a constant. The second arm is running. **It is not a like-for-like
+replicate of the first, and the reason is my doing rather than the planner's.**
+
+The `N ≈ 40` planner was handed **two facts the `N = 12` planner had to discover for itself**:
+
+1. project-a's `tsconfig.json` declares no `include`/`exclude`, so its `tsc` program covers `test/` —
+   and therefore a rename of any symbol a test file references fails `compile_ok` by construction
+   (the ADR-0064 addendum, itself a finding *of* the first arm);
+2. the whole-file rewrite ceiling of ~22,674 characters.
+
+The second is close to derivable from the planner's own contract. **The first is not** — it is the
+kind of thing a planner pays `tsc` runs and greps to learn, and the first arm did pay for it.
+
+**Direction of the bias, stated so nobody has to infer it:** this makes `P_total` at `N ≈ 40`
+**lower** than a from-scratch planner would have spent, which makes `R` at that `N` **better** than
+it should be. So:
+
+> The `N ≈ 40` figure is a **lower bound** on planning cost at that denominator, and the
+> `N = 12` → `N ≈ 40` comparison **overstates** how much the fixed cost amortises.
+
+If the curve still shows `R > 1` at the larger `N`, that conclusion is safe — it survives a bias
+running in its favour. If it shows `R ≤ 1`, the result is **not** sufficient on its own and a
+from-scratch arm is owed before anything is claimed from it.
+
+Recorded here, dated, before the number arrived, for the same reason §4 was frozen before the
+planner existed: a caveat written after seeing a number is a description of how one feels about the
+number.
