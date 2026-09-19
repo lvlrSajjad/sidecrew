@@ -29,7 +29,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | 12 | Management: the code-change planner, the correction round, what a stuck worker says | 🔶 **built, unmeasured** | `prompts/phase-12-management.md` · ADR-0044, ADR-0057, ADR-0058 · the four deliverables are done; **§2.1 and §2.2 are a later session's**, against rules frozen 18 Sep before either existed. §2.2's denominator is unblocked by ADR-0063 |
 | 13 | The `api` tier: Haiku as the worker on machines with 16 GB or less | 🔶 **built and merged, unmeasured** | `prompts/phase-13-api-tier.md` · §5 frozen 18 Sep · ADR-0045, ADR-0059 – ADR-0062 · the client, both guards, tier selection and the accounting are in and tested. **§5 waits on API credits** — the Console account has none, and a subagent substitute was considered and refused (§5's amendment, dated). Blocks nothing before 14 |
 | **13b** | **The edge ideas that gate publication** — unattended mode ✅, memoisation ✅, local retrieval | 🔶 **two of three built** · owner's decision 18 Sep 2026 | `BACKLOG.md` § *The edge ideas* items 4, 3, 1 · all three were Phase 12's and were not built. **Item 6 (two-model agreement) was considered and dropped** — its own precondition is untested |
-| **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12`, FAIL** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · **§2.2: `S_c = 0/29`, OFF BY DEFAULT** · ✅ **all four measured** | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
+| **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12` and `1.07` at `N = 41`, FAIL at both** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · **§2.2: `S_c = 0/29`, OFF BY DEFAULT** · ✅ **all four measured** | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
 | 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ | `prompts/phase-8-publish.md` |
 | 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · not on the publish path | ADR-0031 options B/C |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
@@ -896,7 +896,11 @@ valuable version caches *verdicts*, and that is the dangerous one — a verdict 
 pass, which is precisely ADR-0037's failure mode. **An ADR on what goes in the key comes first.**
 Local tier only; the api tier has no seed (ADR-0045 §5), and that branch is now real code.
 
-**1 — local models read the codebase. §2.1 did not kill it; it confirmed the premise.** The item
+**1 — local models read the codebase. §2.1 did not kill it; it confirmed the premise and then gave
+it a target.** The curve says planning is a large **fixed** cost (`F ≈ 233,500`, 68 % of the total
+even at `N = 41`) plus a small per-task one, and the fixed part is overwhelmingly Opus reading —
+15.5M cache reads against 89k of output. Item 1 attacks `F`, the one term that does not amortise by
+itself. The item
 rested on planning being expensive and mostly Opus reading code. Measured 19 Sep 2026: **22,134 Opus
 tokens per task planned** at `N = 12`, with **6.3M cache reads against 65k of output** — a planner
 that reads far more than it writes, which is the shape the item is aimed at. §2.1 was its go/no-go

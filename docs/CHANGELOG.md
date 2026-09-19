@@ -1,4 +1,25 @@
 # Changelog
+## Unreleased — §4.4's curve: planning is a big fixed cost, not an expensive per-task one (2026-09-20)
+- **`R = 2.840` at `N = 12`, `R = 1.074` at `N = 41` — FAIL at both.** `P_total` grew **1.29× for
+  3.42× the tasks**, so the same planner on the same project gives a `P` that differs by 2.6×
+  depending only on the denominator. This is why §4.4 forbids quoting `P` without `N`.
+- **The `N = 41` FAIL is by 7 %, and it is trustworthy for one specific reason**: a note committed
+  *before* that arm reported recorded that its planner was handed two facts the first had to
+  discover, so its `R` is better than a from-scratch planner would reach. The note said `R > 1` under
+  that bias would be safe. It came out `R > 1`.
+- **Two-point fit: `F ≈ 233,500` fixed, `v ≈ 2,700` per task** — the fixed term is 88 % of planning
+  cost at `N = 12` and still 68 % at `N = 41`. Reported caveat-first: two points is an interpolation
+  dressed as a model, and one of them is biased low. The **shape** is the finding.
+- **13b item 1 stops being a premise and becomes a target.** It attacks the fixed term, which is
+  overwhelmingly Opus reading — 15.5M cache reads against 89k of output on the larger arm — and is the
+  one part of the curve that does not amortise on its own.
+- The honest form of §2.1's FAIL, which one denominator could not support: *coordination is not worth
+  paying on a dozen tasks, and the economics move sharply in sidecrew's favour as the job gets bigger.*
+- From the planner, about the project rather than the measurement: project-a's suite **collects zero
+  tests under node 20** (all 354 suites fail on a `better-sqlite3` ABI mismatch) and `doctor` says
+  `jest ok`; there are **zero unused imports** in the subtree; and the rename seam is mostly past the
+  whole-file rewrite ceiling — 1,975 of 2,042 files fit, but the ones carrying the work do not.
+
 ## Unreleased — §2.2 measured: the correction round does not pay, and the reason is the worker (2026-09-20)
 - **`S_c = 0/29`. OFF BY DEFAULT** (§4.2), against a rule frozen 18 Sep before the round existed.
   `T_c` = 2,784 Opus tokens per correction ($0.0227); `S_be` = 0.291–1.456; `S_c = 0` is below it

@@ -101,15 +101,26 @@ Three things that verdict does **not** mean, said here because this is the file 
 - **It is not a verdict on the doing side.** Workers remain free on the local tier and the gate
   remains 95 % of a candidate's cost. What is expensive is the *deciding*, which is the half nobody
   had measured.
-- **It holds at `N = 12` and no other `N`** (§4.4). Planning cost is not linear in tasks — a module
-  read once serves twelve tasks or forty — and the `N ≈ 40` arm has not been run. That arm is now the
-  single most valuable measurement left, because it is the one thing that can move this number.
+- **It does not hold at every `N`, and the second denominator is now measured.** `R = 1.074` at
+  `N = 41` — still FAIL, by 7 %, and on a run that was biased *towards* passing (the planner was
+  handed two facts the first had to discover). `P_total` grew **1.29× for 3.42× the tasks**, so
+  planning is a large fixed cost plus a small per-task one: `F ≈ 233,500` and `v ≈ 2,700`, with the
+  fixed term **88 % of the cost at `N = 12` and still 68 % at `N = 41`**.
 - **It is measured against the conservative bound** (`W_upper`, which carries the Agent tool's own
   harness overhead). Using the flattering bound would have improved the ratio and §3 forbids it.
 
-**It also settles 13b item 1 in the affirmative**: planning is expensive and it is mostly Opus
-reading — 6.3M cache reads against 65k of output. *"Local models read the codebase so Opus does not
-have to"* is aimed at exactly this number and is unblocked, behind its own ADR.
+**It also settles 13b item 1 in the affirmative, and now gives it a target rather than a premise.**
+Planning is expensive and it is mostly Opus *reading* — 15.5M cache reads against 89k of output on the
+larger arm. Item 1 attacks the **fixed** term, which is the one part of the curve that does not
+amortise on its own. Unblocked, behind its own ADR.
+
+**The sentence the curve makes available, which one denominator could not:**
+
+> Coordination is not worth paying on a dozen tasks, and the economics move sharply in sidecrew's
+> favour as the job gets bigger.
+
+That is what the FAIL actually means. A lone `P` at `N = 12` would have supported a harsher and less
+true claim — precisely the error §4.4 was written to prevent.
 
 The measurement no longer needs a dedicated session: `planner-tokens.mjs` can read a subagent
 transcript, which is a clean window by construction. The three defects that made the old instrument
@@ -123,9 +134,13 @@ So the claim stops being *"the work is free"* and becomes **"the doing is free a
 is not"**, which is a worse headline and a far more useful one. The honest form of the sentence, at
 the only plan size measured:
 
-> At `N = 12`, sidecrew moves the cost from the workers to the planner and does not reduce it.
+> At `N = 12`, sidecrew moves the cost from the workers to the planner and does not reduce it — and
+> at `N = 41` it very nearly breaks even.
 
-Whether that survives at `N ≈ 40` is unmeasured and is the next thing to run.
+On the two-point line, `R ≤ 1` arrives near `N ≈ 46` and `R ≤ 0.5` near `N ≈ 191`. **Two points is an
+interpolation dressed as a model**, and one of them is biased low, so those are the shape of the
+answer rather than the answer. A third denominator, planned from scratch, is what would make them
+numbers anyone could plan against.
 
 ---
 
