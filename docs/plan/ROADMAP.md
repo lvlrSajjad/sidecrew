@@ -34,6 +34,33 @@ thing the scientific half could publish, because nobody runs it: the literature 
 
 ---
 
+## The caveat that now has a number — and it applies to every rate below
+
+**Measured 19 Sep 2026: `D = 2/19 = 0.105`.** Replaying a frontier model's own diffs — which the gate
+finds no defect in — through the gate a second time, it disagreed with itself on 2 of 19 candidates.
+`experiments/gate-error-rate/README.md`, against a rule frozen before the first replay.
+
+Three things to carry, in this order:
+
+1. **It is an order of magnitude, not a point.** At 19 pairs one disagreement either way moves `D`
+   between 0.053 and 0.158, across two of the three decision bands. Never quote `0.105` bare.
+2. **The safety property is untouched.** `D` measures the gate **refusing changes that were fine**.
+   Nothing measured here is evidence of the gate *admitting* something it should not, and this corpus
+   cannot produce such evidence. *The gate admits nothing that fails* still stands; *it refuses only
+   things that fail* is now measured false at roughly one in ten.
+3. **So no survival rate in this repository may be published as a point estimate** until the cause is
+   diagnosed — Phase 11's and Phase 11b's included. They were always described as lower bounds of
+   unknown tightness; the tightness is now known to about a factor this large.
+
+Neither diagnosed cause explains it: both disagreements happened at pressure normal with swap flat or
+falling (not ADR-0066) and on the same calendar day as their baseline (not ADR-0069). The one lead is
+that **every verdict on disk recording a regression has all of its regressed tests inside a single
+suite file** — six for six, across two orders of magnitude of count — which points at a suite-level
+failure rather than a test-level one. It discriminates nothing yet: there is no true `tests`-stage
+negative in the corpus to contrast against.
+
+---
+
 ## Priority 1 — the two measurements that turn a tool into a result
 
 ### 1.1 Head-to-head against the status quo · **the highest-value thing left**
