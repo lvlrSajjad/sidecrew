@@ -4634,3 +4634,92 @@ that gets a rule quietly distrusted.
 **Whatever is chosen, it lands in both copies in the same commit, with a test asserting the two agree.**
 The duplication is deliberate (a rule with one implementation is a rule with one place to get it
 wrong), and the failure mode of deliberate duplication is exactly one copy being fixed.
+
+## ADR-0071 — `validateChangePlan` cannot see the task that is unsatisfiable *because of what it will change* (PROPOSED)
+
+**Status:** proposed · 20 Sep 2026 · measured in Phase 12 §2.2 pass 1 · needs the owner
+**Bears on:** every `#2a` plan on a project whose `tsc` program includes its tests · **evidence:** measured
+
+### The measurement
+
+§2.2's pass 1 ran 30 `null_guard` tasks on `project-a` under `--strictNullChecks`, against a plan the
+validator reported **`valid`**. One survived.
+
+Twenty-four of the fifty-nine attempts failed at `compile`. **Not one of them failed on its own file.**
+Every one failed because some *other* file gained an error — and 22 of the 24 gained **exactly one
+error in exactly the same file**: the project's app-wide e2e spec.
+
+| | |
+|---|---|
+| errors in that spec at baseline | **165**, identical across three independent captures |
+| errors in it after a candidate | **166** |
+| project-wide total | 11,412 → **11,411** — the candidate *improved* it |
+| distinct source files those 22 tasks edited | **22** |
+
+Twenty-two unrelated edits do not each independently break one shared spec. A Nest e2e spec
+bootstraps the whole application module, so it transitively imports nearly the entire source tree;
+under `strictNullChecks` it already carries 165 errors, and narrowing a type almost anywhere surfaces
+one more. The lone survivor edited a `src/common` file that spec does not reach.
+
+### The defect
+
+`compile_ok` is *zero errors in the task's own files **and** no file anywhere with more errors than
+before* (ADR-0048). A plan may never list a test file, because the tests are the gate (ADR-0046). So:
+
+> **When the project's `tsc` program includes an app-wide test, a task can be unsatisfiable purely
+> because of the type change the ask requires — and no edit confined to the task's own files can
+> avoid it.**
+
+`validateChangePlan` refuses a task whose files carry a **pre-existing** error (ADR-0050 option C).
+That is a property of the file *before* the change. This class is a property of what the change *does*,
+which the validator never simulates, so it passes every one of them. The run then spends the full
+gate on each — here 30 tasks for one survivor.
+
+**It is the same sentence as ADR-0064's addendum, one step further on.** There, a rename was
+unsatisfiable because completing it required editing a test file. Here nothing needs editing: merely
+*changing a type* makes a file the plan may not touch report one more error. ADR-0064 is about the
+addressable surface being a property of configuration; this is the sharpest instance of it.
+
+### Why this is not an argument for relaxing the gate
+
+`compile_ok`'s "nothing anywhere got worse" clause is what makes the gate **monotone**, and monotone
+is what lets *"fix every TypeScript error in a large codebase"* converge over many tasks without any
+one of them having to finish it (`docs/specs/pipeline.md`). Dropping it to "the project total went
+down" would admit a change that fixes two errors and creates one, repeatedly, and nothing would
+notice the drift. **The gate is right and the plan was wrong**, which is why this is an ADR about the
+validator.
+
+### Options
+
+- **A — the validator reports the exposure, and gates nothing.** For each task, name the files that
+  import it transitively and lie outside the plan, with their current error counts. Cheap — `tsc
+  --listFiles` already runs — and it is *record, don't gate*, which is the pattern ADR-0066 and
+  ADR-0069 both landed on and the one that has never yet been wrong here. A planner reading "this file
+  is reachable from a spec carrying 165 errors" writes a different plan.
+- **B — refuse the task.** Correct when the prediction is right and expensive when it is wrong: the
+  survivor here would have been kept, but a task whose type change happens not to surface anything
+  would be refused for a thing that would not have happened. Predicting a compiler's output without
+  running the compiler is how the `deriveLineRange` special cases accumulated.
+- **C — speculative pre-flight**: apply nothing, but re-run `tsc` once per task with the file's exports
+  widened. Accurate and absurd — one full type-check per task before any worker runs, on a project
+  where that is 15 s and the whole point was to spend gate time only on satisfiable work.
+- **D — `doctor` answers it once per project**, before any plan is written: *"your tsconfig has no
+  `include`/`exclude`, so your test files are in the program; the largest of them reaches N source
+  files and carries M errors."* One answer per project rather than per task, in the shape ADR-0032 set
+  for every other pre-flight question.
+
+**Recommendation: A and D together.** A puts the fact on the task where a planner will see it; D puts
+it in front of the user before a plan exists, which is where the three other pre-flight questions
+already went. B stays available if A turns out to be ignored, and C is recorded only so nobody
+proposes it later without its price attached.
+
+### Consequence for §2.2, stated rather than applied
+
+Twelve of §2.2's `n₂ = 29` are this class. They are **unsatisfiable by construction**, so a correction
+cannot rescue them and `S_c` computed over all 29 is depressed by tasks no worker could ever pass.
+
+**They are not excluded.** §4.0 precondition 4 forbids changing the task set after seeing failures,
+and that is exactly what excluding them now would be. The run reports `S_c` over the declared `n₂`
+**and** the breakdown by failure shape, so a reader can see both the number the frozen rule produces
+and the number that means something. Which is the honest way round: the rule was frozen for a reason,
+and the reason is that a denominator adjusted after the fact is a description of the adjustment.
