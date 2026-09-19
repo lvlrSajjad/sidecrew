@@ -192,3 +192,87 @@ a fresh one.
 **If anything else happens in that window — a question answered, a file fixed, a test run — the window
 is void.** Start again at step 1. §2 says this and it is repeated here because the temptation at that
 moment is to subtract the interruption, which is precisely the repair §2 forbids.
+
+---
+
+## Amendment, 2026-09-19 — §2's clean-window protocol and the appendix are superseded, and the instrument they name was broken three ways
+
+*Not an edit to §4. §4's rule, thresholds and preconditions stand exactly as frozen on 2026-09-18.
+What changes below is **how §4.0.1's precondition is satisfied**, and the reason is that the
+instrument §2 names could not see the thing it was pointed at.*
+
+### The instrument was wrong in three independent directions
+
+Found 19 Sep 2026, before any window was marked:
+
+1. **It could not see a subagent.** `change-planner` and `test-planner` are subagents by design
+   (`claude/agents/*.md`, `model: opus`). A subagent's transcript is not a `*.jsonl` beside the
+   session's — it is `<session-id>/subagents/agent-*.jsonl`, a subdirectory the old
+   `readdirSync(...).filter(f => f.endsWith(".jsonl"))` never descended into. Measured: one subagent
+   spent **871,579** new tokens across 239 assistant messages while the parent transcript recorded
+   1,704 entries, every one `isSidechain: false`, and none of that usage.
+2. **It counted each assistant message about twice.** Claude Code writes a usage record per message
+   more than once — a partial with `stop_reason: null`, then the final one — and the old code summed
+   every record it found. The partials repeat `input_tokens`, `cache_creation_input_tokens` and
+   `cache_read_input_tokens` verbatim. Measured over **177 transcripts** in this project: the naive
+   sum inflates new tokens by a **median of 1.89×**, up to 4.18×.
+3. **Its slug dropped `_` and `.`**, so it exited ENOENT on any project path containing one — which
+   the paths this is measured on do.
+
+Defects 1 and 3 were already in `BACKLOG.md`, one of them measured twice (2.7× and 5× wrong) and
+neither acted on. Defect 2 is new and was found by checking the shape of the records rather than by
+trusting the field names.
+
+**Consequence, stated rather than quietly repaired:** every figure this script produced before today
+is void, and it is *not* rescalable. Defect 1 omits a whole transcript and defect 2 multiplies what is
+left, so the two do not compose into a correction factor. `meta.planner_tokens` is suspect wherever a
+planner ran as a subagent — Phase 5's figures were already labelled contaminated for a different
+reason, and this is a second, independent one. **Re-measure; do not rescale.**
+
+### What replaces §2's clean-window protocol
+
+§2 and the appendix required a **fresh session** whose entire window contained planning and nothing
+else, because the script summed a whole transcript. **That requirement is gone**, and the reason is
+defect 1 turned upside down:
+
+> **A subagent transcript is a clean window by construction.** It contains that agent's work and
+> nothing else, so the session it was spawned from is irrelevant.
+
+So the protocol is now:
+
+1. Invoke `change-planner` on one ask against one project. Nothing else about the session matters.
+2. `node scripts/planner-tokens.mjs --agents` (or `--agent <id>`) once it returns.
+   `total_excluding_cache_reads` for that transcript is **P_total**.
+3. `N`, the refusals, `W_upper`, `W_lower` and §4.3's verdict are unchanged.
+
+**This satisfies §4.0.1 more strictly than the protocol it replaces, and that is the claim being
+made.** §4.0.1 requires that the window contain planning and nothing else. The fresh-session protocol
+achieved that by *discipline* — a human refraining from asking anything else — and §2 had to write
+down what voids a run precisely because discipline can fail. A subagent transcript achieves it by
+*construction*: there is no way for an unrelated message to enter it. The precondition is met; the
+means changed; the threshold did not.
+
+**What the new protocol cannot do**, said plainly: it measures a planner that runs **as a subagent**.
+A planner run inline in a session is still subject to §2's original objection and still needs §2's
+original protocol, and the number from one is not comparable with the number from the other.
+
+### One change made to the planners before measuring, and why it is not a thumb on the scale
+
+`claude/agents/change-planner.md` §0/§7 and `claude/agents/test-planner.md` §0/§6 told the planner to
+`--mark` and `--since` around its own work. That instruction was measuring the parent's transcript and
+could not see the planner at all, so it produced a wrong `meta.planner_tokens` at cost. Both now say
+the planner does **not** measure itself, leaves `meta.planner_tokens` at 0, says so in its report, and
+the spawning session fills it from `--agents`.
+
+This was done **before** the first measurement rather than after seeing a number, which is the whole of
+the discipline §4 exists to enforce. It removes two `Bash` calls from the planner's window. The
+direction of that effect is *downward* on `P_total` and it is small, and it is recorded here so nobody
+has to infer it from a diff: what is now measured is planning, not planning plus self-instrumentation
+that did not work.
+
+### Machine and provenance for this amendment
+
+Same machine as §5. The measurement taken under this amendment is written to
+`results/planner-cost-2026-09-19.json` with `"measured": true`, and it names the subagent transcript
+it summed — a total whose provenance is a count rather than a list is the failure this whole file is
+about.

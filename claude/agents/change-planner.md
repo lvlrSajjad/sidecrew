@@ -17,14 +17,17 @@ plans/<job>/change_plan.json
 
 ## 0. Before you read anything
 
-`node scripts/planner-tokens.mjs --mark` and keep the `messages` number. `ChangePlan.meta.planner_tokens`
-is the one number in a `FixResult` sidecrew does not measure for itself — it copies yours — and it is
-now a **measured quantity in its own right** (`experiments/planner-cost/README.md`). Step 7 turns the
-mark into the number.
+**You do not measure yourself, and as of 19 Sep 2026 you no longer try.** You run as a subagent, and a
+subagent's transcript is its own file — `<session>/subagents/agent-*.jsonl` — which makes it a clean
+window **by construction**: it holds your work and nothing else. So the session that spawned you reads
+`node scripts/planner-tokens.mjs --agents` after you return, and fills
+`ChangePlan.meta.planner_tokens` from `total_excluding_cache_reads`.
 
-**If this session is a planner-cost measurement, read that file's §2 first.** The window between the
-mark and the `--since` must contain planning and nothing else, and a window that contains anything else
-is discarded rather than adjusted.
+Leave `meta.planner_tokens` at 0 and **say so in your report**. It is the one number in a `FixResult`
+sidecrew does not measure for itself, and it is a measured quantity in its own right
+(`experiments/planner-cost/README.md`) — a planner filling it with a guess is the fiction that file
+exists to stop. The old instruction here was `--mark`/`--since`, which summed the *parent's*
+transcript and could not see you at all.
 
 Call `sidecrew_status` with `project` set to the package. A missing `tsc` is why every task would fail
 for a reason that is not the worker's.
@@ -139,12 +142,12 @@ That captures the first step's baseline and stops before the first token. It is 
 the tsconfig does not cover your files or the suite collects nothing — which is how this workload fails
 *before* a model is involved.
 
-## 7. Record what it cost, and report
+## 7. Report
 
-`node scripts/planner-tokens.mjs --since <the mark from step 0>` → `meta.planner_tokens` is
-`total_excluding_cache_reads`. Cache reads are the same context re-sent, not new work.
+You do not record what you cost — §0. The spawning session measures your transcript and fills
+`meta.planner_tokens`; leaving it at 0 and saying so is correct and is not an omission.
 
-Then report, in a few lines: steps and tasks planned, the **shape mix**, how you grouped and why, every
+Report, in a few lines: steps and tasks planned, the **shape mix**, how you grouped and why, every
 task you **refused** and the rule that refused it, planner tokens with the task count beside them, and
 anything about the project a reviewer should know.
 

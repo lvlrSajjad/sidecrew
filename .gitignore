@@ -37,6 +37,10 @@ experiments/go-no-go-2a/results/overnight.log
 # plan that quotes a client project is never committed. They live on disk; the results that reference
 # them carry the numbers, which are ours.
 experiments/go-no-go-2a/plans/
+# Same rule for the planner-cost plans: §2.1's measurement plans a real client subtree, so the plan
+# holds an absolute path into their checkout and its asks quote their own symbol names. The number the
+# plan produces is ours and is committed; the plan is not.
+experiments/planner-cost/plans/
 # The fixture is our own code, so its handshake is safe and stays in the repo.
 !experiments/go-no-go-2a/c3/fixture/prompts/
 !experiments/go-no-go-2a/c3/fixture/answers/
