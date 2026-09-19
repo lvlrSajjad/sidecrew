@@ -720,6 +720,57 @@ const ChangeCandidateFields = z.object({
 export const ChangeCandidate = ChangeCandidateFields.superRefine(seedIsRecorded);
 export type ChangeCandidate = z.infer<typeof ChangeCandidateFields>;
 
+/**
+ * The machine's own state at one instant — ADR-0066 option C, and **nothing here gates**.
+ *
+ * `free_gb` is the same reclaimable-pages figure `parseMemory` reports, so a verdict's record and the
+ * run's own sizing decision are the same instrument reading the same thing. The other two are what the
+ * pressure level cannot say: under load macOS compresses first and swaps second, and those are
+ * different conditions with the same `pressure: "warn"`.
+ *
+ * Every field but `pressure` is nullable because the reads are `vm_stat` and `sysctl`, which exist on
+ * macOS and nowhere else. A null is "this machine could not be asked", never a guess at zero.
+ */
+export const MachineSample = z.object({
+  pressure: z.enum(["normal", "warn", "critical", "unknown"]),
+  free_gb: z.number().nonnegative().nullable(),
+  swap_gb: z.number().nonnegative().nullable(),
+  compressed_gb: z.number().nonnegative().nullable(),
+}).strict();
+export type MachineSample = z.infer<typeof MachineSample>;
+
+/**
+ * The machine before and after one verification — ADR-0066 option C, *record and gate nothing*.
+ *
+ * **Two samples rather than one, and the reason is the ADR's own amendment of 18 Sep 2026.** Reading
+ * the pressure level once is what the ADR ruled out as a threshold: this suite reaches `warn`
+ * unaided on the baseline machine, so a rule keyed on the level would downgrade nearly every real
+ * failure to a machine failure — the same bug with the sign flipped. What separated the measured
+ * false negative from the two true passes of identical bytes was **swap**: flat at 2.5–3.0 GB when it
+ * survived, 5.3 of 6.1 GB and actively paging when it did not. Swap is a delta, so recording one
+ * number cannot express it.
+ *
+ * `before` is taken as the sandbox is verified and `after` once the suite has finished, which is the
+ * only ordering that says anything: ADR-0011's argument is that the workload creates the condition
+ * *after* the check has passed, so a sample taken only at the start records the machine the gate was
+ * about to ruin.
+ *
+ * This is the field option A will eventually threshold on. It is deliberately not thresholded now —
+ * the ADR's finding is that nobody has the number yet, and `swapGrowthGb` over a corpus of verdicts
+ * is how it stops being a guess.
+ */
+export const VerdictMachine = z.object({
+  before: MachineSample,
+  after: MachineSample,
+}).strict();
+export type VerdictMachine = z.infer<typeof VerdictMachine>;
+
+/** How much swap this one verification added. null when either end could not be read. */
+export const swapGrowthGb = (m: VerdictMachine | null): number | null =>
+  m === null || m.before.swap_gb === null || m.after.swap_gb === null
+    ? null
+    : m.after.swap_gb - m.before.swap_gb;
+
 const ChangeVerdictFields = z.object({
   task_id: z.string().min(1),
   stage_reached: ChangeStage,
@@ -774,6 +825,29 @@ const ChangeVerdictFields = z.object({
   error: ErrorText.nullable(),
   /** A key is present only for a stage that actually ran. */
   timing_ms: z.object({ compile: Millis.optional(), tests: Millis.optional() }),
+  /**
+   * When the baseline this verdict was judged against was captured — ADR-0069 option A.
+   *
+   * The timestamp already exists on `ChangeBaseline`; what did not exist was any way to see it *where
+   * the verdict is read*. A baseline is captured once per step and candidates are then verified for
+   * hours against it, so the two can fall on different days, and the measured consequence is not
+   * subtle: one test asserting on what was tracked **today** turned a stale baseline into a total run
+   * failure, because every candidate verified after midnight inherited the same regression.
+   *
+   * `verified_at` is the other end of that gap. Neither gates — `changeSurvives` does not read them,
+   * and the refinement below asserts nothing does. The warning is `crossesCalendarDay`.
+   */
+  baseline_captured_at: z.string().datetime().nullable().default(null),
+  verified_at: z.string().datetime().nullable().default(null),
+  /**
+   * The machine on either side of this verification — ADR-0066 option C. Nothing here gates.
+   *
+   * Nullable with a default rather than required, and the reason is on disk: `--resume` and every
+   * analysis script read verdicts written before this field existed. A null therefore means *taken
+   * before the field existed*, which is a different sentence from *this machine could not be asked* —
+   * that one is a present `VerdictMachine` with null members.
+   */
+  machine: VerdictMachine.nullable().default(null),
 });
 
 /**
@@ -782,6 +856,31 @@ const ChangeVerdictFields = z.object({
  */
 export const changeSurvives = (v: z.infer<typeof ChangeVerdictFields>): boolean =>
   v.confined && v.compile_ok && v.tests_ok;
+
+/**
+ * True when a verdict's baseline was captured on a different calendar day from the verification —
+ * ADR-0069's warning, and **it is a warning rather than a clause of the gate**.
+ *
+ * The comparison is by local calendar day rather than by elapsed hours, because the failure is not
+ * gradual with age: it is a step function at whatever boundary the project's own tests encode, and
+ * midnight is merely the most common one. "Older than N hours" is the wrong shape and needs a number
+ * nobody has; "these fell on different days" needs none.
+ *
+ * Local time is the right frame because the baseline and the candidate ran on the same machine in the
+ * same environment, so the suite's own notion of *today* is this process's. A project that pins `TZ`
+ * itself is the case this cannot see, and the recorded timestamps are what make it findable.
+ *
+ * null when either timestamp is absent — a verdict written before ADR-0069 cannot answer, and saying
+ * `false` there would be claiming it had.
+ */
+export const crossesCalendarDay = (v: Pick<z.infer<typeof ChangeVerdictFields>, "baseline_captured_at" | "verified_at">): boolean | null => {
+  if (v.baseline_captured_at === null || v.verified_at === null) return null;
+  const day = (iso: string): string => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  };
+  return day(v.baseline_captured_at) !== day(v.verified_at);
+};
 
 /**
  * The gate, as an iff rather than a convention — and stronger than workload #1's, because there are

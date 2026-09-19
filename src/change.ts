@@ -23,6 +23,7 @@ import { existsSync, realpathSync, type Dirent } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { run } from "./exec.js";
+import { readMachineState } from "./doctor.js";
 import { checkConfinement, confinementMessage, observe } from "./confinement.js";
 import {
   ChangeBaseline, ChangeVerdict, changeSurvives,
@@ -495,6 +496,9 @@ export async function verifyChange(
   const projectDir = resolve(opts.projectDir);
   const before = opts.baseline.errors;
   const targets = task.files.map((f) => toPosix(f.path));
+  // ADR-0066 option C. Taken before anything expensive runs, so the pair brackets the gate rather than
+  // describing the machine the gate was about to ruin. Nothing below reads it (ADR-0066 is *record*).
+  const machineBefore = await readMachineState();
 
   // ADR-0044's "the other direction", built in Phase 12: a worker that says it cannot do the task is an
   // escalation with a reason, and it stops here. The point is the 262 s it does not spend — Phase 11
@@ -516,6 +520,12 @@ export async function verifyChange(
       refused: truncateError(candidate.refusal),
       error: truncateError(`the worker refused this task: ${candidate.refusal}`),
       timing_ms: {},
+      // A refusal stops here, so the two samples bracket nothing and are deliberately the same
+      // reading. Recording it anyway keeps `machine: null` meaning exactly one thing — *this verdict
+      // predates ADR-0069/0066* — rather than also meaning *no gate ran*.
+      baseline_captured_at: opts.baseline.captured_at,
+      verified_at: new Date().toISOString(),
+      machine: { before: machineBefore, after: machineBefore },
     });
   }
 
@@ -679,6 +689,12 @@ export async function verifyChange(
     refused: null,
     error: problems.length > 0 ? truncateError(problems.join("\n\n")) : null,
     timing_ms,
+    // ADR-0069 option A and ADR-0066 option C, both *record and gate nothing*. The two timestamps are
+    // the gap a stale baseline hides in; the two samples are the swap delta that separated the one
+    // measured false negative from two passes of identical bytes.
+    baseline_captured_at: opts.baseline.captured_at,
+    verified_at: new Date().toISOString(),
+    machine: { before: machineBefore, after: await readMachineState() },
   };
   return ChangeVerdict.parse({ ...fields, survived: changeSurvives({ ...fields, survived: false }) });
 }

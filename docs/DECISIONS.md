@@ -3943,9 +3943,9 @@ decision of 18 Sep was that it lands before publish, not that it is worth the di
 backlog names — *wall time of a second identical run* — is worth taking once it exists, and the answer
 may be that the re-planning case is the only one that justifies it.
 
-## ADR-0066 — A gate under memory pressure fails closed, and the false negative is indistinguishable from a true one (PROPOSED)
+## ADR-0066 — A gate under memory pressure fails closed, and the false negative is indistinguishable from a true one
 
-**Status:** proposed · 18 Sep 2026 · found during Phase 11b arm C · needs the owner
+**Status:** **accepted, option C** · proposed 18 Sep 2026, decided by the owner 19 Sep 2026 · found during Phase 11b arm C · implemented the same day, addendum below
 **Bears on:** every workload #2a measurement, Phase 12 §2.2, Phase 13 §5 · **evidence:** measured, below
 
 ### Context
@@ -4376,9 +4376,9 @@ nothing here judges whether a reword was *right* — on the measured case the re
 comment untrue, and Opus left stale documentation behind. That is the judgement a blind approval rate
 exists for, and deliberately not the gate's.
 
-## ADR-0069 — A baseline has a shelf life: a gate whose reference was captured on another day is comparing against a different world (PROPOSED)
+## ADR-0069 — A baseline has a shelf life: a gate whose reference was captured on another day is comparing against a different world
 
-**Status:** proposed · 19 Sep 2026 · measured in Phase 11b arm D, project-b · needs the owner
+**Status:** **accepted, option A** · proposed and decided by the owner 19 Sep 2026 · measured in Phase 11b arm D, project-b · implemented the same day, addendum below
 **Third independent source of #2a false negatives**, after ADR-0066 (memory pressure) and the still
 undiagnosed case in `experiments/status-quo/README.md` O8.
 
@@ -4482,3 +4482,59 @@ wrong shape. The failure is not gradual with age — it is a step function at wh
 project's tests happen to encode, and midnight is merely the most common one. The check that actually
 works is **"the baseline and the verdict fall on the same calendar day in the suite's timezone"**,
 with the recorded `captured_at` making any other boundary detectable after the fact.
+
+## ADR-0066 and ADR-0069 addendum — decided together and implemented on `main`, 19 Sep 2026
+
+**Decided in one sitting, on purpose.** The two are the same shape — *record, don't gate* — and taking
+them apart would have meant writing the verdict's provenance twice. The owner took **ADR-0066 option
+C** and **ADR-0069 option A**. Two of the three known sources of #2a false negatives are now
+**detectable in the artefact** rather than merely suspected; the third
+(`experiments/status-quo/README.md` O8) is still undiagnosed and is the reason the gate's own error
+rate is being measured directly rather than argued about.
+
+### What landed
+
+`ChangeVerdict` gained three fields, and `changeSurvives` reads none of them:
+
+| field | ADR | what it answers |
+|---|---|---|
+| `baseline_captured_at` | 0069 | how old the reference this verdict was judged against is |
+| `verified_at` | 0069 | the other end of that gap |
+| `machine` | 0066 | `{ pressure, free_gb, swap_gb, compressed_gb }` **before and after** the gate |
+
+With `crossesCalendarDay` and `swapGrowthGb` as the two readers, `readMachineState` in `doctor.ts` as
+the instrument, and `sidecrew fix` warning **once per run** on the first verdict where the day boundary
+has been crossed. It does not stop, which is the whole of option A.
+
+### Three things that were decided in the implementing and are not in either ADR above
+
+1. **`machine` is a pair of samples, not one.** ADR-0066's own amendment ruled out the pressure level
+   as a threshold, and the quantity it named instead — *swap growth against the run's floor* — is a
+   delta. One sample cannot express a delta, so recording one would have shipped a field that cannot
+   answer the question the field exists for. `before` is taken before any sandbox work and `after`
+   once the suite has finished, because ADR-0011's argument is that **the workload creates the
+   condition after the check has passed**: a sample taken only at the start records the machine the
+   gate was about to ruin.
+
+2. **The null is one sentence, not two.** All three fields are nullable with a default, because
+   `--resume` and every analysis script read verdicts written before Phase 12 — and that is what null
+   means: *this verdict predates the field*. A machine that could not be asked, a non-macOS host or a
+   missing `sysctl`, is a **present** `machine` whose members are null. The refusal path records a
+   sample rather than null for exactly this reason, even though a refusal brackets nothing: leaving it
+   null there would have given the same value a second meaning, and a field with two meanings is one
+   nobody can query.
+
+3. **The day comparison is local, and that is a limitation worth naming.** The baseline and the
+   candidate run on the same machine in the same environment, so the suite's *today* is this process's
+   today. A project that pins `TZ` itself is the case `crossesCalendarDay` cannot see — and the
+   recorded timestamps are precisely what make that findable afterwards, which is the argument for
+   option A restated at one level down.
+
+### What this does not do, stated so nobody reads more into it than is there
+
+**No rate changes and no verdict changes.** That is the point of both options and it is the reason they
+could be taken before the measurements rather than after: a field that gates nothing cannot bias a
+number, so implementing it mid-programme is not the thing §4 forbids. Every survival rate in this
+repository remains a lower bound of unknown tightness. What is different is that the tightness is now a
+**query over a corpus of verdicts** rather than a study somebody has to design — which is also how
+ADR-0066 option A finally gets its threshold, and ADR-0069 option B gets the number it was missing.

@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   BatchResult, Candidate, ChangeBaseline, ChangeCandidate, ChangeEscalation, ChangePlan, ChangeTask,
   ChangeVerdict, EscalationBatch, FixResult, ReviewQueue, StatusReport, TestPlan, Verdict,
-  ValidationReport, WorkerTask, changeSurvives, survives,
+  ValidationReport, WorkerTask, changeSurvives, crossesCalendarDay, survives, swapGrowthGb,
 } from "../src/schemas.js";
 
 const SPEC = fileURLToPath(new URL("../docs/specs/pipeline.md", import.meta.url));
@@ -207,6 +207,69 @@ describe("the invariants the contracts are here to enforce", () => {
     expect(plan.correction).toEqual({ enabled: false, max_corrections: 0, max_tokens: 0, on_observations: false });
     const { correction: _dropped, ...without } = specExamples().get("ChangePlan") as Record<string, unknown>;
     expect(ChangePlan.parse(without).correction.enabled).toBe(false);
+  });
+
+  it("records the baseline's age and the machine, and gates on neither (ADR-0069, ADR-0066)", () => {
+    // Both decisions are *record, don't gate*, and the way that gets lost is somebody later reading a
+    // recorded field as a soft gate — after which survival stops being comparable with Phase 11's and
+    // nothing fails. So it is asserted here rather than left to the comment that says it.
+    const verdict = ChangeVerdict.parse(specExamples().get("ChangeVerdict"));
+    expect(verdict.survived).toBe(true);
+    const stale = ChangeVerdict.parse({
+      ...verdict,
+      baseline_captured_at: "2026-09-18T23:26:01.000Z",
+      verified_at: "2026-09-19T00:03:17.000Z",
+      machine: {
+        before: { pressure: "critical", free_gb: 0.4, swap_gb: 5.3, compressed_gb: 15.2 },
+        after: { pressure: "critical", free_gb: 0.2, swap_gb: 6.1, compressed_gb: 15.9 },
+      },
+    });
+    expect(stale.survived).toBe(true);
+    expect(changeSurvives(stale)).toBe(true);
+  });
+
+  it("reads a stale baseline as a calendar-day gap, not as an elapsed-hours one (ADR-0069)", () => {
+    // The measured case: baseline 2026-09-18 23:26:01, candidate 2026-09-19 00:03:17. Thirty-seven
+    // minutes apart, and the test that asserts on what was tracked *today* had already flipped. Any
+    // threshold in hours misses this; the day boundary is the whole of the signal.
+    const day = (b: string, v: string): boolean | null =>
+      crossesCalendarDay({ baseline_captured_at: b, verified_at: v });
+    const iso = (h: number, m: number, d: number): string => new Date(2026, 8, d, h, m).toISOString();
+    expect(day(iso(23, 26, 18), iso(0, 3, 19))).toBe(true);
+    // Eleven hours apart and on the same day: older, and not exposed to this defect at all.
+    expect(day(iso(9, 0, 19), iso(20, 0, 19))).toBe(false);
+    // A verdict written before ADR-0069 cannot answer, and `false` would be claiming that it had.
+    expect(day(null as unknown as string, iso(9, 0, 19))).toBe(null);
+    expect(crossesCalendarDay(ChangeVerdict.parse(specExamples().get("ChangeVerdict")))).toBe(false);
+  });
+
+  it("keeps null meaning `written before the field existed`, not `this machine could not be asked`", () => {
+    // `--resume` and every analysis script read verdicts from before Phase 12, so the fields default.
+    // The two nulls are different sentences and a reader has to be able to tell them apart.
+    const { baseline_captured_at: _a, verified_at: _b, machine: _c, ...older } =
+      specExamples().get("ChangeVerdict") as Record<string, unknown>;
+    const legacy = ChangeVerdict.parse(older);
+    expect(legacy.machine).toBe(null);
+    expect(crossesCalendarDay(legacy)).toBe(null);
+    expect(swapGrowthGb(legacy.machine)).toBe(null);
+
+    const unaskable = ChangeVerdict.parse({
+      ...older,
+      machine: {
+        before: { pressure: "unknown", free_gb: null, swap_gb: null, compressed_gb: null },
+        after: { pressure: "unknown", free_gb: null, swap_gb: null, compressed_gb: null },
+      },
+    });
+    expect(unaskable.machine).not.toBe(null);
+    expect(swapGrowthGb(unaskable.machine)).toBe(null);
+  });
+
+  it("measures swap as a delta, because a level cannot separate the measured false negative", () => {
+    // ADR-0066's amendment: the suite reaches `warn` unaided on this hardware, so the level is the same
+    // in both of these. Swap is not — flat when the identical bytes survived, climbing when they did not.
+    const sample = (swap: number) => ({ pressure: "warn" as const, free_gb: 7.1, swap_gb: swap, compressed_gb: 14.2 });
+    expect(swapGrowthGb({ before: sample(2.5), after: sample(2.6) })).toBeCloseTo(0.1, 5);
+    expect(swapGrowthGb({ before: sample(5.3), after: sample(6.1) })).toBeCloseTo(0.8, 5);
   });
 
   it("is the same gate `changeSurvives` computes, on the spec's own example", () => {

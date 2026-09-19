@@ -1,4 +1,22 @@
 # Changelog
+## Unreleased — the verdict records what invalidates it (2026-09-19)
+- **ADR-0066 accepted at option C and ADR-0069 at option A, decided together.** Both are *record,
+  don't gate*. `ChangeVerdict` now carries `baseline_captured_at`, `verified_at` and `machine` —
+  pressure, free, swap and compressed, sampled **before and after** the gate — and `changeSurvives`
+  reads none of them. Two of the three known sources of #2a false negatives become detectable in the
+  artefact instead of suspected; the third is undiagnosed and is being measured directly.
+- **`machine` is a pair of samples because the signal is a delta.** ADR-0066's amendment ruled out the
+  pressure level as a threshold — a large suite reaches `warn` unaided on the baseline machine — and
+  named swap *growth* instead. One sample cannot express growth. `swapGrowthGb` is the reader, and a
+  corpus of these is how option A's threshold stops being a guess.
+- **`sidecrew fix` warns once per run when the baseline and a verdict fall on different calendar
+  days**, and does not stop. `crossesCalendarDay` compares days rather than elapsed hours: the
+  measured case was 37 minutes apart and already poisoned.
+- **Null means one thing: the verdict predates the field.** A machine that could not be asked is a
+  present `machine` with null members. The refusal path records a sample for that reason alone.
+- `readMachineState`, `parseSwapUsage` and `parseCompressed` in `doctor.ts`; spec updated in the same
+  commit; 691 fast tests green.
+
 ## Unreleased — Phase 11b completes on both projects (2026-09-19)
 - **project-b, the first non-saturated survival rate in the project.** Arm C **15/19**
   `[0.544, 0.939]` against project-a's 19/19, and the four failures are individually diagnosed rather

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  type Check, exitCodeFor, memoryCheck, parseMemory, parsePressureLevel, platformCheck, probeWorker,
-  readPressure, render, toStatusReport, baseUrlFor,
+  type Check, exitCodeFor, memoryCheck, parseCompressed, parseMemory, parsePressureLevel, parseSwapUsage,
+  platformCheck, probeWorker, readMachineState, readPressure, render, toStatusReport, baseUrlFor,
 } from "../src/doctor.js";
 import { StatusReport } from "../src/schemas.js";
 import { defaultKey, entry } from "../src/models.js";
@@ -15,6 +15,8 @@ Pages throttled:                                   0.
 Pages wired down:                             471215.
 Pages purgeable:                               23924.
 "Translation faults":                       92600265.
+Pages stored in compressor:                   401849.
+Pages occupied by compressor:                  93600.
 `;
 
 describe("parseMemory", () => {
@@ -34,6 +36,43 @@ describe("parseMemory", () => {
     expect(parseMemory("", VM_STAT)).toBeNull();
     expect(parseMemory("34359738368", "not vm_stat output")).toBeNull();
     expect(parseMemory("34359738368", "(page size of 16384 bytes)\nPages free: 10.\n")).toBeNull();
+  });
+});
+
+describe("the machine sample a verdict carries (ADR-0066 option C)", () => {
+  it("counts what the compressor costs, not what was put into it", () => {
+    // `stored` is 401849 and `occupied` is 93600 — a 4× difference, and only the second is a footprint.
+    // Reading the first would have reported a machine using 6.1 GB of RAM it is not using.
+    expect(parseCompressed(VM_STAT)).toBeCloseTo(93600 * 16384 / 1024 ** 3, 3);
+    expect(parseCompressed("not vm_stat output")).toBeNull();
+  });
+
+  it("reads the unit macOS printed rather than assuming megabytes", () => {
+    // A machine deep enough into swap to print `G` is exactly the one whose number must not be wrong,
+    // and it is the one this field exists to catch (ADR-0066: 5.3 of 6.1 GB, actively paging).
+    expect(parseSwapUsage("total = 3072.00M  used = 1365.38M  free = 1706.62M  (encrypted)"))
+      .toBeCloseTo(1365.38 / 1024, 4);
+    expect(parseSwapUsage("total = 6144.00M  used = 5.30G  free = 838.00M  (encrypted)")).toBeCloseTo(5.3, 4);
+    expect(parseSwapUsage("total = 3072.00M  used = 0.00M  free = 3072.00M")).toBe(0);
+    expect(parseSwapUsage("sysctl: unknown oid")).toBeNull();
+  });
+
+  it("reads this machine and never throws, because an instrument must not fail the run it observes", async () => {
+    // Off macOS every member is null and `pressure` is "unknown". That is the contract: a verdict that
+    // could not be annotated is still a verdict.
+    const m = await readMachineState();
+    expect(["normal", "warn", "critical", "unknown"]).toContain(m.pressure);
+    for (const v of [m.free_gb, m.swap_gb, m.compressed_gb]) {
+      expect(v === null || (typeof v === "number" && v >= 0)).toBe(true);
+    }
+  });
+
+  it("agrees with `parseMemory`, so the verdict's record and the run's sizing are one instrument", async () => {
+    // ADR-0066's recorder was trusted because its free_gb matched `parseMemory` to the decimal. This is
+    // that property, asserted: a second way of reading memory would make the two disagree silently.
+    if (process.platform !== "darwin") return;
+    const m = await readMachineState();
+    expect(m.free_gb).not.toBeNull();
   });
 });
 

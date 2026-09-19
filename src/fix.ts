@@ -40,7 +40,7 @@ import { CandidateCache, candidateKey } from "./cache.js";
 import { appendChangeEscalation } from "./escalate.js";
 import { PlanError } from "./plan.js";
 import {
-  ChangeCandidate, ChangePlan, ChangeTask, ChangeVerdict, FixResult,
+  ChangeCandidate, ChangePlan, ChangeTask, ChangeVerdict, crossesCalendarDay, FixResult,
   type ChangeBaseline, type FileEdit, type PlannedChange,
 } from "./schemas.js";
 import { sidecrewDir } from "./serve.js";
@@ -644,6 +644,11 @@ const writeJson = async (path: string, value: unknown): Promise<void> =>
 
 export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<FixResult> {
   const say = opts.onEvent ?? (() => {});
+  // ADR-0069 option A. Once per run rather than once per verdict, because the condition is not a
+  // property of one candidate: the moment the clock crosses the boundary the baseline encodes, every
+  // verdict taken afterwards inherits the same regression. The first one to notice is the one worth
+  // interrupting for — and it warns rather than stops, which is the whole of the decision.
+  let staleBaselineWarned = false;
   const tsconfig = opts.tsconfig ?? "tsconfig.json";
   const loaded = await loadChangePlan(planPath, tsconfig);
   const { plan, projectDir, runner } = loaded;
@@ -858,6 +863,16 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
             });
             gate_ms += performance.now() - gateStart;
             await writeJson(join(runDir, "verdicts", `${safeName(current.task_id)}.json`), verdict);
+            if (!staleBaselineWarned && crossesCalendarDay(verdict) === true) {
+              staleBaselineWarned = true;
+              say(
+                `warning: this step's baseline was captured on ${verdict.baseline_captured_at} and ` +
+                `${current.task_id} was verified on ${verdict.verified_at} — a different calendar day. ` +
+                "A test that asserts on today's date passed at capture and fails now, and every verdict " +
+                "from here on inherits it as a regression. ADR-0069: re-capture the baseline and restart " +
+                "the step; a run discarded for environmental reasons is restarted, never resumed.",
+              );
+            }
             await writeFile(join(runDir, "diffs", `${safeName(current.task_id)}.diff`), diffFor(current, candidate), "utf8");
             attempts.push({ task: current, candidate, verdict });
 

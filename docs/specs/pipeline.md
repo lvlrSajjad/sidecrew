@@ -565,9 +565,45 @@ survival rate that quietly stopped having a denominator.
   "observations": [],
   "refused": null,
   "error": null,
-  "timing_ms": { "compile": 2300, "tests": 5000 }
+  "timing_ms": { "compile": 2300, "tests": 5000 },
+  "baseline_captured_at": "2026-09-19T09:14:02.000Z",
+  "verified_at": "2026-09-19T09:18:29.000Z",
+  "machine": {
+    "before": { "pressure": "normal", "free_gb": 18.8, "swap_gb": 2.5, "compressed_gb": 4.9 },
+    "after": { "pressure": "warn", "free_gb": 5.9, "swap_gb": 2.7, "compressed_gb": 15.1 }
+  }
 }
 ```
+
+### Three fields that record and never gate
+
+`baseline_captured_at`, `verified_at` and `machine` are the two false-negative sources this project has
+diagnosed, written down where the verdict is read. **None of them is a clause of the gate.**
+`changeSurvives` does not read them and a test asserts it, for the same reason `observations` has one:
+the way these decisions get lost is somebody later reading a recorded field as a soft gate, after which
+survival stops being comparable with Phase 11's and nothing fails.
+
+**The two timestamps are ADR-0069.** A baseline is captured once per *step* and candidates are then
+verified against it for hours, so the two can land on different calendar days — and the measured
+consequence is not one lost task. A single test asserting on what was tracked *today* passed at capture
+and fails afterwards, so **every** candidate verified past the boundary inherits it as a regression.
+`crossesCalendarDay` compares local calendar days rather than elapsed hours, because the failure is a
+step function at whatever boundary the project's tests encode and "older than N hours" needs a number
+nobody has. `sidecrew fix` warns once, on the first verdict where it becomes true, and does not stop.
+
+**`machine` is ADR-0066 option C**, and it is a *pair* of samples rather than one. The ADR's own
+amendment ruled out the pressure level as a threshold — a large suite reaches `warn` unaided on the
+baseline machine, so a rule keyed on it would downgrade nearly every real failure to a machine failure.
+What separated the one measured false negative from two passes of byte-identical edits was **swap**:
+flat at 2.5–3.0 GB when it survived, 5.3 of 6.1 GB and paging when it did not. Swap growth is a delta,
+which one sample cannot express. `before` is taken before the sandbox work and `after` once the suite
+has finished, because ADR-0011's argument is that the workload creates the condition *after* the check
+passes. `swapGrowthGb` over a corpus of verdicts is how option A's threshold stops being a guess.
+
+Both are nullable with a default of `null`, and the null means exactly one thing: **this verdict was
+written before the field existed.** `--resume` and every analysis script read verdicts from before
+Phase 12. A machine that could not be asked — a non-macOS host, a missing `sysctl` — is a *present*
+`machine` whose members are null, which is a different sentence and the one a reader deserves.
 
 `stage_reached` is how far the pipeline got, and **confinement comes before apply**:
 

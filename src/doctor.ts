@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { run, ok as exited0, firstLine, pythonBin, MLX_SERVER_MODULE } from "./exec.js";
 import { isResolvable, STRYKER_PLUGIN } from "./verifier/shared.js";
-import { CapabilityStatus, type StatusReport } from "./schemas.js";
+import { CapabilityStatus, type MachineSample, type StatusReport } from "./schemas.js";
 import { apiModel, defaultKey, entry, tierFor, type Tier } from "./models.js";
 import { apiKeyFrom, MISSING_KEY_HINT } from "./api-worker.js";
 
@@ -208,6 +208,56 @@ export const readMemory = async (): Promise<Memory | null> => {
   ]);
   if (!exited0(size) || !exited0(stat)) return null;
   return parseMemory(size.stdout, stat.stdout);
+};
+
+/**
+ * Pages the compressor is holding, in GB. This is *occupied by compressor* — what compression is
+ * costing right now — and not *stored in compressor*, which counts what was put in and says nothing
+ * about the footprint.
+ */
+export const parseCompressed = (vmStat: string): number | null => {
+  const pageSize = Number(/page size of (\d+) bytes/.exec(vmStat)?.[1]);
+  const pages = Number(/^Pages occupied by compressor:\s+(\d+)\.?/m.exec(vmStat)?.[1] ?? NaN);
+  if (!Number.isFinite(pageSize) || !Number.isFinite(pages)) return null;
+  return (pages * pageSize) / GIB;
+};
+
+/**
+ * Swap in use, in GB, from `sysctl vm.swapusage` — the line ADR-0066's amendment identified as the
+ * signal that separates a suite the kernel is merely compressing from one it is paging to disk.
+ *
+ * macOS prints the unit per field (`used = 1365.38M`), so the suffix is parsed rather than assumed: a
+ * machine deep enough into swap to print `G` is precisely the one whose number must not be wrong.
+ */
+export const parseSwapUsage = (raw: string): number | null => {
+  const m = /used\s*=\s*([\d.]+)([KMG])/i.exec(raw);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n)) return null;
+  const scale: Record<string, number> = { K: 1024, M: 1024 ** 2, G: 1024 ** 3 };
+  return (n * (scale[m[2].toUpperCase()] ?? NaN)) / GIB;
+};
+
+/**
+ * One reading of the machine, for the record a verdict now carries (ADR-0066 option C).
+ *
+ * It gates nothing and it must never throw: a verdict that failed to be annotated is still a verdict,
+ * and an instrument that can fail a run it was added to observe is worse than no instrument. Every
+ * member is independently nullable for that reason.
+ */
+export const readMachineState = async (): Promise<MachineSample> => {
+  const [pressure, stat, swap] = await Promise.all([
+    readPressure(),
+    run("vm_stat", [], { timeoutMs: 5_000 }),
+    run("sysctl", ["-n", "vm.swapusage"], { timeoutMs: 5_000 }),
+  ]);
+  const mem = await readMemory();
+  return {
+    pressure,
+    free_gb: mem?.free_gb ?? null,
+    swap_gb: exited0(swap) ? parseSwapUsage(swap.stdout) : null,
+    compressed_gb: exited0(stat) ? parseCompressed(stat.stdout) : null,
+  };
 };
 
 const mlxCheck = async (): Promise<Check> => {
