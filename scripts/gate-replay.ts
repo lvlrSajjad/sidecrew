@@ -18,7 +18,7 @@
 // does not here: the two steps' file sets are **disjoint**, which this script asserts at startup and
 // refuses to run without. A replay against a baseline that does not describe the world the candidate
 // assumed is not a replay, it is a different experiment with the same name.
-import { readFile, writeFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join, basename } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -154,6 +154,9 @@ interface Pair {
   swap_growth_gb: number | null;
 }
 
+const verdictDir = `${outPath.replace(/\.json$/, "")}-verdicts`;
+await mkdir(verdictDir, { recursive: true });
+
 const pairs: Pair[] = [];
 for (const [i, e] of corpus.entries()) {
   const group = byS.get(e.sha)!;
@@ -170,6 +173,10 @@ for (const [i, e] of corpus.entries()) {
     continue;
   }
   const ms = performance.now() - start;
+  // The whole verdict, not just the row. Diagnosing a disagreement needs the regressed test names —
+  // which suite file they are in is the only structure anyone has found in them so far — and the first
+  // replay run had to be read back without them because this line was not here.
+  await writeFile(join(verdictDir, `${e.name}.json`), `${JSON.stringify(verdict, null, 2)}\n`, "utf8");
   // With an inconsistent reference the candidate is already a measured disagreement (§2); the
   // majority of the reference evaluations is what the replay is compared against, and the
   // inconsistency travels with the row so no reader has to take the collapse on trust.
@@ -205,7 +212,10 @@ const result = {
   experiment: "gate-error-rate",
   label,
   rule: "experiments/gate-error-rate/README.md §4, frozen 2026-09-19",
-  reference_run: basename(refRun),
+  // The run id is built from the **project directory's name**, so it carries the client into any file
+  // it is written to — the hazard `.gitignore` already records for the status-quo run logs. The
+  // timestamp is the part that identifies the run and it is ours; the suffix is replaced by the label.
+  reference_run: `${basename(refRun).replace(/^(\d{4}-\d{2}-\d{2}T[\d-]+Z)-.*$/, "$1")}-${label}`,
   baseline: { captured_at: baseline.captured_at, ran: baseline.tests.ran, passed: baseline.tests.passed, tsc_errors: baseline.errors.total },
   machine_at_start: machineAtStart,
   machine_at_end: await readMachineState(),

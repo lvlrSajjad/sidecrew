@@ -1,0 +1,417 @@
+{
+  "measured": true,
+  "experiment": "gate-error-rate",
+  "label": "project-a",
+  "rule": "experiments/gate-error-rate/README.md \u00a74, frozen 2026-09-19",
+  "reference_run": "2026-09-18T14-01-14Z-project-a",
+  "baseline": {
+    "captured_at": "2026-09-19T13:24:12.011Z",
+    "ran": 6368,
+    "passed": 6138,
+    "tsc_errors": 1
+  },
+  "machine_at_start": {
+    "pressure": "normal",
+    "free_gb": 17.902313232421875,
+    "swap_gb": 1.21912109375,
+    "compressed_gb": 3.434600830078125
+  },
+  "machine_at_end": {
+    "pressure": "normal",
+    "free_gb": 22.862060546875,
+    "swap_gb": 1.71837890625,
+    "compressed_gb": 4.7179412841796875
+  },
+  "pairs": 19,
+  "disagreements": 2,
+  "strict": 1,
+  "lenient": 1,
+  "reference_self_inconsistent": [
+    "multi-06#1"
+  ],
+  "D": 0.10526315789473684,
+  "verdict": "UNACCEPTABLE",
+  "rows": [
+    {
+      "task_id": "multi-01",
+      "edits_sha": "200e30c623ad2cfa",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 290310
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0.16278320312500005
+    },
+    {
+      "task_id": "multi-02",
+      "edits_sha": "9db8d68767a42b7f",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 294663
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0.17914062500000005
+    },
+    {
+      "task_id": "multi-03",
+      "edits_sha": "6c2ad666d2584e59",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 298577
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.13361328125000016
+    },
+    {
+      "task_id": "multi-04",
+      "edits_sha": "5a84eeb7782da42d",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 262018
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.08929687500000005
+    },
+    {
+      "task_id": "multi-05",
+      "edits_sha": "f88f69dc0a11f62a",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 270159
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.0390625
+    },
+    {
+      "task_id": "multi-06#1",
+      "edits_sha": "1c31aa97b4f22c64",
+      "reference": {
+        "survived": false,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 2,
+        "self_consistent": false
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 289767
+      },
+      "disagreement": "lenient",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0.0941210937500001
+    },
+    {
+      "task_id": "multi-07",
+      "edits_sha": "f660b1c182af7480",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 274529
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.0234375
+    },
+    {
+      "task_id": "rename-01",
+      "edits_sha": "5de29e536c114166",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 282783
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0
+    },
+    {
+      "task_id": "rename-02",
+      "edits_sha": "53307b6345e4d063",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 261890
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.015625
+    },
+    {
+      "task_id": "rename-03",
+      "edits_sha": "15779a72f26a0b38",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 255437
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0
+    },
+    {
+      "task_id": "rename-04",
+      "edits_sha": "8785b319afeba590",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 269836
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.0078125
+    },
+    {
+      "task_id": "rename-05",
+      "edits_sha": "1ba003626a624b2f",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 287254
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0
+    },
+    {
+      "task_id": "rename-06",
+      "edits_sha": "edf7c00c9cd770ad",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 303246
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0.180908203125
+    },
+    {
+      "task_id": "rename-07",
+      "edits_sha": "abc6096574c5f1af",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 266269
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.0546875
+    },
+    {
+      "task_id": "rename-08",
+      "edits_sha": "ddba293c404fe63b",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 248355
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.0078125
+    },
+    {
+      "task_id": "rename-09",
+      "edits_sha": "a1a4070ca72e2982",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 263001
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0
+    },
+    {
+      "task_id": "rename-10",
+      "edits_sha": "336c4fe4df12176e",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": false,
+        "stage_reached": "tests",
+        "regressed": 72,
+        "ms": 275037
+      },
+      "disagreement": "strict",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.1925097656250001
+    },
+    {
+      "task_id": "rename-11",
+      "edits_sha": "5fcbbb68616bfff1",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 271527
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": -0.03125
+    },
+    {
+      "task_id": "rename-12",
+      "edits_sha": "f3754359206d496e",
+      "reference": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "evaluations": 1,
+        "self_consistent": true
+      },
+      "replay": {
+        "survived": true,
+        "stage_reached": "done",
+        "regressed": 0,
+        "ms": 265420
+      },
+      "disagreement": "none",
+      "crossed_calendar_day": false,
+      "swap_growth_gb": 0
+    }
+  ],
+  "reference_run_note": "A sidecrew run id is built from the project directory's name, so it is recorded here with that suffix replaced by the anonymised label (CLAUDE.md #7). The timestamp identifies the run and is ours."
+}

@@ -231,3 +231,79 @@ It is a `tsx` harness, so it imports `../src/*.js` **from source**. Uncommitted 
 compiled into a run at the moment it starts with nothing in any log to show it, and "I only edited
 source, I did not rebuild" is therefore not a safety argument. The run is started from a clean tree
 and the result records the commit.
+
+---
+
+## Result, 2026-09-19 — `D = 2/19 = 0.105`, **UNACCEPTABLE** by one pair
+
+Run against §4 as frozen, on the machine and at the commit §5 requires. Full result in
+`results/replay-project-a-2026-09-19.json`.
+
+| | |
+|---|---|
+| pairs | **19** (20 reference evaluations → 19 distinct candidates) |
+| disagreements | **2** |
+| strict (a false negative *now*) | **1** — `rename-10` |
+| lenient (the reference was one) | **1** — `multi-06` |
+| **`D`** | **0.105** |
+| §4.3 verdict | **UNACCEPTABLE** (`D > 0.10`) |
+| machine | pressure normal throughout; swap 1.2 → 1.7 GB over 100 minutes |
+| baseline | 6,138 / 6,368 passing, 1 `tsc` error, 319 s |
+
+**The verdict is UNACCEPTABLE by a single pair**, and at `pairs = 19` that is exactly the fragility
+§4.2 anticipated when it required the denominator to travel with the number: one disagreement either
+way moves `D` between 0.053 and 0.158, across two of the three bands. **`D = 0.105` is not a precise
+quantity and must never be quoted as one.** What the run establishes is the order of magnitude — the
+gate disagrees with itself on the order of one candidate in ten, not one in a thousand — and that is
+enough to act on, because §4.3's consequences were written against bands rather than points.
+
+### The two disagreements
+
+**`multi-06` — lenient, and it resolves a case that was previously ambiguous.** Its two reference
+evaluations of identical bytes disagreed with each other (§2). The replay is the third evaluation of
+`1c31aa97b4f22c64` and it survived, so the count is now **2 survivals in 3 evaluations** and attempt
+0's failure is a false negative on the evidence rather than on suspicion. *The tie-break matters and
+is reported: §4's amendment collapses a reference to its majority, and a 1–1 split collapses to
+`false`, so this row is counted as a disagreement. Had the tie broken the other way it would have
+been counted as agreement, `D` would read `1/19 = 0.053`, and the verdict would read MATERIAL.* That
+sensitivity is a property of a 19-pair denominator and is the reason §4.2 forbids the bare number.
+
+**`rename-10` — strict, and it is new.** The reference evaluated it once and it survived. The replay
+failed it at `tests` with **72 regressions**, on a machine at pressure normal whose swap *fell* by
+0.19 GB during the verification, against a baseline captured the same calendar day. It is neither
+ADR-0066 nor ADR-0069. It is a **fresh instance of the undiagnosed class**, produced deliberately
+rather than stumbled upon, which is the first time that has happened.
+
+### One structural observation, offered as a lead and not as a diagnosis
+
+Across **every verdict on disk that records a regression** — six of them, including ADR-0066's 155,
+ADR-0069's 1, and `multi-06`'s 12 — **every regressed test lies in exactly one suite file.** Not one
+spans two. The counts differ by two orders of magnitude and the causes are known to differ (memory in
+one case, the wall clock in another), yet the shape is identical.
+
+That points at a **suite-level** mechanism rather than a test-level one: a spec file that fails to
+run at all — setup, teardown, a shared resource, a timeout — and every test inside it is recorded as
+having regressed. It would explain why the counts are large and arbitrary, why they are reproducible
+on a real defect (`multi-02` failed at `compile`, twice, deterministically) and not on these, and why
+no amount of reading individual test names has diagnosed it.
+
+**It is a lead and not a result, for a reason worth stating.** This corpus contains **no true
+`tests`-stage negative** to contrast against — arm D's candidates are a frontier model's own output
+and contain no defect. So the signature "all regressions in one suite" is consistent with every
+observed false negative and has never been tested against a genuine one. Until something produces a
+real test-stage failure and it is checked for the same shape, this discriminates nothing. §2.2's run
+is the first thing on the schedule that would produce such cases.
+
+### What follows immediately, per §4.3's UNACCEPTABLE clause
+
+1. **No survival rate in this repository may be published as a point estimate** until this is
+   diagnosed. That includes Phase 11's and Phase 11b's, and it is the correct reading of numbers that
+   were always described as lower bounds of unknown tightness.
+2. **The safety property is untouched and should be stated in the same breath.** `D` measures the
+   gate refusing things that were fine. Nothing here is evidence of the gate *admitting* something it
+   should not, and the corpus cannot produce such evidence. *The gate admits nothing that fails*
+   stands; *it refuses only things that fail* is now measured to be false at roughly one in ten.
+3. **ADR-0066's option A is not the fix.** Both disagreements here occurred at pressure normal with
+   swap flat or falling, so a rule that downgraded pressured failures to `machine_failure` would have
+   caught neither. The pressure hypothesis is a real cause of *some* false negatives and is not the
+   cause of these.

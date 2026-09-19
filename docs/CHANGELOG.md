@@ -1,4 +1,26 @@
 # Changelog
+## Unreleased — the gate's own error rate, measured (2026-09-19)
+- **`D = 2/19 = 0.105` → UNACCEPTABLE by one pair.** The gate disagrees with itself on the order of
+  one candidate in ten. Measured against a rule frozen before the first replay, on arm D's
+  candidates — a frontier model's own output, which the gate finds no defect in — so a disagreement
+  is a property of the gate rather than of the change.
+- **The number is an order of magnitude, never a point.** At 19 pairs, one disagreement either way
+  moves `D` between 0.053 and 0.158, across two of the three bands, and the 1–1 tie-break on
+  `multi-06` is what puts it in this one. §4.2 forbids quoting `D` without `pairs` for exactly this.
+- **One disagreement is new and was produced deliberately**: `rename-10` survived once and then
+  failed at `tests` with 72 regressions, at pressure normal, with swap *falling*, same calendar day.
+  Neither ADR-0066 nor ADR-0069. The other resolves `multi-06` to 2 survivals in 3 evaluations of
+  identical bytes.
+- **A lead, not a diagnosis: every verdict on disk that records a regression — all six, including
+  ADR-0066's 155 — has every regressed test inside exactly one suite file.** None spans two. That
+  points at a suite-level failure rather than a test-level one. It discriminates nothing yet: this
+  corpus contains no true `tests`-stage negative to contrast against.
+- **Consequences, per the frozen §4.3.** No survival rate may be published as a point estimate until
+  this is diagnosed, Phase 11's and 11b's included. **The safety property is untouched**: `D`
+  measures the gate refusing good changes. *The gate admits nothing that fails* stands; *it refuses
+  only things that fail* is now measured false at roughly one in ten. ADR-0066's option A would have
+  caught neither disagreement.
+
 ## Unreleased — §2.1 measured, and it fails its own frozen rule (2026-09-19)
 - **Planning costs 2.84x what paying a model per task would. `R = 2.84` at `N = 12` → FAIL (§4.3).**
   `P_total = 265,607` new Opus tokens for a validated 12-task plan on project-a, so `P = 22,134`

@@ -41,6 +41,10 @@ experiments/go-no-go-2a/plans/
 # holds an absolute path into their checkout and its asks quote their own symbol names. The number the
 # plan produces is ours and is committed; the plan is not.
 experiments/planner-cost/plans/
+# A replay saves whole verdicts so a disagreement can be diagnosed, and a verdict names the tests that
+# regressed and quotes the compiler's words about the client's code. The result JSON beside them carries
+# the counts, the hashes and D — which are ours (CLAUDE.md #7, ADR-0051).
+experiments/gate-error-rate/results/*-verdicts/
 # The fixture is our own code, so its handshake is safe and stays in the repo.
 !experiments/go-no-go-2a/c3/fixture/prompts/
 !experiments/go-no-go-2a/c3/fixture/answers/
