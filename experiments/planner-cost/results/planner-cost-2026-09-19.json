@@ -1,0 +1,102 @@
+{
+  "measured": true,
+  "experiment": "planner-cost",
+  "section": "Phase 12 §2.1",
+  "date": "2026-09-19",
+  "rule": "experiments/planner-cost/README.md §4, frozen 2026-09-18; taken under the dated amendment of 2026-09-19",
+  "commit": "8c7e478bf2923d638151f52e2d129af495063638",
+
+  "machine": {
+    "model": "Mac14,10",
+    "chip": "Apple M2 Pro",
+    "ram_gb": 32,
+    "macos": "26.6.2",
+    "node": "v20.20.0",
+    "note": "project-a's own suite needs node >= 22.18.0 (ADR-0049); no suite ran for this measurement."
+  },
+
+  "protocol": {
+    "window": "subagent transcript",
+    "why": "A subagent transcript contains that agent's work and nothing else, so it is a clean window by construction rather than by discipline. This satisfies §4.0.1's precondition more strictly than the fresh-session protocol it replaces; see the 2026-09-19 amendment.",
+    "transcript": "~/.claude/projects/<project-slug>/<session>/subagents/agent-acca4d1146a42ab8d.jsonl",
+    "transcript_note": "Absolute paths are local configuration and are not committed (CLAUDE.md #7). The file is named here by its stable suffix so the measurement is reproducible on this machine.",
+    "instrument": "scripts/planner-tokens.mjs --agents, at 8c7e478 — the rewrite that can see a subagent, de-duplicates each message, and fixes the slug",
+    "planner": {
+      "contract": "claude/agents/change-planner.md",
+      "model": "opus",
+      "registered_agent_type": false,
+      "registration_note": "Invoked as a general-purpose agent instructed to follow change-planner.md, because the project's agents are not registered agent types in a Claude Code session (BACKLOG.md). The contract, the model and the tools are the planner's; the registration is not. Stated because it is the one way this window differs from a production planner run."
+    }
+  },
+
+  "instrument_output_verbatim": {
+    "id": "agent-acca4d1146a42ab8d",
+    "agent_type": "general-purpose",
+    "description": "Plan project-a cleanup",
+    "model": "opus",
+    "messages": 50,
+    "input": 100,
+    "output": 65082,
+    "cache_creation": 200425,
+    "cache_read": 6308509,
+    "total": 6574116,
+    "total_excluding_cache_reads": 265607
+  },
+
+  "measured_quantities": {
+    "P_total": 265607,
+    "N": 12,
+    "P": 22133.9,
+    "W_upper": 7794,
+    "W_lower": null,
+    "W_lower_note": "§3's lower bound is the candidates' own usage, summed over a run of this plan. No run of this plan exists, so R is reported against W_upper alone — which §5's appendix step 6 requires be said rather than left implicit.",
+    "R": 2.84,
+    "wall_clock_s": 925,
+    "wall_clock_note": "Reported, never a criterion (§4.2)."
+  },
+
+  "verdict": "FAIL",
+  "verdict_rule": "§4.3: R > 1.0 — planning costs more than having a paid model do every task outright.",
+  "verdict_scope": "Holds at N = 12 and no other N (§4.4). Only one plan size was taken; the N ~ 40 arm §4.4 asks for was not.",
+
+  "plan": {
+    "steps": 2,
+    "tasks": 12,
+    "files": 23,
+    "shapes": { "dead_code": 7, "rename": 5, "unused_import": 0 },
+    "hard_share": 0.58,
+    "hard_share_note": "Clears Phase 11b §4.4's half-hard bar, but every hard task is dead_code — no null_guard and no api_migration, because project-a typechecks clean and neither shape has anything to clear.",
+    "validate": "valid",
+    "blocking_tasks": 0,
+    "correction_round": "off (default)"
+  },
+
+  "refusals": {
+    "count": 11,
+    "counts_towards_N": false,
+    "by_rule": {
+      "files_too_large_to_rewrite": 5,
+      "confinement_needs_a_file_a_plan_may_never_list": 3,
+      "file_forbidden_by_the_validator": 2,
+      "refused_by_the_planner_not_the_gate": 1
+    },
+    "naming_note": "Refusals are recorded by rule and count only. Each one names a client symbol, and a client symbol name is client IP — the same reason change plans are gitignored (CLAUDE.md #7).",
+    "shapes": [
+      "Three of the confinement refusals are renames whose symbol is referenced from a spec file. project-a's tsconfig declares no include/exclude, so its program covers the test directory: any rename with a test-file reference introduces a tsc error outside the task's files and fails compile_ok by construction.",
+      "Five refusals are whole-file rewrite-budget failures at ~22,674 characters per task. The subtree's four largest files are roughly 60% of its bytes and are out of reach for any task at all.",
+      "One refusal is the planner's own judgement rather than a gate rule: a group of framework classes with zero static references that are discovered at runtime, so deleting them would change behaviour silently. The gate could not have caught it."
+    ]
+  },
+
+  "findings": [
+    "A third of the ask was empty and the planner did not pad to hide it. project-a has zero unused imports in the target subtree (71 files) and one in all 2,160 files of src/, verified two independent ways. Discovering that there is nothing to do is planning work and its tokens are in P_total, which is honest and is also part of why P is high.",
+    "The validator's forbidden-file pattern has a false-positive class. Two tasks were dropped because ordinary application source files in a dotted-name convention matched a tool-config regex that accepts any extension. The planner fixed the plan rather than the gate, which is correct, but a service using that naming convention loses real tasks to it. Worth an ADR or a narrowing of the pattern to config formats.",
+    "Three tasks ask a worker to return an empty file. A whole-file worker can empty a file but cannot delete one, so each ask says so explicitly to keep the answer from reading as a truncation."
+  ],
+
+  "consequences": [
+    "13b item 1 — 'local models read the codebase so Opus does not have to' — is UNBLOCKED, and this number is its go/no-go rather than its baseline. The item's premise was that planning is expensive and mostly reading; P = 22,134 tokens per task at N = 12 is that premise measured, and 6.3M cache reads against 65k of output is the shape of a planner that reads far more than it writes. It still needs its own ADR first, for the reason PHASES.md gives: its gate confirms a symbol exists, not that it is relevant.",
+    "Phase 5's 120-145k figure is superseded and was contaminated three ways rather than one: the original same-session contamination, plus both defects of the instrument that produced it.",
+    "R is a ratio against W_upper, the Agent tool's own total for Phase 11's C3 control, which carries harness overhead and is therefore the conservative bound for the denominator. Using the flattering bound would have made this number better and §3 forbids it."
+  ]
+}

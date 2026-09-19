@@ -29,7 +29,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | 12 | Management: the code-change planner, the correction round, what a stuck worker says | 🔶 **built, unmeasured** | `prompts/phase-12-management.md` · ADR-0044, ADR-0057, ADR-0058 · the four deliverables are done; **§2.1 and §2.2 are a later session's**, against rules frozen 18 Sep before either existed. §2.2's denominator is unblocked by ADR-0063 |
 | 13 | The `api` tier: Haiku as the worker on machines with 16 GB or less | 🔶 **built and merged, unmeasured** | `prompts/phase-13-api-tier.md` · §5 frozen 18 Sep · ADR-0045, ADR-0059 – ADR-0062 · the client, both guards, tier selection and the accounting are in and tested. **§5 waits on API credits** — the Console account has none, and a subagent substitute was considered and refused (§5's amendment, dated). Blocks nothing before 14 |
 | **13b** | **The edge ideas that gate publication** — unattended mode ✅, memoisation ✅, local retrieval | 🔶 **two of three built** · owner's decision 18 Sep 2026 | `BACKLOG.md` § *The edge ideas* items 4, 3, 1 · all three were Phase 12's and were not built. **Item 6 (two-model agreement) was considered and dropped** — its own precondition is untested |
-| **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** — ADR-0069, the planner-token instrument, §2.1, the gate's own error rate, §2.2 | ⬜ **next** · handed to a fresh session | `prompts/phase-12-measurements.md` · **`planner-tokens.mjs` cannot see a subagent**, so §2.1 was unmeasurable as specified |
+| **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **in progress, 19 Sep** — ADR-0066 ✅ (option C) · ADR-0069 ✅ (option A) · instrument ✅ · **§2.1 measured: `R = 2.84` at `N = 12`, FAIL** · gate error rate 🔶 running · §2.2 ⬜ | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
 | 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ | `prompts/phase-8-publish.md` |
 | 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · not on the publish path | ADR-0031 options B/C |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
@@ -744,16 +744,22 @@ edit format rather than about the model** when a quarter of attempts fail to par
 
 ## 12 — Management: planner, correction round, stuck signal
 
-**Status, 18 Sep 2026: the build is done and neither number exists yet.** The planner
-(`claude/agents/change-planner.md` + `sidecrew fix --validate`), the correction round, the refusal
-shape and the three MCP tools are in and tested; `experiments/planner-cost/` and
-`experiments/correction-round/` hold their protocols, both frozen before the code they measure.
+**Status, 19 Sep 2026: §2.1 is measured and it FAILS.** `R = 2.84` at `N = 12` — 265,607 new Opus
+tokens for a validated 12-task plan on project-a, **22,134 per task planned** against a paid worker's
+7,794. §4.3's FAIL clause applies and is reported as written: *the design's economics do not work at
+this plan size, and the phase reports that in as many words rather than looking for a plan size where
+they do.* Result in `experiments/planner-cost/results/planner-cost-2026-09-19.json`. §2.2 is still
+open.
 
-**Why the measurements did not run in the same session, and it is not scheduling.** §2.1's instrument
-sums every assistant message in a session transcript, so a window containing the building *and* the
-planning is contaminated — which is exactly how Phase 5's figure was spoiled and why Phase 11 could
-supply none at all. A clean window needs a session that does nothing else, and that cannot be created
-from inside the session doing the work. `experiments/planner-cost/README.md` §2 is the procedure.
+**The "clean window" problem dissolved rather than being solved**, and that is the useful half.
+§2.1's instrument was thought to need a session that did nothing but plan, because it summed a whole
+transcript. It turned out it could not see the planner **at all**: the planners are subagents, and a
+subagent's transcript is a separate file the script never opened. Inverted, that is the answer — **a
+subagent transcript is a clean window by construction**, holding that agent's work and nothing else,
+so no dedicated session is needed and the one that spawned it is irrelevant. Two further defects came
+out of the same look: every assistant message was counted about twice (median **1.89×** inflation over
+177 transcripts) and the slug dropped underscores. Every figure the script ever produced is void and
+**not rescalable** — one defect omits a transcript, the other multiplies what is left.
 
 **And §2.2 has no denominator yet, which is a finding rather than a delay.** *No task Phase 11 ever ran
 reached a second attempt* — `retried = 0` in all six arms across 54 tasks — so the correction round
@@ -876,10 +882,11 @@ valuable version caches *verdicts*, and that is the dangerous one — a verdict 
 pass, which is precisely ADR-0037's failure mode. **An ADR on what goes in the key comes first.**
 Local tier only; the api tier has no seed (ADR-0045 §5), and that branch is now real code.
 
-**1 — local models read the codebase. Cheap to build, and §2.1 may kill it.** Its premise is that
-planning cost 120–145k Opus tokens and most of it was Opus reading code — but that figure is Phase 5's
-and its own docstring says it is contaminated. **If §2.1 shows planning is cheap per task, this item is
-solving a problem that does not exist**, so §2.1 is its go/no-go rather than merely its baseline.
+**1 — local models read the codebase. §2.1 did not kill it; it confirmed the premise.** The item
+rested on planning being expensive and mostly Opus reading code. Measured 19 Sep 2026: **22,134 Opus
+tokens per task planned** at `N = 12`, with **6.3M cache reads against 65k of output** — a planner
+that reads far more than it writes, which is the shape the item is aimed at. §2.1 was its go/no-go
+rather than its baseline and the answer is go. Phase 5's contaminated 120–145k is superseded.
 It also needs an ADR first, because **its gate is weaker in kind than the other two**: confirming a
 symbol exists at a location proves existence, not *relevance*. A local model can return ten real,
 confirmed, irrelevant locations and Opus reads ten files it did not need — the gate passes and the

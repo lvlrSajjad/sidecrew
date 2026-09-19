@@ -63,21 +63,42 @@ model's ability, becomes the binding constraint. Say so in the rule before runni
 
 ### 1.2 The cost of deciding · closes the economics
 
-**Status 18 Sep 2026: the planner exists and the number does not.** Phase 12 built it and froze the
-protocol (`experiments/planner-cost/`) before writing a line of it. The measurement needs a session that
-does nothing but plan — see that file's §2 — because the instrument sums the whole transcript.
+**Status 19 Sep 2026: measured, and it FAILS its own frozen rule.** `R = 2.84` at `N = 12` —
+planning cost **265,607** new Opus tokens for a validated 12-task plan, so **22,134 tokens per task
+planned** against a paid worker's 7,794. §4.3's verdict at `R > 1.0` is FAIL: *the design's economics
+do not work at this plan size, and the phase reports that in as many words rather than looking for a
+plan size where they do.*
 
+Three things that verdict does **not** mean, said here because this is the file people read first:
 
-Phase 11 measured the *doing* side completely — generate 13.5 s at **zero** worker tokens, gate
-262 s, 95 % of a candidate's cost in a gate that is free and local. The *deciding* side is a blank,
-because the plans were hand-written.
+- **It is not a verdict on the doing side.** Workers remain free on the local tier and the gate
+  remains 95 % of a candidate's cost. What is expensive is the *deciding*, which is the half nobody
+  had measured.
+- **It holds at `N = 12` and no other `N`** (§4.4). Planning cost is not linear in tasks — a module
+  read once serves twelve tasks or forty — and the `N ≈ 40` arm has not been run. That arm is now the
+  single most valuable measurement left, because it is the one thing that can move this number.
+- **It is measured against the conservative bound** (`W_upper`, which carries the Agent tool's own
+  harness overhead). Using the flattering bound would have improved the ratio and §3 forbids it.
 
-Phase 12's planner must therefore be measured, not merely built. The number is **Opus tokens spent
-planning ÷ tasks planned**, against **tokens the workers did not spend**. `scripts/planner-tokens.mjs
---mark` exists for exactly this and has never been used on a clean window.
+**It also settles 13b item 1 in the affirmative**: planning is expensive and it is mostly Opus
+reading — 6.3M cache reads against 65k of output. *"Local models read the codebase so Opus does not
+have to"* is aimed at exactly this number and is unblocked, behind its own ADR.
 
-Without it the claim is "the work is free"; with it the claim is "the coordination costs X and buys
-Y", which is the whole argument.
+The measurement no longer needs a dedicated session: `planner-tokens.mjs` can read a subagent
+transcript, which is a clean window by construction. The three defects that made the old instrument
+unusable are in that file's 19 Sep amendment.
+
+Phase 11 had measured the *doing* side completely — generate 13.5 s at **zero** worker tokens, gate
+262 s, 95 % of a candidate's cost in a gate that is free and local — and the *deciding* side was a
+blank, because the plans were hand-written. Both halves now have a number.
+
+So the claim stops being *"the work is free"* and becomes **"the doing is free and the coordination
+is not"**, which is a worse headline and a far more useful one. The honest form of the sentence, at
+the only plan size measured:
+
+> At `N = 12`, sidecrew moves the cost from the workers to the planner and does not reduce it.
+
+Whether that survives at `N ≈ 40` is unmeasured and is the next thing to run.
 
 ---
 

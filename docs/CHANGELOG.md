@@ -1,4 +1,26 @@
 # Changelog
+## Unreleased — §2.1 measured, and it fails its own frozen rule (2026-09-19)
+- **Planning costs 2.84x what paying a model per task would. `R = 2.84` at `N = 12` → FAIL (§4.3).**
+  `P_total = 265,607` new Opus tokens for a validated 12-task plan on project-a, so `P = 22,134`
+  tokens per task planned against `W_upper = 7,794`. Reported against the conservative bound,
+  because §3 forbids applying the rule to the flattering one. The verdict holds at `N = 12` and no
+  other `N` — §4.4's second plan size was not taken.
+- **13b item 1 is unblocked, and this number is its go/no-go rather than its baseline.** Its premise
+  was that planning is expensive and mostly Opus reading code. Measured: 6.3M cache reads against
+  65k of output. It still needs its own ADR first — its gate confirms a symbol exists, not that it
+  is relevant.
+- **Phase 5's 120–145k figure is superseded**, and was contaminated three ways rather than one: the
+  original same-session window, plus both defects of the instrument that produced it.
+- **The planner refused 11 tasks to plan 12**, and three of those refusals share one cause worth
+  knowing: project-a's tsconfig declares no `include`/`exclude`, so its program covers the test
+  directory — any rename with a test-file reference introduces a `tsc` error outside the task's
+  files and fails `compile_ok` by construction.
+- **A false-positive class in the validator's forbidden-file rule**: ordinary application source in a
+  dotted-name convention matches a tool-config pattern that accepts any extension, and two real
+  tasks were dropped by it. The planner fixed the plan rather than the gate, which is correct.
+- Refusals are recorded by rule and count only. Each one names a client symbol, and a client symbol
+  name is client IP — the same reason change plans are gitignored (CLAUDE.md #7).
+
 ## Unreleased — the verdict records what invalidates it (2026-09-19)
 - **ADR-0066 accepted at option C and ADR-0069 at option A, decided together.** Both are *record,
   don't gate*. `ChangeVerdict` now carries `baseline_captured_at`, `verified_at` and `machine` —
