@@ -22,7 +22,7 @@ import { cp, mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } f
 import { existsSync, realpathSync, type Dirent } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { run } from "./exec.js";
+import { run, wasTruncated } from "./exec.js";
 import { readMachineState } from "./doctor.js";
 import { checkConfinement, confinementMessage, observe } from "./confinement.js";
 import {
@@ -33,6 +33,12 @@ import { binary, skipFromSandbox, stageEnv, stripFileList } from "./verifier/ts.
 import {
   looksLikeOom, output, resolveNodeModules, truncateError, VerifierSetupError, type TestRunner,
 } from "./verifier/shared.js";
+
+/**
+ * How much `tsc` output one type-check may hold. 16 MB rather than `exec`'s 1 MB default, for the
+ * reason at the call site: the file list prints last and a project mid-migration can bury it.
+ */
+const TSC_MAX_OUTPUT_BYTES = 16 << 20;
 
 /** Paths in every contract here are posix and relative to the project root. One spelling, everywhere. */
 export const toPosix = (path: string): string => path.split(sep).join("/");
@@ -203,7 +209,13 @@ export async function typecheck(
   // `-p` first, then the flags: tsc lets a later command-line switch override the project file, which
   // is the whole mechanism ADR-0063 depends on.
   const argv = [...tsc.args, "--noEmit", "--pretty", "false", "--listFiles", "-p", tsconfig, ...flags];
-  const r = await run(tsc.cmd, argv, { cwd: sandbox, timeoutMs, env: stageEnv() });
+  // **A per-stream cap that the file list falls off the end of.** `tsc` prints `--listFiles` *after*
+  // every diagnostic, so on a project with more than a megabyte of them the default 1 MB cap discards
+  // precisely the output the guard below checks — and the guard then reports "tsc did not run" about a
+  // compiler that ran fine. Found under ADR-0063: `--strictNullChecks` on a real service emits 11,412
+  // errors over ~2.5 MB. Raised rather than removed, because this output is held in memory and a
+  // starved machine is its own failure mode (ADR-0066).
+  const r = await run(tsc.cmd, argv, { cwd: sandbox, timeoutMs, env: stageEnv(), maxOutputBytes: TSC_MAX_OUTPUT_BYTES });
   const text = output(r);
   if (looksLikeOom(text)) {
     // A machine limit wearing a compiler error's clothes (ADR-0032). Thrown, so the retry rule never
@@ -231,6 +243,20 @@ export async function typecheck(
    * TypeScript lib files, so an empty program cannot be a real one. Thrown rather than returned, so the
    * retry rule never spends an attempt on a machine problem.
    */
+  if (program.size === 0 && wasTruncated(text)) {
+    // Distinguished from the case below on purpose. Both end the run, and only one of them is about
+    // the project: this one is about us losing the evidence, and saying "tsc did not run" here would
+    // send a reader to look for a broken toolchain that is working perfectly.
+    throw new VerifierSetupError(
+      `tsc ran and produced more output than sidecrew captured (${TSC_MAX_OUTPUT_BYTES} bytes), so the ` +
+      "file list it prints *after* the diagnostics was cut off — and without that list there is no way " +
+      "to confirm the compiler opened the program, which is the check ADR-0037 exists for.\n" +
+      `  command: ${tsc.cmd} ${argv.join(" ")}\n` +
+      "  This is a very noisy compile rather than a broken one. Narrow what is compiled, or reduce the " +
+      "strictness this run adds, and try again.",
+    );
+  }
+
   if (program.size === 0) {
     throw new VerifierSetupError(
       `tsc produced no file list at all under ${tsconfig}, which means it did not run — not that the ` +

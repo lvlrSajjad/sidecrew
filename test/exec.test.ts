@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { run, ok, firstLine } from "../src/exec.js";
+import { run, ok, firstLine, wasTruncated } from "../src/exec.js";
 import { stageEnv } from "../src/verifier/ts.js";
 
 describe("run", () => {
@@ -60,6 +60,31 @@ describe("run", () => {
 
   it("firstLine picks the first non-empty line of either stream", async () => {
     expect(firstLine(await run("node", ["--version"]))).toMatch(/^v\d+\./);
+  });
+});
+
+describe("losing output is detectable, not just visible", () => {
+  it("says so when a stream was capped, because one caller has to branch on it", () => {
+    // `typecheck` reads `tsc --listFiles`, and tsc prints that list AFTER every diagnostic. On a
+    // project with more than the cap's worth of errors the list falls off the end — and the ADR-0037
+    // guard, which concludes "tsc never ran" from an empty file list, would then say the opposite of
+    // what happened. Measured under ADR-0063: --strictNullChecks on a real service emits 11,412
+    // errors over ~2.5 MB against a 1 MB default.
+    expect(wasTruncated("all of it")).toBe(false);
+    expect(wasTruncated("some of it\n… truncated at 1048576 bytes")).toBe(true);
+  });
+
+  it("caps a noisy child and marks it", async () => {
+    const r = await run(process.execPath, ["-e", "process.stdout.write('x'.repeat(50_000))"], { maxOutputBytes: 1024 });
+    expect(ok(r)).toBe(true);
+    expect(wasTruncated(r.stdout)).toBe(true);
+    expect(r.stdout.length).toBeLessThan(50_000);
+  });
+
+  it("does not mark output that fits", async () => {
+    const r = await run(process.execPath, ["-e", "process.stdout.write('ok')"], { maxOutputBytes: 1024 });
+    expect(r.stdout).toBe("ok");
+    expect(wasTruncated(r.stdout)).toBe(false);
   });
 });
 

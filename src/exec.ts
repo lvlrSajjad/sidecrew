@@ -31,9 +31,19 @@ export const DEFAULT_MAX_OUTPUT_BYTES = 1 << 20;
 /** Grace between asking a process group to stop and making it. */
 const SIGKILL_AFTER_MS = 2_000;
 
+/**
+ * The marker `truncated` appends. Exported because a caller sometimes has to **know** it lost output
+ * rather than merely showing the user that it did: `typecheck` reads `tsc --listFiles`, which prints
+ * its file list *after* every diagnostic, so a truncated stream loses exactly the part the ADR-0037
+ * guard checks — and the guard's conclusion ("tsc did not run") would be the opposite of the truth.
+ */
+export const TRUNCATION_MARKER = "… truncated at";
+
+export const wasTruncated = (text: string): boolean => text.includes(`\n${TRUNCATION_MARKER} `);
+
 const truncated = (chunks: string[], bytes: number, cap: number): string => {
   const text = chunks.join("");
-  return bytes > cap ? `${text}\n… truncated at ${cap} bytes` : text;
+  return bytes > cap ? `${text}\n${TRUNCATION_MARKER} ${cap} bytes` : text;
 };
 
 /**
