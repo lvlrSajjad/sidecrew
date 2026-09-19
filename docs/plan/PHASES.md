@@ -29,7 +29,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | 12 | Management: the code-change planner, the correction round, what a stuck worker says | 🔶 **built, unmeasured** | `prompts/phase-12-management.md` · ADR-0044, ADR-0057, ADR-0058 · the four deliverables are done; **§2.1 and §2.2 are a later session's**, against rules frozen 18 Sep before either existed. §2.2's denominator is unblocked by ADR-0063 |
 | 13 | The `api` tier: Haiku as the worker on machines with 16 GB or less | 🔶 **built and merged, unmeasured** | `prompts/phase-13-api-tier.md` · §5 frozen 18 Sep · ADR-0045, ADR-0059 – ADR-0062 · the client, both guards, tier selection and the accounting are in and tested. **§5 waits on API credits** — the Console account has none, and a subagent substitute was considered and refused (§5's amendment, dated). Blocks nothing before 14 |
 | **13b** | **The edge ideas that gate publication** — unattended mode ✅, memoisation ✅, local retrieval | 🔶 **two of three built** · owner's decision 18 Sep 2026 | `BACKLOG.md` § *The edge ideas* items 4, 3, 1 · all three were Phase 12's and were not built. **Item 6 (two-model agreement) was considered and dropped** — its own precondition is untested |
-| **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12`, FAIL** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · §2.2 🔶 running | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
+| **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12`, FAIL** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · **§2.2: `S_c = 0/29`, OFF BY DEFAULT** · ✅ **all four measured** | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
 | 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ | `prompts/phase-8-publish.md` |
 | 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · not on the publish path | ADR-0031 options B/C |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
@@ -743,6 +743,20 @@ edit format rather than about the model** when a quarter of attempts fail to par
 (ADR-0047 §2). Do not edit §4 — amend below it, dated, the way ADR-0020 amended Phase 6's.
 
 ## 12 — Management: planner, correction round, stuck signal
+
+**Status, 20 Sep 2026: both numbers exist, and both are negative results reported as complete ones.**
+§2.2 is `S_c = 0/29` → **OFF BY DEFAULT** (§4.2), with `n₂ = 29` clearing §4.3's floor so it is a
+verdict rather than an INCONCLUSIVE. The correction round ships switched off, the docs say why, and
+the tail escalates as it does today — which is exactly what ADR-0044 §4 rule 2 specified in advance.
+
+**The number that carries the most is not `S_c`.** 27 of the 29 corrected attempts landed at exactly
+the same gate stage as the free mechanical retry; two moved, both sideways. And in the clean subset —
+17 tasks whose briefs name the file and the rule, with nothing structural against them — **16 of 17
+returned the file byte-identical *again*** after being told specifically that returning it unchanged
+was the failure. That is a finding about the **worker**: on `null_guard` work a 7B mostly declines to
+attempt the change, which reframes pass 1's `1/30` as a model that did not try rather than a gate
+that was harsh. The measurement that could still change the verdict is a task set where the worker
+*attempts* the change and gets it wrong — every `no_edit_at_all` is a task with no defect to correct.
 
 **Status, 19 Sep 2026: §2.1 is measured and it FAILS.** `R = 2.84` at `N = 12` — 265,607 new Opus
 tokens for a validated 12-task plan on project-a, **22,134 per task planned** against a paid worker's

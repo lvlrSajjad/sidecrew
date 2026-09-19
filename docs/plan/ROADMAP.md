@@ -129,6 +129,25 @@ Whether that survives at `N ≈ 40` is unmeasured and is the next thing to run.
 
 ---
 
+### 1.3 The correction round — measured, and it does not pay
+
+**20 Sep 2026: `S_c = 0/29` → OFF BY DEFAULT.** `experiments/correction-round/`, against a §4 frozen
+before the round existed. It ships switched off and the tail escalates, as ADR-0044 §4 rule 2 said it
+would if the number came out this way.
+
+The useful part is underneath the verdict. **27 of 29 corrected attempts reached exactly the same
+gate stage as the free mechanical retry**, and in the clean subset **16 of 17 workers returned the
+file byte-identical again** after a note saying that returning it unchanged was the failure. So the
+binding constraint on `null_guard` work is not the quality of the instruction — it is that the 7B
+**does not attempt the change**. That is a different problem from the one the correction round was
+built to solve, and no rewording is the lever for it.
+
+It also puts a number on something `VISION.md` has always said carefully: *"no pretending the local
+model is good."* On renames the 7B reached 0.40–1.00. On null guards, under a stricter compiler, it
+reached **1/30** — and most of that gap is refusal to edit rather than bad edits.
+
+---
+
 ## Priority 2 — writing, while the material is fresh
 
 Three published so far: the frozen rule and the score it vetoed; the gate-reference taxonomy; and
