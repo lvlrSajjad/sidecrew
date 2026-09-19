@@ -179,3 +179,55 @@ node ≥ 22.18.0 and uses v22.23.2 — ADR-0049).
 Results name `project-a` and `project-b` and never the client (CLAUDE.md #7). Candidate contents,
 regression names and diffs quote the client's source and are never committed; the hashes and the
 counts are ours and stay.
+
+---
+
+## Amendment, 2026-09-19 — three operational rulings §4 did not anticipate, all settled before the first replay
+
+*Not an edit to §4. Its rule, thresholds, denominator and exclusions stand as frozen. What follows is
+how the harness resolves three cases §4 is silent on, written down before any replay ran so that none
+of them is a choice made after seeing a number.*
+
+### 1. A reference candidate with two evaluations that disagree with each other
+
+§4.1 says "the reference verdict's `survived`", singular. The mechanical retry means some candidates
+have **two** reference evaluations, and for project-a `multi-06` those two disagree — which is the
+whole of §2.
+
+Ruling: **the candidate is already a measured disagreement and is counted as one.** The replay still
+runs and is reported as a third opinion, compared against the **majority** of the reference
+evaluations, and every row carries `reference.evaluations` and `reference.self_consistent` so the
+collapse to a single value is visible rather than implied. Dropping such a candidate would remove from
+the denominator precisely the cases the experiment exists to find, which is the denominator error this
+project has written down twice and is not going to make a third time.
+
+### 2. One baseline for a corpus that came from two steps
+
+The reference run had two steps, and step N+1's baseline is the project after step N's survivors
+landed. In principle a step-1 candidate could therefore assume a change a pristine baseline does not
+contain.
+
+Ruling: **the harness asserts the steps' file sets are disjoint and refuses to run if they are not.**
+Measured on this corpus: step 0 is 12 `rename` tasks over 12 files, step 1 is 7 `multi` tasks over 16
+files, and the **overlap is zero** — so one pristine baseline serves all 19 and no candidate is judged
+against a world it did not assume. Where a future corpus overlaps, the replay is per group against its
+own baseline; the assertion is what makes that a refusal rather than a silent wrong answer.
+
+### 3. The corpus is deduplicated by content, not by task id
+
+Two reference evaluations of the same task are the same bytes in every case observed (both retry
+pairs hash equal). Ruling: **the replay runs once per distinct `edits_sha`**, not once per verdict
+file. Replaying identical bytes twice would inflate `pairs` with a second evaluation that carries no
+new information, and §4.2's denominator is candidates, not verdicts.
+
+### What the harness is, and one hazard it inherits
+
+`scripts/gate-replay.ts` drives `verifyChange` — the production gate, the same function `runFix`
+calls — over the tasks and candidates the reference run wrote to disk. It does **not** reconstruct a
+plan: the plan is gitignored and was not kept, and it is not needed, because every task and candidate
+was written as the run went (ADR-0023). *The run is the record, not the verdict.*
+
+It is a `tsx` harness, so it imports `../src/*.js` **from source**. Uncommitted edits to `src/` are
+compiled into a run at the moment it starts with nothing in any log to show it, and "I only edited
+source, I did not rebuild" is therefore not a safety argument. The run is started from a clean tree
+and the result records the commit.
