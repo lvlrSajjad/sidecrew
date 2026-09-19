@@ -4723,3 +4723,75 @@ and that is exactly what excluding them now would be. The run reports `S_c` over
 **and** the breakdown by failure shape, so a reader can see both the number the frozen rule produces
 and the number that means something. Which is the honest way round: the rule was frozen for a reason,
 and the reason is that a denominator adjusted after the fact is a description of the adjustment.
+
+## ADR-0072 — `ChangeVerdict.errors.message` quotes the wrong compiler output, and it is the one field a correction is written from (PROPOSED)
+
+**Status:** proposed · 20 Sep 2026 · found by the corrector in Phase 12 §2.2 · needs the owner
+**Deliberately not implemented** — see *Why this is not being fixed tonight*.
+
+### The measurement
+
+`errors.message` is documented as *"The compiler's own words, truncated. What a correction quotes
+(ADR-0044 §4 rule 1)"*, and ADR-0047 §3 claims the whole verdict was **designed for a reader who
+arrives two phases later**. §2.2 is the first time that reader existed. It does not pass.
+
+`verifyChange` sets `errorMessage = truncateError(tsc.message)`, and `tsc.message` is the **entire
+project's** diagnostics with the file list stripped. `truncateError` then cuts it at 2,048 characters.
+On a project with 11,412 errors the result is the alphabetically-first 2 KB.
+
+Checked on three of the twelve compile failures, independently of the corrector's report:
+
+| task | its own file | does `errors.message` mention that file? |
+|---|---|---|
+| snc-02 | `src/common/…util.ts` | **no** |
+| snc-06 | `src/interceptor/…interceptor.ts` | **no** |
+| snc-13 | `src/modules/api/…controller.ts` | **no** |
+
+All three carry a byte-identical 2,048-character excerpt, every line of which is about an unrelated
+`src/cba/…` file, cut mid-token. It mentions neither the task's own file nor the file that *gained* an
+error — the two things a correction has to be specific about.
+
+The corrector, which could see the briefs and nothing else, reported this unprompted: *"the one field
+that was supposed to let me be specific about what the compiler objected to told me nothing about any
+of these 29 tasks."* It also reported the consequence — that its notes for the six pure-compile
+failures had to say *"the file you were given"*, which is exactly the generic phrasing a correction
+round exists to avoid.
+
+### Why it was invisible until now
+
+On a project whose compiler is quiet, `tsc.message` **is** the relevant output: a handful of errors,
+all of them the task's. The field is correct whenever the project has few errors and wrong in
+proportion to how many it has — so it degrades precisely as a project becomes a better candidate for
+workload #2a (ADR-0064), and it has never been read by the reader it was designed for until tonight.
+
+**Same shape as the truncation bug found four hours earlier**, where `tsc --listFiles` fell off the end
+of a 1 MB buffer: both are "a field that is fine on a small project and silently useless on a large
+one", and both were found by pointing the tool at a real codebase with the strictness turned up.
+
+### The fix, which already exists in the codebase
+
+`diagnosticsFor(diagnostics, files)` in `fix.ts` filters a diagnostics blob to the lines about a given
+set of files — it is what shows the **worker** the diagnostics for its own task, and it is right there.
+The verdict should carry the same thing, over the union of *the task's files* and *the files that
+gained errors*. No new mechanism, no new field, and rule 1 is untouched: this is still the gate's
+extract, not the candidate's diff.
+
+### Why this is not being fixed tonight
+
+**§2.2 is mid-flight and this is the field its mechanism reads.** Fixing it now would change what a
+correction is written from, after seeing that the corrections were thin — which is the shape
+`experiments/correction-round/README.md` §4.0 forbids and the same line ADR-0066 drew: *the
+environment is mine to fix during a run; the gate is not.*
+
+So §2.2's result stands on the code that produced it, and it is reported with this defect named as a
+**stated confound**: the 12 compile-shape corrections were written from a brief carrying no relevant
+compiler output, and whatever `S_c` those produce is a floor rather than a measurement of the
+mechanism working properly. The 17 `no_edit_at_all` corrections are unaffected — their briefs name the
+file and the rule, and the corrector said so.
+
+### Consequence for ADR-0047 §3
+
+ADR-0047 §3's claim was that the verdict is designed for a reader two phases later. That claim was
+untested for two phases. **On its first test, one of its four evidence fields was unusable and the
+reader said so without being asked.** Worth recording plainly: the design was right in shape and wrong
+in one detail, and the detail only shows up at a scale nothing else in this repository had reached.
