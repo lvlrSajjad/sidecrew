@@ -312,3 +312,95 @@ project — not because it maximises failures, and explicitly not the strictest 
 (ADR-0063's last consequence). A different flag would produce a different task set and could produce a
 different `S_c`. Everything here is conditional on both choices and the report says so beside every
 cell.
+
+---
+
+## Result, 2026-09-20 — `S_c = 0/29`. **OFF BY DEFAULT**, and §4.2 said in advance that this is a complete result
+
+Run against §4 as frozen, under the 2026-09-20 declaration. Full result in
+`results/correction-round-2026-09-20.json`.
+
+| | |
+|---|---|
+| project | `project-a`, `--strictNullChecks` (ADR-0063) |
+| task set | 30 tasks, one file each, **100 % `null_guard`**, declared before the run |
+| pass 1 (the uncorrected control) | **1 survived of 30** |
+| **`n₂`** | **29** — clears §4.3's floor of 8, so this project is **not** INCONCLUSIVE |
+| **`S_c`** | **0 / 29 = 0.000** |
+| `T_c` | **2,784** Opus tokens per correction · **$0.0227** each |
+| `T_e` | 7,794 tokens/task at Sonnet · $0.0156–$0.0779 |
+| `S_be` | **0.291 – 1.456** |
+| **verdict** | **OFF BY DEFAULT** (§4.2: `S_c < S_be`) |
+
+`S_c = 0` is below `S_be` under every assumption in its range, so ADR-0044 §4 rule 2's kill switch
+fires without needing the range narrowed. **The round ships switched off, the docs say so, and the
+tail escalates as it does today** — which is what §4.2 wrote down before any correction existed, in
+the words *"this is a complete result and the phase reports it without looking for a cut of the data
+where it passes."*
+
+### The number that says the most is not `S_c`
+
+**Twenty-seven of the twenty-nine corrected attempts landed at exactly the same gate stage as the
+free mechanical retry had.** Two moved, and both moved sideways — `confinement → compile` and
+`compile → confinement`. Nothing moved to survival.
+
+§2.2's question was *what does an Opus note buy over ADR-0022's free retry, which already carries the
+tool's own words*. Measured, on this task set: **nothing at all.** Not a small effect that failed to
+pay for itself — no effect on the gate's verdict in 27 of 29 cases.
+
+### The clean subset, which is where the result stops being about the experiment's flaws
+
+Two confounds (below) weaken the 12 `compile`-shape tasks. The other 17 are clean: their briefs each
+**name the file and the rule broken**, they are unaffected by ADR-0072, and nothing structural stops
+them — the worker simply did not attempt the edit.
+
+Those 17 all failed `no_edit_at_all`: the worker returned the file byte-identical. Each got a note
+saying, specifically, that returning the file unchanged **was** the failure and that the whole file
+had to come back with the edit applied.
+
+> **Sixteen of the seventeen returned the file byte-identical again.**
+
+That is a finding about the **worker**, not about the correction round. On this shape a 7B does not
+act on an instruction it has already been given twice, and no amount of rewording the instruction is
+going to be the lever. It also reframes the pass-1 headline: `1/30` is not "the gate is harsh", it is
+**a model that mostly declines to attempt the task**.
+
+### What weakens this result, stated rather than discovered later
+
+1. **ADR-0071 — 12 of the 29 were unsatisfiable by construction.** They fail because a test file the
+   plan may never list gains an error when the task's file changes type. No correction can rescue
+   that, and their contribution to `S_c` is guaranteed zero for a reason that has nothing to do with
+   corrections. **They are not excluded**: §4.0 precondition 4 forbids changing the set after seeing
+   failures, and the clean subset above is how a reader gets the number that means something without
+   the denominator being quietly adjusted.
+2. **ADR-0072 — those same 12 had a degraded brief.** `errors.message` carried the project's
+   alphabetically-first 2 KB of diagnostics and named neither the task's file nor the file that gained
+   an error. Their corrections are a floor, not a measurement of the mechanism working properly.
+3. **§4.5 stands, twice over.** The task set was chosen to contain failures, and under ADR-0063 the
+   *strictness setting* was chosen too. No rate here says how often real work reaches this round.
+
+### §4.3's quality veto is not applicable, and could not have changed the verdict
+
+`A_c` is undefined — there are zero corrected survivors — and `A_u` has `n = 1`. The blind pass was
+budgeted from the start as §4.3 requires and is **not run**, because it has nothing to compare. The
+veto can only make a verdict stricter, and the verdict is already OFF.
+
+### Two environmental checks, both from fields that did not exist yesterday
+
+- **ADR-0069:** 15 of the 29 verdicts were taken against a baseline captured on the *previous*
+  calendar day. **None reached the suite** — the only stage a date-dependent test can touch — so the
+  crossing has no purchase on this result. That is read off `baseline_captured_at` / `verified_at`
+  rather than reasoned about, which is the entire argument for option A.
+- **ADR-0066:** pressure normal throughout; swap *fell* from 9.1 GB to 3.9 GB across the run. Not a
+  contended machine.
+
+### What this does not say
+
+It does not say the correction round is a bad idea, and it does not say ADR-0044 §4 was wrong to
+build it. It says that **on gate-visible failures of this shape, with this worker, one written note
+changes nothing the gate can see** — and that the honest response is the one rule 2 specified in
+advance: ship it off, say why, and let the tail escalate.
+
+The measurement that would change this verdict is a different one: a task set where the worker
+*attempts* the change and gets it wrong, rather than declining to attempt it. Every `no_edit_at_all`
+is a task where there is no defect for a note to correct.

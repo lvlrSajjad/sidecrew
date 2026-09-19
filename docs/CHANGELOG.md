@@ -1,4 +1,27 @@
 # Changelog
+## Unreleased — §2.2 measured: the correction round does not pay, and the reason is the worker (2026-09-20)
+- **`S_c = 0/29`. OFF BY DEFAULT** (§4.2), against a rule frozen 18 Sep before the round existed.
+  `T_c` = 2,784 Opus tokens per correction ($0.0227); `S_be` = 0.291–1.456; `S_c = 0` is below it
+  under every assumption in that range, so ADR-0044 §4 rule 2's kill switch fires unambiguously.
+  `n₂ = 29` clears §4.3's floor of 8, so this is a verdict and not an INCONCLUSIVE.
+- **27 of 29 corrected attempts landed at exactly the same gate stage as the free mechanical retry.**
+  Two moved, both sideways. §2.2 asked what an Opus note buys over ADR-0022's free retry; measured on
+  this task set, nothing the gate can see.
+- **The clean subset is the finding.** 17 tasks failed `no_edit_at_all` with briefs that name the file
+  and the rule — unaffected by ADR-0072, and not unsatisfiable. Each was told specifically that
+  returning the file unchanged *was* the failure. **16 of 17 returned it byte-identical again.** That
+  is a finding about the worker: on this shape a 7B does not act on an instruction it has already been
+  given twice, and pass 1's 1/30 is not a harsh gate but a model declining to attempt the task.
+- **Pass 1: 1 of 30 survived**, 0 truncated, 0 unparsed — and **not one compile failure was on the
+  task's own file** (ADR-0071).
+- §4.3's quality veto is **not applicable** — zero corrected survivors means `A_c` is undefined — and
+  could only have made the verdict stricter. The blind pass was budgeted and is not run.
+- Two environmental checks read off fields that did not exist yesterday: 15 verdicts crossed a
+  calendar day and **none reached the suite**, so ADR-0069 has no purchase (option A, stated from the
+  field rather than inferred); pressure normal throughout and swap *fell*, so not ADR-0066.
+- Confounds stated rather than discovered later: 12 of the 29 are ADR-0071's unsatisfiable class and
+  are **not excluded**, because §4.0.4 forbids changing the set after seeing failures.
+
 ## Unreleased — the gate's own error rate, measured (2026-09-19)
 - **`D = 2/19 = 0.105` → UNACCEPTABLE by one pair.** The gate disagrees with itself on the order of
   one candidate in ten. Measured against a rule frozen before the first replay, on arm D's
