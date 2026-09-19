@@ -1,0 +1,72 @@
+{
+  "measured": true,
+  "experiment": "planner-cost",
+  "section": "Phase 12 §2.1, the second denominator §4.4 asks for",
+  "date": "2026-09-20",
+  "rule": "experiments/planner-cost/README.md §4, frozen 2026-09-18; taken under the 2026-09-19 amendment",
+  "commit": "1d77b32",
+
+  "machine": { "model": "Mac14,10", "chip": "Apple M2 Pro", "ram_gb": 32, "macos": "26.6.2", "node": "v20.20.0" },
+
+  "protocol": {
+    "window": "subagent transcript",
+    "transcript": "~/.claude/projects/<project-slug>/<session>/subagents/agent-af4a682e95c19df7c.jsonl",
+    "instrument": "scripts/planner-tokens.mjs --agent",
+    "planner": { "contract": "claude/agents/change-planner.md", "model": "opus", "registered_agent_type": false }
+  },
+
+  "instrument_output_verbatim": {
+    "messages": 90, "input": 180, "output": 88894, "cache_creation": 254070,
+    "cache_read": 15545079, "total": 15888223, "total_excluding_cache_reads": 343144
+  },
+
+  "measured_quantities": {
+    "P_total": 343144, "N": 41, "P": 8369.4,
+    "W_upper": 7794, "W_lower": null,
+    "R": 1.074,
+    "wall_clock_s": 2645
+  },
+
+  "verdict": "FAIL",
+  "verdict_rule": "§4.3: R > 1.0 — planning still costs more than having a paid model do every task outright.",
+  "verdict_scope": "Holds at N = 41. FAIL by 7 %, which is close to the MARGINAL boundary and is reported as such rather than as a comfortable margin.",
+  "verdict_robustness": "This arm was biased IN FAVOUR of passing (see the 2026-09-20 note, written before the number existed) and failed anyway. The frozen note said exactly this case would be safe, and it is the reason the FAIL can be relied on.",
+
+  "plan": {
+    "steps": 3, "tasks": 41, "files": 78,
+    "shapes": { "dead_code": 38, "rename": 3, "unused_import": 0 },
+    "hard_share": 0.93,
+    "validate": "valid",
+    "compiler_flags": []
+  },
+
+  "the_curve": {
+    "points": [
+      { "N": 12, "P_total": 265607, "P": 22134, "R": 2.840, "verdict": "FAIL" },
+      { "N": 41, "P_total": 343144, "P": 8369, "R": 1.074, "verdict": "FAIL" }
+    ],
+    "headline": "P_total grew 1.29x for 3.42x the tasks. Planning cost is dominated by a fixed term, exactly as §4.4 said it would be — 'a module Opus read once serves twelve tasks or forty'.",
+    "two_point_linear_fit": {
+      "model": "P_total = F + v*N",
+      "F_fixed_tokens": 233523,
+      "v_tokens_per_task": 2674,
+      "fixed_share_of_P_total": { "at_N_12": 0.88, "at_N_41": 0.68 },
+      "N_for_MARGINAL_R_le_1": 46,
+      "N_for_PASS_R_le_0_5": 191,
+      "caveat": "TWO POINTS. This is an interpolation dressed as a model and must never be quoted as a measurement. One of the two points is biased low (see verdict_robustness), which flattens the line and makes both break-even estimates optimistic. It is reported because the SHAPE — a large fixed cost and a small per-task one — is the actionable part, not because 46 and 191 are numbers anyone should plan against."
+    }
+  },
+
+  "consequences": [
+    "13b item 1 — 'local models read the codebase so Opus does not have to' — is not merely unblocked, it is now aimed at a quantified target. The fixed term is 68 % of planning cost even at N = 41, and that term is overwhelmingly Opus reading source: 15.5M cache reads against 89k of output on this arm. Item 1 attacks F, which is the only part of the curve that does not amortise on its own.",
+    "The practical reading for a user is a plan-size floor rather than a verdict on the design: sidecrew's coordination cost is not worth paying on a dozen tasks, and the economics move sharply in its favour as the job gets bigger. That sentence is the honest form of §2.1's FAIL and it could not be written from one denominator.",
+    "§4.4's requirement is now met — P is reported at two N, never as a constant, and the verdict is stated per N."
+  ],
+
+  "notes_from_the_planner_worth_keeping": [
+    "project-a's suite collects ZERO tests under node v20.20.0 — all 354 suites fail to load on a better-sqlite3 NODE_MODULE_VERSION mismatch — so a real run of this plan needs sidecrew's stages on node 22 or every candidate fails for a reason no worker caused. `doctor` reports 'jest ok' and does not catch it (ADR-0049 is the row that should).",
+    "Zero unused imports exist in the subtree: 73 noUnusedLocals findings repo-wide and not one is an import. The shape every prior sidecrew number is partly about is absent from this project.",
+    "The rename seam is mostly out of reach: the misspelled identifiers live in service files of 30-145 KB, far past ADR-0047 §2's ~22,674-character ceiling. 1,975 of 2,042 files are under it; the ones carrying the work are not.",
+    "Two runtime-reflection hazards a reference count cannot see: entities loaded by glob, and parsers resolved by computed name. The planner refused eight tasks on that basis — a refusal the gate could not have made."
+  ]
+}

@@ -309,3 +309,73 @@ from-scratch arm is owed before anything is claimed from it.
 Recorded here, dated, before the number arrived, for the same reason §4 was frozen before the
 planner existed: a caveat written after seeing a number is a description of how one feels about the
 number.
+
+---
+
+## Result, 2026-09-20 — the curve §4.4 asked for. **FAIL at both denominators**, and the larger one fails against a bias in its favour
+
+| | `N = 12` | `N = 41` |
+|---|---|---|
+| `P_total` | 265,607 | 343,144 |
+| **`P`** (Opus tokens per task planned) | **22,134** | **8,369** |
+| `W_upper` | 7,794 | 7,794 |
+| **`R`** | **2.840** | **1.074** |
+| §4.3 verdict | **FAIL** | **FAIL** |
+
+**`P_total` grew 1.29× for 3.42× the tasks.** §4.4 was right about the mechanism in as many words —
+*"a module Opus read once serves twelve tasks or forty; the reading is paid once and the grouping is
+paid per task"* — and that is now measured rather than asserted. It is also the reason §4.4 forbids
+quoting `P` without `N`: the same planner, the same project, the same week, and `P` differs by 2.6×.
+
+**FAIL at `N = 41` is by 7 %, and that matters in one direction only.** The 20 Sep note above —
+written *before* this arm reported — records that this planner was handed two facts the `N = 12`
+planner had to discover for itself, so its `P_total` is a **lower bound** and its `R` is better than a
+from-scratch planner would achieve. The note said an `R > 1` under that bias would be safe and an
+`R ≤ 1` would not be. It came out `R > 1`. **So the FAIL stands, and it stands on a run that was
+tilted towards passing.**
+
+### What the two points imply, with the caveat first
+
+**This is two points. The fit below is an interpolation dressed as a model and must never be quoted
+as a measurement.** One of the two is biased low, which flattens the line and makes both break-even
+figures optimistic.
+
+With that said, `P_total = F + v·N` gives **`F ≈ 233,500` fixed** and **`v ≈ 2,700` per task** — so
+the fixed term is **88 % of planning cost at `N = 12` and still 68 % at `N = 41`**. On that line,
+`R ≤ 1.0` arrives near `N ≈ 46` and `R ≤ 0.5` near `N ≈ 191`.
+
+The **shape** is the actionable part, not those two numbers: planning is a large fixed cost plus a
+small per-task one, and nothing about the per-task term is the problem.
+
+### The honest sentence this makes available, which one denominator could not
+
+> sidecrew's coordination cost is not worth paying on a dozen tasks, and the economics move sharply
+> in its favour as the job gets bigger.
+
+That is what §2.1's FAIL actually means. A single `P` at `N = 12` would have supported a much harsher
+and much less true claim, which is precisely the error §4.4 was written to prevent.
+
+### It also gives 13b item 1 a target rather than a premise
+
+*"Local models read the codebase so Opus does not have to"* was blocked on whether planning was
+expensive. It is, and now the shape says **where**: the fixed term is two thirds of the cost even at
+the larger plan size, and that term is overwhelmingly Opus **reading** — **15.5 M cache reads against
+89 k of output** on this arm. Item 1 attacks `F`, which is the one part of the curve that does not
+amortise by itself. It still needs its own ADR first, for the reason `PHASES.md` gives: its gate
+confirms a symbol *exists*, not that it is *relevant*.
+
+### Four things the planner found that are about the project, not the measurement
+
+1. **project-a's suite collects zero tests under node v20.20.0** — all 354 suites fail to load on a
+   `better-sqlite3` `NODE_MODULE_VERSION` mismatch. A real run of this plan needs sidecrew's stages on
+   node 22, or every candidate fails for a reason no worker caused. `doctor` says `jest ok` and does
+   not catch it; ADR-0049 is the row that should.
+2. **Zero unused imports exist in the subtree.** 73 `noUnusedLocals` findings repo-wide and not one is
+   an import. The shape a good deal of this project's prior measurement is about is simply absent here.
+3. **The rename seam is mostly out of reach** — the misspelled identifiers live in service files of
+   30–145 KB, far past ADR-0047 §2's ~22,674-character ceiling. 1,975 of 2,042 files are under it; the
+   ones carrying the work are not.
+4. **Two runtime-reflection hazards a reference count cannot see**: entities loaded by a glob, and
+   parsers resolved by a computed name. The planner refused eight tasks on that basis — refusals the
+   gate could not have made, and the clearest evidence so far for ADR-0044's claim that a planner's
+   most useful output is often a refusal.
