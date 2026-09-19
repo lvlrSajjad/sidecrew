@@ -619,6 +619,44 @@ export type ChangeStep = z.infer<typeof ChangeStep>;
  * work is cut, the machine decides how many pieces are in flight. A plan carrying one does not parse,
  * which is the difference between a decision and a sentence in a document.
  */
+/**
+ * Compiler strictness an experiment may add on top of the project's own configuration — ADR-0063.
+ *
+ * **An allowlist, and the reason it is one is the gate.** ADR-0063's first condition is that *no file
+ * in the project changes*: a flag, never an edited `tsconfig.json`, because the moment a project has
+ * to be modified to be verified that is a finding about sidecrew rather than a setup step. A free-text
+ * flag list would satisfy that rule and break a different one — `--noEmit false` makes the type-check
+ * stage write files into the sandbox, and `-p` silently re-points the whole program, either of which
+ * turns `compile_ok` into a statement about something nobody asked about.
+ *
+ * So every entry is a **boolean strictness switch, passed bare**. No values, no project selection, no
+ * emit control, enforced here rather than in a comment — a gate condition a schema cannot check is a
+ * convention (CLAUDE.md #2).
+ *
+ * ADR-0063's fourth condition is the one to keep in mind when reading a number taken with any of these
+ * set: the gate stops asking *does this preserve what the project's own compiler says* and starts
+ * asking *does this satisfy a stricter compiler*. A legitimate and more valuable experiment, and a
+ * different question.
+ */
+export const StrictnessFlag = z.enum([
+  "--strict",
+  "--strictNullChecks",
+  "--strictFunctionTypes",
+  "--strictBindCallApply",
+  "--strictPropertyInitialization",
+  "--noImplicitAny",
+  "--noImplicitThis",
+  "--noImplicitOverride",
+  "--noImplicitReturns",
+  "--noUnusedLocals",
+  "--noUnusedParameters",
+  "--noFallthroughCasesInSwitch",
+  "--exactOptionalPropertyTypes",
+  "--noUncheckedIndexedAccess",
+  "--useUnknownInCatchVariables",
+]);
+export type StrictnessFlag = z.infer<typeof StrictnessFlag>;
+
 export const ChangePlan = z.object({
   version: z.literal(1),
   language: Language,
@@ -634,6 +672,19 @@ export const ChangePlan = z.object({
   max_group_size: z.number().int().positive().default(DEFAULT_MAX_GROUP_SIZE),
   /** ADR-0044 §4's option B, budgeted. Absent means the whole round is off, which is the default. */
   correction: CorrectionBudget.default({}),
+  /**
+   * ADR-0063: strictness this experiment adds on top of the project's own `tsconfig`, as flags.
+   *
+   * Default empty, which is the ordinary case and the only one any published rate has been taken
+   * under. A non-empty list means **every number from this run says so** (ADR-0063 condition 3): a
+   * survival rate under `--strictNullChecks` and one under the project's own configuration are not
+   * the same measurement and may not share a table cell.
+   *
+   * The baseline is captured with the same flags — condition 2, and it is not optional. `compile_ok`
+   * compares an error count before against one after, and comparing counts across two compiler
+   * configurations is meaningless rather than merely imprecise.
+   */
+  compiler_flags: z.array(StrictnessFlag).default([]),
   steps: z.array(ChangeStep).min(1),
 }).strict();
 export type ChangePlan = z.infer<typeof ChangePlan>;

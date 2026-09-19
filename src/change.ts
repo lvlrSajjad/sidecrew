@@ -185,15 +185,25 @@ export interface TscRun {
  * `--listFiles` costs nothing — the same invocation, with the program's file list on stdout — and it is
  * the only thing that can tell "this file has no errors" from "this file was never looked at".
  */
-export async function typecheck(sandbox: string, projectDir: string, tsconfig: string, timeoutMs: number): Promise<TscRun> {
+export async function typecheck(
+  sandbox: string, projectDir: string, tsconfig: string, timeoutMs: number,
+  /**
+   * ADR-0063's strictness flags, appended to the project's own configuration. Empty is the ordinary
+   * case. They are an allowlist in `schemas.ts` — bare boolean switches only — so nothing here can
+   * re-point the program or turn emit back on, which are the two ways a flag list would stop
+   * `compile_ok` meaning what it says.
+   */
+  flags: readonly string[] = [],
+): Promise<TscRun> {
   // Resolved, and it is not tidiness. `binary` builds `<projectDir>/node_modules/.bin/tsc`, and the
   // command runs with `cwd` inside the *sandbox* — so a relative project path resolves against the
   // sandbox, the spawn fails with ENOENT, and `run` hands back an empty stdout rather than throwing.
   // See the guard below for what that used to mean.
   const tsc = binary(resolve(projectDir), "tsc");
-  const r = await run(tsc.cmd, [...tsc.args, "--noEmit", "--pretty", "false", "--listFiles", "-p", tsconfig], {
-    cwd: sandbox, timeoutMs, env: stageEnv(),
-  });
+  // `-p` first, then the flags: tsc lets a later command-line switch override the project file, which
+  // is the whole mechanism ADR-0063 depends on.
+  const argv = [...tsc.args, "--noEmit", "--pretty", "false", "--listFiles", "-p", tsconfig, ...flags];
+  const r = await run(tsc.cmd, argv, { cwd: sandbox, timeoutMs, env: stageEnv() });
   const text = output(r);
   if (looksLikeOom(text)) {
     // A machine limit wearing a compiler error's clothes (ADR-0032). Thrown, so the retry rule never
@@ -225,7 +235,7 @@ export async function typecheck(sandbox: string, projectDir: string, tsconfig: s
     throw new VerifierSetupError(
       `tsc produced no file list at all under ${tsconfig}, which means it did not run — not that the ` +
       "project is clean.\n" +
-      `  command: ${tsc.cmd} ${tsc.args.join(" ")} --noEmit --pretty false --listFiles -p ${tsconfig}\n` +
+      `  command: ${tsc.cmd} ${argv.join(" ")}\n` +
       `  in: ${sandbox}\n` +
       `  exit ${r.code === null ? `signal ${r.signal ?? "?"}` : r.code}${r.timedOut ? " (timed out)" : ""}\n` +
       `  ${text.trim().slice(0, 600) || "(no output)"}`,
@@ -390,6 +400,8 @@ export interface BaselineOpts {
   timeouts?: Partial<ChangeTimeouts>;
   /** Every file any task in this step may touch. Checked against `tsc`'s program before anything runs. */
   files?: string[];
+  /** ADR-0063 condition 2: the baseline is captured under the same strictness the verdicts use. */
+  compilerFlags?: readonly string[];
 }
 
 export interface CapturedBaseline {
@@ -414,7 +426,7 @@ export async function captureBaseline(sandbox: string, opts: BaselineOpts): Prom
   const timeouts = { ...DEFAULT_CHANGE_TIMEOUTS, ...opts.timeouts };
   const tsconfig = opts.tsconfig ?? "tsconfig.json";
   const projectDir = resolve(opts.projectDir);
-  const tsc = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile);
+  const tsc = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile, opts.compilerFlags ?? []);
   if (opts.files) assertInProgram(opts.files, tsc.program, tsconfig);
 
   const suite = await runSuite(sandbox, projectDir, opts.runner, timeouts.tests);
@@ -459,6 +471,8 @@ export interface VerifyChangeOpts {
   sandboxRoot?: string;
   /** Leave the task's sandbox on disk and print its path. For debugging a verdict you do not believe. */
   keepSandbox?: boolean;
+  /** ADR-0063. Must match the flags the baseline was captured with, or the two error counts are not comparable. */
+  compilerFlags?: readonly string[];
 }
 
 const pick = (counts: ErrorCounts, files: string[]): Record<string, number> => {
@@ -572,7 +586,7 @@ export async function verifyChange(
       }
 
       stage_reached = "compile";
-      const tsc = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile);
+      const tsc = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile, opts.compilerFlags ?? []);
       assertInProgram(targets, tsc.program, tsconfig);
       after = tsc.errors;
       timing_ms.compile = tsc.ms;

@@ -235,7 +235,10 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
     try {
       say(`  typechecking ${plan.project} — the pre-existing-error refusal needs a real tsc (ADR-0050)`);
       const timeouts = { ...DEFAULT_CHANGE_TIMEOUTS, ...opts.timeouts };
-      const run = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile);
+      // ADR-0063: the same strictness the run will use, or the pre-existing-error refusal (ADR-0050)
+      // is computed against a different compiler from the one that will judge the candidate — and a
+      // validator that clears a task the gate then fails is worse than no validator.
+      const run = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile, plan.compiler_flags);
       const program = run.program;
       const byFile = run.errors.by_file;
 

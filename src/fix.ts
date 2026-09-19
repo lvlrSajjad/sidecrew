@@ -652,6 +652,12 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
   const tsconfig = opts.tsconfig ?? "tsconfig.json";
   const loaded = await loadChangePlan(planPath, tsconfig);
   const { plan, projectDir, runner } = loaded;
+  // ADR-0063, read once. Every `tsc` in this run — the baseline, each verdict, and the combined check
+  // at the end — must use the same flags, because `compile_ok` compares an error count before against
+  // one after and two compiler configurations do not produce comparable counts. A local binding rather
+  // than four reads of `plan.compiler_flags` so a call site cannot quietly be the one that differs.
+  const compilerFlags = plan.compiler_flags;
+
 
   const dir = opts.dir ?? sidecrewDir();
   // A resumed run keeps its id, so `.sidecrew/runs/<id>/` stays one run rather than becoming two halves
@@ -777,7 +783,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
       // and re-captured here because step N+1's baseline is the project after step N landed.
       say(`step ${index + 1}/${plan.steps.length} "${step.name}": capturing the baseline`);
       const captured = await captureBaseline(sandbox, {
-        projectDir, runner, tsconfig, timeouts: opts.timeouts, files: filesOfStep(step),
+        projectDir, runner, tsconfig, timeouts: opts.timeouts, files: filesOfStep(step), compilerFlags,
       });
       const baseline = captured.baseline;
       await writeJson(join(runDir, "baselines", `${index}.json`), baseline);
@@ -858,7 +864,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
 
             const gateStart = performance.now();
             const verdict = await verifyChange(current, candidate, {
-              sandbox, baseline, projectDir, runner, tsconfig,
+              sandbox, baseline, projectDir, runner, tsconfig, compilerFlags,
               timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
             });
             gate_ms += performance.now() - gateStart;
@@ -922,7 +928,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
 
                 const g2 = performance.now();
                 const v2 = await verifyChange(corrected, c2, {
-                  sandbox, baseline, projectDir, runner, tsconfig,
+                  sandbox, baseline, projectDir, runner, tsconfig, compilerFlags,
                   timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
                 });
                 gate_ms += performance.now() - g2;
@@ -1080,7 +1086,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
     // is. One `tsc` and one suite run, with everything applied, is what closes that.
     if (!opts.dryRun && first !== null) {
       const timeouts = { ...DEFAULT_CHANGE_TIMEOUTS, ...opts.timeouts };
-      const final = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile);
+      const final = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile, compilerFlags);
       for (let i = 0; i < stepRows.length; i += 1) {
         stepRows[i]!.errors_after = i + 1 < stepRows.length ? stepRows[i + 1]!.errors_before : final.errors.total;
       }

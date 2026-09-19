@@ -272,6 +272,20 @@ describe("the invariants the contracts are here to enforce", () => {
     expect(swapGrowthGb({ before: sample(5.3), after: sample(6.1) })).toBeCloseTo(0.8, 5);
   });
 
+  it("takes strictness flags as an allowlist, not as free text (ADR-0063)", () => {
+    // ADR-0063 condition 1 is that no file in the project changes — a flag, never an edited tsconfig.
+    // A free-text flag list satisfies that and breaks a different rule: `--noEmit false` makes the
+    // compile stage write into the sandbox and `-p` re-points the whole program, either of which stops
+    // `compile_ok` being a statement about the thing anyone asked about. So: bare boolean switches.
+    const plan = specExamples().get("ChangePlan") as Record<string, unknown>;
+    expect(ChangePlan.parse(plan).compiler_flags).toEqual([]);
+    expect(ChangePlan.parse({ ...plan, compiler_flags: ["--strictNullChecks"] }).compiler_flags)
+      .toEqual(["--strictNullChecks"]);
+    for (const bad of ["--noEmit", "-p", "--project", "tsconfig.strict.json", "--strictNullChecks=false", "--outDir"]) {
+      expect(ChangePlan.safeParse({ ...plan, compiler_flags: [bad] }).success).toBe(false);
+    }
+  });
+
   it("is the same gate `changeSurvives` computes, on the spec's own example", () => {
     const verdict = ChangeVerdict.parse(specExamples().get("ChangeVerdict"));
     expect(changeSurvives(verdict)).toBe(verdict.survived);

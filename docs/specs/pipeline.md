@@ -389,6 +389,7 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   "meta": { "planner_model": "claude-opus", "planner_tokens": 3100, "created": "2026-09-16T10:00:00Z" },
   "max_group_size": 10,
   "correction": { "enabled": false, "max_corrections": 0, "max_tokens": 0, "on_observations": false },
+  "compiler_flags": [],
   "steps": [
     {
       "name": "widen the accepted input types",
@@ -408,6 +409,34 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   ]
 }
 ```
+
+### `compiler_flags` — strictness an experiment adds, and every number says so
+
+ADR-0063. Default `[]`, which is the ordinary case and the only one any published rate has been taken
+under. A team turning on `strict` and clearing the fallout is among the most common large
+behaviour-preserving jobs in TypeScript and is exactly what #2a is shaped for — but a project that
+already compiles clean has an **empty task list by construction**, so measuring that job at all means
+asking the compiler for more than the project does.
+
+**It is a flag list, never an edited `tsconfig.json`** (condition 1): the moment a project has to be
+changed to be verified, that is a finding about sidecrew rather than a setup step.
+
+**Every entry is a bare boolean strictness switch, enforced by an allowlist in `schemas.ts`.** Free
+text would satisfy condition 1 and break something else — `--noEmit false` makes the compile stage
+write into the sandbox, `-p` silently re-points the whole program, and either turns `compile_ok` into
+a statement about a program nobody asked about.
+
+**One list, every `tsc` in the run** (condition 2): the step baseline, each candidate's verdict, the
+validator's pre-existing-error pass, and the combined check at the end. `compile_ok` compares an error
+count before against one after, and counts from two compiler configurations are not comparable —
+meaningless rather than merely imprecise. `runFix` reads it once into a local binding so no call site
+can quietly be the one that differs.
+
+**What it changes about the gate's meaning** (condition 4), which the report must state: under the
+project's own configuration the gate asks *does this preserve what the project's own compiler says*.
+With flags set it asks *does this satisfy a stricter compiler*. The second is a legitimate and more
+valuable experiment, and it is a different question. A survival rate taken under `--strictNullChecks`
+and one taken under the project's own configuration may not share a table cell.
 
 `steps` is **ordered**: tasks inside a step are independent and run in parallel, and step N+1's baseline
 is the project after step N's survivors were applied (ADR-0044 §2). `blocking` is `false` by default —
