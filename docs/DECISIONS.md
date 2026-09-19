@@ -4538,3 +4538,99 @@ number, so implementing it mid-programme is not the thing §4 forbids. Every sur
 repository remains a lower bound of unknown tightness. What is different is that the tightness is now a
 **query over a corpus of verdicts** rather than a study somebody has to design — which is also how
 ADR-0066 option A finally gets its threshold, and ADR-0069 option B gets the number it was missing.
+
+## ADR-0064 addendum, 19 Sep 2026 — a second configuration property, measured while taking §2.1
+
+**Evidence, not a decision.** The ADR above stays PROPOSED. This records a second, independent way a
+project's *configuration* decides what workload #2a can address, found by the change planner while
+producing §2.1's plan and worth having because it is the more common of the two.
+
+**project-a's `tsconfig.json` declares neither `include` nor `exclude`**, so the program it describes
+covers the **test** directory as well as `src/`. The gate's `compile_ok` requires zero `tsc` errors in
+the task's own files *and none introduced anywhere else*, and a plan may never list a test file
+(ADR-0046, ADR-0048 — the tests are the instrument).
+
+Therefore, on such a project:
+
+> **Any rename of a symbol that a test file references is unsatisfiable by construction.** The rename
+> must be complete or it does not compile; completing it requires editing a file no plan may list; so
+> the gate reports an error introduced outside the task's files, and no worker at any temperature can
+> pass it.
+
+Measured on one 12-task plan: **3 of 11 refusals** were this, and they were not marginal cases — one
+was a genuine misspelling in a public identifier across 8 files, 4 of them tests.
+
+**Why this belongs to ADR-0064 rather than to a new one.** It is the same sentence with a different
+compiler flag: the addressable surface is whatever the project's configuration makes reachable.
+`strictNullChecks` decides how much work *exists*; `include`/`exclude` decides how much of it a plan is
+*allowed to touch*. A project can therefore have plenty of #2a work and very little addressable #2a
+work, which is a distinction no survey of a codebase's contents would show.
+
+**It also sharpens who #2a pays for**, in the same direction as the ADR's list: a project whose
+tsconfig separates source from tests has a materially larger addressable surface than one whose
+program covers both, and neither project has more or better code. Worth saying plainly before any
+README quotes a survival rate as though it were a property of the tool.
+
+**What it does not justify.** Not a relaxation of the test-file rule, and not a per-task `exclude`. The
+tests are the gate; a workload that edits its own oracle is not this workload (ADR-0046). If anything
+here becomes an action it is `doctor` answering the question before a plan is written, which is the
+shape ADR-0032 set and where the other pre-flight questions already went.
+
+## ADR-0070 — The tool-config rule refuses ordinary source in a dotted-name convention (PROPOSED)
+
+**Status:** proposed · 19 Sep 2026 · found by the change planner during §2.1 · needs the owner
+**Bears on:** every plan written against a NestJS/Angular-style codebase · **evidence:** measured, below
+
+### The measurement
+
+Two tasks in §2.1's plan were written, validated **INVALID**, and dropped. Both were refused as
+touching *"a tool config"*. Neither file is a tool config: both are ordinary application source, deep
+in the source tree, in the dotted-name convention NestJS and Angular projects use throughout
+(`foo.service.ts`, `foo.module.ts`, `foo.config.ts`).
+
+The rule is one regex, deliberately duplicated in `src/fix-validate.ts` and `src/confinement.ts` so
+that it has two implementations and no shared switch:
+
+```
+/^[\w.-]+\.(config|conf)\.[\w.]+$/
+```
+
+It matches on the *stem shape* and accepts **any** extension, so `src/<domain>/<domain>.config.ts`
+matches exactly as `vitest.config.ts` does.
+
+### Why the obvious fix is wrong, and this is the reason the ADR exists
+
+The planner's own suggestion was to narrow the extension to config *formats* — `.json`, `.yaml`,
+`.js`. **That would break the rule outright.** The configs that matter most here are written in
+TypeScript: `vitest.config.ts`, `jest.config.ts`, `playwright.config.ts`, `stryker.config.js`,
+`tailwind.config.ts`. Those are the gate's own configuration, and ADR-0048 says a worker may never
+reach them. A narrowing by extension would admit precisely the files the rule exists to refuse.
+
+**The direction of error is the whole decision, and it is the scrub's argument again** (ADR-0051): a
+false positive **costs a task**; a false negative **lets a worker edit the gate's configuration**, and
+a gate a candidate can reconfigure is not a gate. The current rule errs in the safe direction and any
+replacement must keep erring that way.
+
+### Options
+
+- **A — match only at the project root.** A tool config lives at the root of the project it configures;
+  `src/exception/exception.config.ts` does not. One comparison, no list to maintain, and it keeps every
+  real tool config refused. Risk: a project that keeps configs in `config/` or `.config/` — add those
+  two as known locations, or accept that such a file is refused, which is the safe direction.
+- **B — require a known tool stem** (`vitest`, `jest`, `webpack`, `rollup`, `next`, `tailwind`,
+  `babel`, `eslint`, `vite`, `playwright`, `cypress`, `stryker`, …). Precise, and it is a list somebody
+  has to maintain — and a miss admits a real tool config, which is the dangerous direction. On its own,
+  no.
+- **C — A or B: root-located *or* a known tool stem.** Refuses everything A refuses, plus a tool config
+  parked somewhere unusual. Strictly safer than either alone and still frees `src/**/*.config.ts`.
+- **D — leave it.** Planners route around it, as this one did, and the cost is invisible: tasks that
+  were never written down because the validator said no. That invisibility is the argument against D.
+
+**Recommendation: C.** It keeps the safe direction of error intact, it needs no relaxation of anything
+ADR-0048 decided, and the failure it removes is one a planner cannot diagnose from the message — the
+validator says *"a tool config"* about a file that plainly is not one, which is the kind of message
+that gets a rule quietly distrusted.
+
+**Whatever is chosen, it lands in both copies in the same commit, with a test asserting the two agree.**
+The duplication is deliberate (a rule with one implementation is a rule with one place to get it
+wrong), and the failure mode of deliberate duplication is exactly one copy being fixed.
