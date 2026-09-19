@@ -23,6 +23,7 @@ import { buildChangeTask, generateChange, loadChangePlan } from "../src/fix.js";
 import { captureBaseline, makeChangeSandbox, verifyChange } from "../src/change.js";
 import { readMachineState } from "../src/doctor.js";
 import { ChangeVerdict, crossesCalendarDay, swapGrowthGb, type ChangeTask } from "../src/schemas.js";
+import { safeName } from "../src/verifier/shared.js";
 import { discoverWorkers, portsFromEnv } from "../src/batch.js";
 
 const [mode, planPath, runDir, third, fourth] = process.argv.slice(2);
@@ -46,8 +47,12 @@ const byId = new Map(planned.map((t) => [t.task_id, t]));
 const twiceFailed = async (): Promise<{ id: string; verdict: ChangeVerdict; excluded: string | null }[]> => {
   const out: { id: string; verdict: ChangeVerdict; excluded: string | null }[] = [];
   for (const p of planned) {
-    const a0 = join(runDir, "verdicts", `${p.task_id}.json`);
-    const a1 = join(runDir, "verdicts", `${p.task_id}#1.json`);
+    // `safeName`, not the raw id. `runFix` writes `snc-02#1` as `snc-02.1.json`, and looking for the
+    // raw spelling finds nothing — which this harness first reported as "no mechanical retry was
+    // spent", a *plausible* exclusion, and so n₂ = 0 and a false INCONCLUSIVE. A miss whose failure
+    // path reads more sensibly than its success path is the dangerous kind; use the writer's function.
+    const a0 = join(runDir, "verdicts", `${safeName(p.task_id)}.json`);
+    const a1 = join(runDir, "verdicts", `${safeName(`${p.task_id}#1`)}.json`);
     if (!existsSync(a0)) continue;
     const v0 = ChangeVerdict.parse(JSON.parse(await readFile(a0, "utf8")));
     if (v0.survived) continue;
