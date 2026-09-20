@@ -187,13 +187,22 @@ def main() -> int:
         json.dump(payload, fh, indent=2)
         fh.write("\n")
 
-    blob = json.dumps(payload)
-    # Names come from the environment, never from this file: CLAUDE.md #7 keeps them in the
-    # memory directory and out of every tracked blob.
-    for name in [n for n in os.environ.get("SIDECREW_CLIENT_NAMES", "").split(",") if n]:
-        if name in blob.lower():
-            sys.stderr.write(f"REFUSING to leave a client name in {out_path}: found {name!r}\n")
-            return 2
+    # The names are taken from the checkout path the plan already points at, never written down
+    # here: CLAUDE.md #7 keeps them in the memory directory and out of every tracked file, and a
+    # hardcoded denylist would put them in this one. The generic path segments are dropped so the
+    # check is about the client's own names rather than "Users".
+    blob = json.dumps(payload).lower()
+    generic = {"users", "coding", "home", "src", "repos", "projects", "documents", "work", "dev", ""}
+    leaked = sorted({
+        seg.lower() for seg in plan["project"].replace("\\", "/").split("/")
+        if seg.lower() not in generic and len(seg) > 2 and seg.lower() in blob
+    })
+    if leaked:
+        sys.stderr.write(
+            f"REFUSING to write {out_path}: {len(leaked)} segment(s) of the client's checkout path "
+            f"appear in it. That is the leak CLAUDE.md #7 forbids and Phase 12 caught twice.\n")
+        os.remove(out_path)
+        return 2
 
     print(f"{probe}: S14 = {survived}/{n} = {s14:.4f}  95% [{lo:.4f}, {hi:.4f}]")
     print(f"  baseline 1/30 = 0.0333  95% [{baseline_lo:.4f}, {baseline_hi:.4f}]")
