@@ -63,3 +63,10 @@ experiments/status-quo/results/*.log
 
 # python bytecode from the experiment scripts
 scripts/__pycache__/
+
+# Phase 14b's probe logs and its `fix --report` dump. `fix` prints sandbox paths and a run id built
+# from the project directory's name, so both carry the client into a file that looks like a number
+# (HANDOFF § Standing hazards; caught twice during Phase 12). The measured result JSON beside them is
+# written deliberately, with the run id stripped, and IS committed.
+experiments/editing-ceiling/results/*.log
+experiments/editing-ceiling/results/*-report.json
