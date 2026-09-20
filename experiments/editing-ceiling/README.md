@@ -141,3 +141,38 @@ project's suite (ADR-0049), `NODE_OPTIONS=--max-old-space-size=8192` for `tsc` (
 **Commit at declaration:** `03b10f0565417d51917568a50d9f688fd40555c8`.
 
 `project-a`, never the client (CLAUDE.md #7).
+
+---
+
+## Amendment, 2026-09-20 — a prediction for probe 2, written while it runs
+
+*§1–§4 are unedited. This is written **after probe 1 reported and before probe 2 has produced a single
+verdict**, which is the only time it is worth anything. Phase 12's `N = 41` arm used the same device:
+a caveat written afterwards is a description of how one felt about the result.*
+
+Probe 1 found that **21 of the 30 tasks are unsatisfiable under ADR-0071**, every one of them because
+a **test file** gained a type error — 21 test files, **0 non-test source files**. Tightening a type
+under `--strictNullChecks` propagates into fixtures and mocks, and the gate forbids editing tests
+because tests *are* the gate (ADR-0046).
+
+**The prediction: probe 2 cannot fix this, and its `S₁₄` will also land below 0.10.**
+
+The reasoning is mechanical rather than empirical. Narrowing an ask changes *what the worker is asked
+to reason about*; it does not change *what a type change does downstream*. A guard added inside one
+named function propagates to a test fixture exactly as the same guard added by a whole-file ask does.
+So decomposition can convert `no_edit_at_all` into an attempt — which is the thing probe 2 is actually
+testing — but each conversion lands in the unsatisfiable bucket rather than in survival.
+
+**What would falsify it**, and each of these is worth more than the prediction being right:
+
+- `S₁₄ ≥ 0.10` on probe 2. Then narrowing the ask does something the mechanism above does not explain,
+  and the unsatisfiable analysis is incomplete.
+- Probe 2's unsatisfiable count staying near pass 1's **12** while its `no_edit_at_all` count falls.
+  That would mean narrowed asks produce edits which do *not* propagate — a smaller, more surgical
+  change — and would make ask-narrowing a real lever after all.
+- A non-test source file gaining an error. Probe 1 had none in 21; one here would mean the type
+  changes are not confined to the test boundary and the whole reading is wrong.
+
+**If the prediction holds, `S₁₄ < 0.10` is confirmed by both probes and the frozen rule's third branch
+applies** — with the ceiling recorded as what it measurably is: not the model's, but the gate's scope
+on this shape.
