@@ -20,6 +20,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
 | version | **0.1.0** in `package.json`, `server.json` (twice), `plugin.json` **and `src/mcp.ts`** — four places, all checked by CI now |
+| pushed | **no — `main` is well ahead of `origin/main`** (`git log --oneline origin/main..HEAD | wc -l`), including all of Phase 14 |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14b — the editing ceiling.** But first: three owner actions, §3 |
@@ -54,6 +55,17 @@ first tag, and tag a throwaway `v0.1.0-rc.1` first if that matters.
 
 **In this order.**
 
+0. **Push `main`.** Nothing — tag, npm, Pages — can happen until it is. The pre-push scan CLAUDE.md
+   #7 demands **was run on 20 Sep and was clean**: 0 hits over the *contents* of every object in
+   `origin/main..HEAD`, not merely over the diffs, which is the distinction ADR-0051 was written
+   about. **Re-run it for anything committed after that**, with the names from this project's memory
+   directory:
+
+   ```
+   git rev-list origin/main..HEAD --objects | awk '{print $1}' \
+     | while read o; do [ "$(git cat-file -t $o)" = blob ] && git cat-file -p $o; done \
+     | grep -icE '<names>'
+   ```
 1. **The three owner actions above**, which cut the release.
 2. **Phase 14's exit check runs for two weeks from the tag**, not from today. `F` = distinct
    *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → 14b. `F ≥ 3` → insert
