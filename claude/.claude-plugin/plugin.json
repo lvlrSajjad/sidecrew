@@ -1,10 +1,20 @@
 {
   "name": "sidecrew",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "description": "Local MLX worker models make behaviour-preserving code changes and write unit tests, behind a gate a machine can run. Claude plans and reviews; only survivors come back.",
-  "author": { "name": "Sadjad Asadi", "url": "https://github.com/lvlrSajjad" },
+  "author": {
+    "name": "Sadjad Asadi",
+    "url": "https://github.com/lvlrSajjad"
+  },
   "homepage": "https://github.com/lvlrSajjad/sidecrew",
   "repository": "https://github.com/lvlrSajjad/sidecrew",
   "license": "MIT",
-  "keywords": ["testing", "mutation-testing", "local-llm", "mlx", "swift", "typescript"]
+  "keywords": [
+    "testing",
+    "mutation-testing",
+    "local-llm",
+    "mlx",
+    "swift",
+    "typescript"
+  ]
 }
