@@ -34,6 +34,72 @@ thing the scientific half could publish, because nobody runs it: the literature 
 
 ---
 
+## What to do next, in order — decided 20 Sep 2026
+
+*The owner's call: publish 14 if nothing gates it, then take the rest in this order. The goal is
+restated in their words — **"be able to achieve what Opus does, our way; even 90 % is a win."***
+
+### 0. Phase 14 — publish. **Three things gate it, and two are small**
+
+| gate | state |
+|---|---|
+| `deriveLineRange` reads the TypeScript AST | **open** — still a regex, patched four times, *"no mutants at all"* wrong every time it was checked |
+| `doctor` learns the three pre-flight questions | **open** — and a fourth now: it reports `jest ok` on a project whose suite collects **zero tests** under the wrong node |
+| ADR-0042 — name a self-contradicting candidate | **open** — decided, never implemented |
+| README numbers vs the gate's own error rate | **open, and it is the owner's call** — §4.3's UNACCEPTABLE clause forbids publishing a survival rate as a point estimate until O8 is diagnosed. The 20 Sep diagnostic found *why* it could not be diagnosed (ADR-0074) and did not diagnose it. Publishing the rates **as intervals with `D` beside them** satisfies the rule and costs nothing |
+| ~~both tiers~~ | **closed** — ADR-0073 descoped it |
+| ~~13b item 1 before publish~~ | **relaxed by the owner, 20 Sep** — it is now item 2 below rather than a publish gate |
+
+**Nothing here is research.** The first three are a session of ordinary work; the fourth is a
+sentence the owner picks.
+
+### 1. The whole-file ceiling — ADR-0075, and it is the biggest single capability gain available
+
+**Half of a real codebase is unaddressable, and it is the half the work is in** (3.3 % of files,
+48.1 % of bytes; every 1000+ line file). That is the *return format*, not the model. Option C —
+symbol-scoped return, splice by AST range — moves the boundary from *"the file is big"* to *"the
+change is big"*.
+
+It shares a prerequisite with Phase 14's DoD: **`deriveLineRange` on the AST**. Doing that item for
+publication and then building on it is the cheapest ordering available, and it is why 0 comes before 1.
+
+### 2. Retrieval — the half of the vision that is not built
+
+*"The local model scans the code, goes through several files, reports back; Opus says okay."* Its
+target is measured: **68 % of planning cost is fixed and overwhelmingly Opus reading** — 15.5M cache
+reads against 89k of output.
+
+Needs its own ADR first, because its gate is weaker **in kind**: a machine confirms a symbol
+**exists**, never that it is **relevant**, and ten confirmed-useless locations pass while saving
+nothing. Then build, then measure against a rule frozen first — the number is the whole justification.
+
+### 3. Two probes on the editing ceiling — one evening, before spending a session trying to fix it
+
+The 7B returns files **unchanged** on `null_guard` work: 1/30, and 16 of 17 did it again after being
+told. Whether that is a ceiling or a gap is worth one evening of measurement rather than a campaign:
+
+- **the 14B on the same 30 tasks** — settles model size in one run (the machine hosts one 14B *or*
+  two 7Bs, so it is a clean swap);
+- **one task decomposed to a single function** — settles whether the failure is task *size* rather
+  than task *kind*.
+
+*A third probe — "is it the whole-file format?" — is already partly answered and the answer is no:
+every one of those 30 files was **under** the ceiling, the largest at 18.9 KB, with 0 truncated. The
+format caps what can be **reached**; it is not why the reachable ones failed.*
+
+### 4. Then, and only then, the ambition
+
+`#2b` (behaviour-changing work) is the majority of what Opus does and is deliberately last: ADR-0031's
+economics and its inverted Goodhart direction are both worse, and nothing measured in #1 or #2a says
+anything about it.
+
+**On the 90 % bar, stated honestly.** Items 1 and 3 are what decide whether that number is reachable
+at all. Today the tool does one shape of work well on half a codebase. Item 1 roughly doubles the
+surface; item 3 says whether the local model can do more than one shape of work on it. Neither is a
+promise, and both are cheap enough to find out.
+
+---
+
 ## Capability against the philosophy — an honest assessment, 20 Sep 2026
 
 *Written after Phase 12's four measurements, against the owner's own statement in `VISION.md`
