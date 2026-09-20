@@ -119,14 +119,30 @@ jobs:
         # `--provenance` signs the package with this workflow's OIDC identity, so anybody can check
         # which commit and which workflow built what they installed. It is the cheapest thing this
         # repository can do about supply chain, and it costs a flag.
-        run: npm publish --provenance --access public
+        #
+        # **The dist-tag is chosen, not defaulted.** `npm publish` writes `latest` when no `--tag` is
+        # given, *including for a prerelease* — so a `v0.1.0-rc.1` tag would have made `npm i
+        # sidecrew` serve a release candidate to everybody. A prerelease goes to `next`; only a
+        # release moves `latest`. The version's own shape decides, so nobody has to remember.
+        run: |
+          case "${{ needs.gate.outputs.version }}" in
+            *-*) dist=next ;;   # any semver prerelease: 0.1.0-rc.1, 1.0.0-beta.2
+            *)   dist=latest ;;
+          esac
+          echo "publishing ${{ needs.gate.outputs.version }} to dist-tag $dist"
+          npm publish --provenance --access public --tag "$dist"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   registry:
     # After npm, never beside it: the registry entry points at an npm version, and publishing the
     # pointer first makes it resolve to nothing for as long as npm takes.
-    needs: npm
+    needs: [gate, npm]
+    # **Releases only.** The registry entry is the thing clients resolve `io.github.lvlrSajjad/sidecrew`
+    # to; it carries no dist-tag, so pointing it at a release candidate would hand every MCP client an
+    # rc with no way to express "this one is provisional". A prerelease publishes to npm under `next`
+    # and stops there.
+    if: ${{ !contains(needs.gate.outputs.version, '-') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
