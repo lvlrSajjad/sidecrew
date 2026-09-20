@@ -1,4 +1,31 @@
 # Changelog
+## Unreleased — sidecrew is a 24 GB+ tool, and the docs tell both halves of the ledger (2026-09-20)
+- **ADR-0073, the owner's scope call: the `api` tier stops being a tier.** Below 24 GB of installed
+  RAM sidecrew **refuses with a reason** — the machine's RAM, the floor, and why the floor exists —
+  instead of falling back to Haiku. A key is no longer the question on a small machine: it is refused
+  whether or not one is set, which is the substance of the change. `SIDECREW_TIER=api` remains as an
+  unsupported, tested, unmeasured escape hatch. Phase 13 §5 is cancelled and Phase 13 leaves the
+  publish path (`10 → 11 → 11b → 12 → 14`).
+- **`WorkerKind` keeps `"api"`.** It means *a model reached over the network wrote this*, not "the
+  Haiku tier" — Phase 11's C3 control and Phase 11b's arm D both record it, including the corpus the
+  gate's own error rate was measured on. Removing it would have retroactively invalidated `D`.
+- **Refuse rather than warn**, because the failure mode of trying anyway is swapping, and ADR-0066
+  measured what swapping does to this gate: false negatives indistinguishable from real defects.
+- **`VISION.md`'s "a tool that cannot run on half the laptops is not one people can use" is now wrong
+  about this tool.** Removed rather than softened, with the old wording kept inline so the change is
+  legible.
+- **The README tells both halves of the ledger.** "Workers cost zero Claude tokens" was the only
+  economics on the page; a new *What this costs to run* section carries planning at 22,134 tokens per
+  task at `N = 12` and 8,369 at `N = 41`, the correction round's `0/29`, and the sentence one plan
+  size could not support.
+- **The README's gate caveat now has a number** — `2/19`, with the three things that belong beside it
+  — and workload #1's `0.85` carries its correction as a fixture figure against ~0.40 on real projects.
+- **A published article was corrected**: `a-verifier-beats-a-bigger-model` quoted `0.85` in its
+  description and six places in the body. Dated correction appended, original text intact.
+- Phase 14's DoD records the collision it now has: *"README numbers replaced with measured ones"*
+  against §4.3's clause forbidding a survival rate as a point estimate until O8 is diagnosed. Three
+  ways out named; the owner's call.
+
 ## Unreleased — §4.4's curve: planning is a big fixed cost, not an expensive per-task one (2026-09-20)
 - **`R = 2.840` at `N = 12`, `R = 1.074` at `N = 41` — FAIL at both.** `P_total` grew **1.29× for
   3.42× the tasks**, so the same planner on the same project gives a `P` that differs by 2.6×
