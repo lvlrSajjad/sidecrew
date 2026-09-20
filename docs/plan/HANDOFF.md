@@ -43,8 +43,11 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 **What is deliberately not done, because it is the owner's:**
 
-1. **Add `NPM_TOKEN`** to the repository's secrets. The registry needs no secret (OIDC); npm does.
-   Until it exists the `npm` job stops at the publish, which is what the rc was for.
+1. **Configure npm Trusted Publishing** — **not** a token. npm is ending token publishing, so there
+   is no secret to add to this repository at all. It is a one-time setup **on npmjs.com**: Package →
+   Settings → Trusted Publisher → GitHub Actions, pointing at this repo and `release.yml`. Until that
+   entry exists the publish fails `ENEEDAUTH`, **which looks exactly like a missing token and is
+   not one.** `~/Coding/ME/simframe` publishes this way and its `release.yml` is the reference.
 2. **Turn GitHub Pages on** — Settings → Pages → `main` / `docs`. Adding the files does not turn it on.
 3. **Tag `v0.1.0` for real**, after moving the five version places back off `0.1.0-rc.1`.
 
@@ -55,6 +58,22 @@ whole reason to have tagged a release candidate rather than `v0.1.0`.
 |---|---|---|
 | `v0.1.0-rc.1` | died at step 1 of `gate` | **a false pass in the version check**, below |
 | `v0.1.0-rc.2` | `gate`: version ✓ schema ✓ lint ✓ · **`npm test` ✗** | **CI has been red since 18 Sep**, §3.0 |
+
+**The publish path was also wrong in a way no tag would have revealed, and is now ported from
+`~/Coding/ME/simframe`, which publishes this way today.** npm is ending token publishing, so
+`NPM_TOKEN` was never going to be the answer; the job now authenticates by **Trusted Publishing**
+over the workflow's own OIDC identity. Three things came with it, each of which cost simframe a
+release to learn:
+
+- **npm must be upgraded to `>=11.5.1 <13`, and Node must be 22.** Trusted Publishing is not
+  recognised by older npm, and npm 12 requires Node >= 22. simframe pinned Node 20, npm 12 shipped
+  between two releases a day apart, and the upgrade died with `EBADENGINE` *before* the publish step
+  — so a version was tagged, released on GitHub, and **never published**, silently. The range, not
+  `@latest`, is the fix: `@latest` is a clock in the pipeline rather than a version.
+- **`mcp-publisher` is pinned** (`v1.8.1`), not floated to `releases/latest`. It runs in a job
+  holding `id-token: write`. It also `validate`s `server.json` before publishing.
+- **An already-published version is a skip, not a failure**, so a hand publish followed by a tag does
+  not stop the run before the registry step.
 
 Nothing was published by either. npm and the MCP Registry have never been touched, the `registry`
 job's `login github-oidc` flow is **still unverified**, and `0.1.0` is still unclaimed.
@@ -105,8 +124,9 @@ Two independent causes, both read off the rc.2 run (`gh run view <id> --log-fail
 
 **Both were found by tagging the rc, which is what the rc was for.**
 
-**1. The three owner actions.** `NPM_TOKEN` in repository secrets, GitHub Pages on (Settings → Pages
-→ `main` / `docs`), and then the real tag. **For the real release the five version places must go
+**1. The three owner actions.** npm **Trusted Publishing** configured on npmjs.com (a one-time entry
+against this repo and `release.yml` — *no repository secret*, npm is ending token publishing),
+GitHub Pages on (Settings → Pages → `main` / `docs`), and then the real tag. **For the real release the five version places must go
 back to `0.1.0`** — they sit at **`0.1.0-rc.2`** now, because the gate compares the tag against them.
 `v0.1.0-rc.1` and `v0.1.0-rc.2` are both pushed and both failed; neither published anything, so npm
 and the registry are still untouched and the name is unclaimed.

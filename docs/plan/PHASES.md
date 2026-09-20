@@ -951,7 +951,7 @@ there is anything to save — §2.1 needs a fresh session and is owed anyway.
 owner.** Everything the DoD asks for is on `main` — the three hardening items, `v0.1.0` in all four
 places, `release.yml`, the `docs/` site, and every published rate restated as an interval with `D`
 beside it. **Three things are deliberately not done here and all three are the owner's:** tagging
-`v0.1.0` and pushing the tag, adding `NPM_TOKEN` to the repository, and turning GitHub Pages on
+`v0.1.0` and pushing the tag, configuring npm **Trusted Publishing** on npmjs.com (no repository secret — npm is ending token publishing), and turning GitHub Pages on
 (Settings → Pages → `main` / `docs`). **`release.yml` has never run**, because nothing has been
 tagged; its npm and registry jobs are unverified against the live services and the gate job's steps
 are each verified locally instead. The exit check below starts its two-week window at the tag, not at

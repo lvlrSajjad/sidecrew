@@ -16,9 +16,9 @@ on:
 
 permissions:
   contents: read
-  # npm provenance and the MCP Registry both authenticate with a short-lived OIDC token rather than a
-  # stored secret. The registry needs no secret at all; npm still needs NPM_TOKEN for the publish
-  # itself, and mints provenance from this.
+  # npm and the MCP Registry both authenticate with a short-lived OIDC token rather than a stored
+  # secret. **Neither needs a secret in this repository.** npm's half is Trusted Publishing, which is
+  # configured once on npmjs.com against this repo and this workflow file — see the publish step.
   id-token: write
 
 jobs:
@@ -118,6 +118,18 @@ jobs:
           node-version: "22"
           cache: npm
           registry-url: https://registry.npmjs.org
+      # setup-node cannot pin an npm version, so upgrade it here — to a RANGE, not to `@latest`.
+      #
+      # **Trusted Publishing needs npm >= 11.5.1** to recognise the OIDC environment, and the runner's
+      # bundled npm is older than that. `@latest` would be a clock in the release pipeline instead of
+      # a fix: simframe pinned Node 20, npm 12 shipped between two releases a day apart, required
+      # Node >= 22, and the upgrade failed with EBADENGINE *before* the publish step — so a version
+      # was tagged, released on GitHub, and **never published to npm**, with nothing warning. Node 22
+      # above is load-bearing for the same reason.
+      - name: upgrade npm for Trusted Publishing
+        run: |
+          npm install -g 'npm@>=11.5.1 <13'
+          npm --version
       - run: npm ci
       - run: npm run build
       - name: publish to npm, with provenance
@@ -129,15 +141,31 @@ jobs:
         # given, *including for a prerelease* — so a `v0.1.0-rc.1` tag would have made `npm i
         # sidecrew` serve a release candidate to everybody. A prerelease goes to `next`; only a
         # release moves `latest`. The version's own shape decides, so nobody has to remember.
+        #
+        # **There is no token.** npm is ending token publishing, and Trusted Publishing authenticates
+        # with this workflow's own OIDC identity — which cannot leak, expire or be copied, and needs
+        # no 2FA bypass. It requires a one-time setup **on npmjs.com, not here**: Package → Settings
+        # → Trusted Publisher → GitHub Actions, pointing at this repository and this workflow file.
+        # Without that entry npm has nothing to trust and the publish fails `ENEEDAUTH`, which looks
+        # exactly like a missing token and is not one.
+        #
+        # An already-published version is a **skip, not a failure**: publishing by hand and then
+        # tagging is a normal thing to do, npm rejects a duplicate version, and that must not stop
+        # the run before the registry step. Every other npm error still fails the job.
         run: |
           case "${{ needs.gate.outputs.version }}" in
             *-*) dist=next ;;   # any semver prerelease: 0.1.0-rc.1, 1.0.0-beta.2
             *)   dist=latest ;;
           esac
           echo "publishing ${{ needs.gate.outputs.version }} to dist-tag $dist"
-          npm publish --provenance --access public --tag "$dist"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          if npm publish --provenance --access public --tag "$dist" 2>&1 | tee /tmp/publish.log; then
+            echo "published"
+          elif grep -qiE 'cannot publish over|previously published|E403.*already' /tmp/publish.log; then
+            echo "::notice::${{ needs.gate.outputs.version }} is already on npm — skipping, not failing"
+          else
+            echo "::error::npm publish failed for a reason that is not 'already published'"
+            exit 1
+          fi
 
   registry:
     # After npm, never beside it: the registry entry points at an npm version, and publishing the
@@ -158,10 +186,23 @@ jobs:
         # `login github-oidc` exchanges this job's OIDC token for a registry credential, so there is
         # no secret to store or rotate. The namespace `io.github.lvlrSajjad/…` is what it proves the
         # right to publish under — it has to match `name` in server.json or the publish is rejected.
+        #
+        # **The publisher is pinned, not floated to `releases/latest`.** This binary is executed in a
+        # job holding `id-token: write`, so "whatever they shipped this morning" is a supply-chain
+        # exposure as well as a fragility. Bump it deliberately, and `validate` before `publish` so a
+        # bad `server.json` fails before anything is claimed.
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.1
         run: |
-          curl -sSL --fail \
-            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
-            | tar xz mcp-publisher
+          BASE="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          if ! curl -fsSL "$BASE/mcp-publisher_linux_amd64.tar.gz" | tar -xz mcp-publisher; then
+            echo "::error::mcp-publisher ${MCP_PUBLISHER_VERSION} could not be fetched. Check"
+            echo "https://github.com/modelcontextprotocol/registry/releases and bump"
+            echo "MCP_PUBLISHER_VERSION deliberately, rather than floating to latest."
+            exit 1
+          fi
           chmod +x mcp-publisher
+          ./mcp-publisher --version
+          ./mcp-publisher validate
           ./mcp-publisher login github-oidc
           ./mcp-publisher publish
