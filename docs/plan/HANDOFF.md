@@ -8,16 +8,16 @@
 > definition of *satisfied*** is met. That is `VISION.md`'s philosophy and the owner's own framing
 > (20 Sep 2026). **`PHASES.md` § *The framework these phases are building toward* is the table of
 > which phase makes which step true** — read it before planning 14c or 14d. ADR-0079 is the write-up;
-> ADR-0075 (accepted) is the *act on any file* half; 14d is the *read and ask* half. This file is always current; if it
-disagrees with anything else, it is the thing that was updated last and the other file is the bug
-(CLAUDE.md § *Conventions*).
+> ADR-0075 (accepted) is the *act on any file* half; 14d is the *read and ask* half.
 
-**Last updated: 21 Sep 2026**, after a session that **fixed CI**, took two owner decisions
-(ADR-0075 option C, ADR-0078), wrote **ADR-0079** and **re-pointed `PHASES.md` and `ROADMAP.md` at
-the framework** so a new session does not plan against an outdated one. It was the session that
-**got `main` green** for the
-first time since 18 Sep. The session before it ran **Phase 14b**, pushed `main` for the first time,
-and tagged **`v0.1.0-rc.1`**.
+This file is always current; if it disagrees with anything else, it is the thing that was updated
+last and the other file is the bug (CLAUDE.md § *Conventions*).
+
+**Last updated: 21 Sep 2026**, after the session that **got `main` green for the first time since
+18 Sep**, took three owner decisions (**ADR-0075** option C, **ADR-0078**, and the ADR-0064
+discussion), wrote **ADR-0079** from the owner's own framing, and **re-pointed `PHASES.md` and
+`ROADMAP.md` at the framework** so a new session does not plan against an outdated one. The session
+before it ran **Phase 14b**, pushed `main` for the first time, and tagged **`v0.1.0-rc.1`**.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -31,14 +31,14 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
-| version | **0.1.0-rc.1** in `package.json`, `server.json` (twice), `plugin.json`, `src/mcp.ts` **and `package-lock.json`** — the lockfile was a stale fifth place reading `0.0.1`; it is aligned now. The gate compares the tag against the first five |
-| pushed | **yes — `main` is pushed** (20 Sep), after a blob-contents scan that **found a client name and blocked the push**, §5. **`v0.1.0-rc.1` is tagged and pushed** |
+| version | **0.1.0-rc.2** in `package.json`, `server.json` (twice), `plugin.json`, `src/mcp.ts` **and `package-lock.json`** — the lockfile was a stale fifth place reading `0.0.1`; it is aligned now. The gate compares the tag against the first five |
+| pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — one hour, no worker |
+| next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — **inputs verified present 21 Sep**, but it needs a harness written first, not just a replay |
 | ADRs | run to **0079**; start new ones at 0080. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
-| CI | **GREEN** on `d71edbe` — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
+| CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
 
 ## 2. Phase 14 is built. The rc is cut; the release is not.
@@ -246,6 +246,15 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   20 Sep; the standing recommendation is **B now, C not yet** — `strictNullChecks` migrations are
   exactly where ADR-0077 says the gate cannot credit the work, though `noUnusedLocals`-style
   raised-bar work does survive and a narrower C could be defended on it.
+- **The personal site's employer/testbed inference — handled 21 Sep.** `lvlrsajjad.github.io` names
+  the employer on its homepage (`worksFor`, and an experience entry) and described sidecrew's
+  measurements as taken on *"commercial"* codebases *"neither of them mine"*. Fine apart; together an
+  inference nobody decided to publish. **Owner's call: drop "commercial"** — it breaks the chain and
+  costs nothing, because *"not written by me, not modified to make this work"* is what makes the
+  measurement honest and is equally true of an open-source codebase. Done in three files, committed,
+  **not pushed** — that repo is the owner's. **sidecrew's own `docs/` site deliberately keeps
+  "commercial"**: it names no employer, so the word carries no inference there, and CLAUDE.md blesses
+  it as exactly as strong a claim as naming the client and publishable.
 - **A client symbol name is in the tracked tree, and on public `main`.**
   `getSpendVsReplacement` appears in five tracked files — a test comment, `BACKLOG`, `CHANGELOG` and
   `DECISIONS` — as the reduced case that ADR-0035 and ADR-0039 were written about. It is the client's
@@ -266,6 +275,13 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   scan would have missed this, because the names arrive and leave inside the range. And when the
   aggregate scan and a per-blob loop disagree, **believe the one that found something** and keep
   looking: `git grep -i <names> $(git rev-list origin/main..HEAD)` is what located the commit.
+- **A `.sidecrew/runs/` directory name contains the project's name, so pasting a run path into a
+  tracked file leaks the client.** Caught 21 Sep by the pre-push scan, in `HANDOFF.md`, written by
+  the session that was documenting the scan. `.sidecrew/` is gitignored (`.gitignore:3`) and nothing
+  under it is tracked, so the *files* are safe — **the hazard is quoting a path, not committing one**.
+  Refer to a run as `probe1-report.json`'s `run_dir` instead of reproducing it. The commit was
+  unpushed, so `git commit --amend` removed the blob from the range before it could travel; that only
+  works **before** a push (ADR-0051).
 - **`gh` is authenticated per tree, not globally** (several orgs). `~/Coding/ME/*` and `OSS/*` →
   `~/.config/gh-personal`; `Coding/ET/*` → `gh-et`; `RZT/*` → `gh-rzt`; anything else → an empty
   `gh-none` that fails loudly. A zsh `chpwd` hook exports `GH_CONFIG_DIR`, so **a bash shell has to
