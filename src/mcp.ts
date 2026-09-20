@@ -21,7 +21,7 @@ import { Candidate, WorkerTask } from "./schemas.js";
 import { statusReport } from "./status.js";
 import { validatePlan } from "./validate.js";
 
-export const SERVER_VERSION = "0.1.0-rc.1";
+export const SERVER_VERSION = "0.1.0-rc.2";
 
 /** Every tool answers with JSON text, and an exception answers with the sentence that explains it. */
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };

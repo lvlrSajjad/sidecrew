@@ -1,6 +1,6 @@
 {
   "name": "sidecrew",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "Ask for a change to your source and get it \u2014 made by local MLX models on your Mac, checked by a gate a machine can run before Claude sees it. Unit tests too. MCP server + CLI.",
   "license": "MIT",
   "type": "module",

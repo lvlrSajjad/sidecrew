@@ -50,7 +50,12 @@ jobs:
           # The fourth place, and the one nothing points at: the MCP server announces a version to
           # every client that connects, and a client reads it to decide what it is talking to. Only
           # `test/mcp.test.ts` was holding this one, and it caught it.
-          mcp=$(grep -oE 'SERVER_VERSION = "[^"]+"' src/mcp.ts | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          # Take the string literal whole. A `[0-9]+\.[0-9]+\.[0-9]+` match silently drops a
+          # prerelease suffix, and it drops it on ONE side of the comparison: tagging v0.1.0 against
+          # an mcp.ts still reading 0.1.0-rc.1 extracts 0.1.0 and **passes**, publishing a release
+          # whose MCP server announces itself as a release candidate to every client that connects.
+          # Found by the v0.1.0-rc.1 tag, which is what the rc was for.
+          mcp=$(grep -oE 'SERVER_VERSION = "[^"]+"' src/mcp.ts | sed -E 's/.*"(.*)".*/\1/')
           echo "tag=$tag package.json=$pkg server.json=$srv server.json/packages[0]=$srvpkg plugin.json=$plg mcp=$mcp"
           for v in "$pkg" "$srv" "$srvpkg" "$plg" "$mcp"; do
             [ "$v" = "$tag" ] || { echo "::error::$v != $tag — the tag and all four move together (CLAUDE.md)"; exit 1; }
