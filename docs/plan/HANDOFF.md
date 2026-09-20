@@ -71,8 +71,15 @@ first tag, and tag a throwaway `v0.1.0-rc.1` first if that matters.
    *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → 14b. `F ≥ 3` → insert
    `14a′`. **Any failure producing a *wrong verdict* rather than a refusal → STOP and fix**, whatever
    `F` is.
-3. **Phase 14b — the editing ceiling**, whose rule is already frozen (`PHASES.md`). It is the phase
-   that buys **Shapes**, the one scorecard number nobody has measured and the expensive one.
+3. **Phase 14b — the editing ceiling.** Its prompt is **`prompts/phase-14b-editing-ceiling.md`** and
+   its exit rule is already frozen in `PHASES.md`. One evening, needs the machine, **no code in any
+   branch**. It buys **Shapes** — the one scorecard number nobody has measured, and the expensive one.
+
+   **It has a trap that would void it, and the prompt opens with it:** the 30 declared `null_guard`
+   tasks live in `experiments/correction-round/plans/project-a-2026-09-20/change_plan.json`, which is
+   **gitignored** (it carries an absolute path to the client's checkout) and therefore exists on the
+   owner's machine and nowhere else. Comparability with the 1/30 baseline requires *those* 30 tasks.
+   A regenerated set is a different experiment. If the file is gone, ask — do not rebuild it.
 
 `14c` needs **ADR-0075** decided first and cannot start without it.
 

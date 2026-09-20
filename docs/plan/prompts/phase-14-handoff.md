@@ -1,5 +1,18 @@
 # Handoff into Phase 14 — publish
 
+> ## ⚠️ SUPERSEDED, 20 Sep 2026 — Phase 14 is built.
+> **Do not work from this file.** It was written on 18 Sep *into* Phase 14 and describes the world
+> before the phase ran: it sends you to `prompts/phase-8-publish.md` as the live prompt, it lists the
+> hardening items as owed, and §2 asks for README numbers that have since been restated as intervals.
+> All of that is done — `docs/CHANGELOG.md` § *v0.1.0* and `PHASES.md` § *14* say what landed.
+>
+> **Start at `docs/plan/HANDOFF.md`.** The next phase's prompt is
+> `prompts/phase-14b-editing-ceiling.md`.
+>
+> Kept, not deleted, because §3 (the five defects found in 11b) and §4 (the four things that will
+> bite you) are still true and are not recorded anywhere else.
+
+
 **Written 18 Sep 2026 by the Phase 11b session.** Phase 14 is the old Phase 8 prompt, unchanged
 (`prompts/phase-8-publish.md`). This file is the diff against the world that prompt assumes, plus the
 one job that stands between here and it.
