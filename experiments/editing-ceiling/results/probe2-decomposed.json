@@ -1,0 +1,267 @@
+{
+  "measured": true,
+  "experiment": "editing-ceiling",
+  "section": "Phase 14b",
+  "probe": "probe-2-decomposed-7b",
+  "rule": "experiments/editing-ceiling/README.md \u00a71, copied verbatim from docs/plan/PHASES.md \u00a7 14b before either probe ran",
+  "commit": "04c7dc6be8b7d427e5f5a5f329dec12b41483ede",
+  "project": "project-a",
+  "compiler_flags": [
+    "--strictNullChecks"
+  ],
+  "compiler_flags_note": "ADR-0063. No figure here may share a table cell with one taken under the project's own configuration.",
+  "worker": {
+    "tier": "local",
+    "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+    "concurrency": 1,
+    "tokens": 0
+  },
+  "task_set": {
+    "N": 30,
+    "shape_mix": {
+      "null_guard": 30
+    },
+    "source": "experiments/correction-round/plans/project-a-2026-09-20/change_plan.json \u2014 the SAME 30 declared tasks \u00a72.2 used; gitignored, never regenerated"
+  },
+  "S14": 0.0333,
+  "S14_count": "1 of 30",
+  "S14_interval_95": [
+    0.001,
+    0.172
+  ],
+  "baseline": {
+    "S": 0.0333,
+    "count": "1 of 30",
+    "interval_95": [
+      0.001,
+      0.172
+    ],
+    "source": "experiments/correction-round/results/correction-round-2026-09-20.json pass1"
+  },
+  "interval_note": "Exact Clopper-Pearson. At n = 30 the intervals for 3/30 and 6/30 overlap, so 0.30 is a decision rule and not a claim of precision.",
+  "gate_error_rate_D": 0.105,
+  "gate_error_rate_note": "Measured on #2a's gate (ADR-0066/0069 era) and this is #2a's gate. Not negligible against the 0.10 threshold.",
+  "funnel": {
+    "answered": 59,
+    "edits_parsed": 59,
+    "confined": 36,
+    "applied": 36,
+    "compiled": 1,
+    "suite_green": 1
+  },
+  "confinement_breaks": {
+    "no_edit_at_all": 23
+  },
+  "stage_reached": {
+    "done": 1,
+    "compile": 19,
+    "confinement": 10
+  },
+  "truncated": 0,
+  "unparsed": 0,
+  "refusals": 0,
+  "machine_failures": 0,
+  "latency_ms": {
+    "median": 87278,
+    "p90": 198419
+  },
+  "generate_ms": {
+    "median": 60987,
+    "p90": 144256
+  },
+  "missing_verdicts": [],
+  "missing_note": "Counted as non-survivors. The denominator is the declared 30 in every case.",
+  "adr_0069_verdicts_crossing_midnight": 0,
+  "adr_0069_verdicts_cannot_answer": 0,
+  "adr_0069_note": "Local calendar days, as src/schemas.ts crossesCalendarDay compares them. A crossing only threatens a verdict that reached the suite, which unlike \u00a72.2 is the expected case for a probe that works.",
+  "adr_0066_machine": {
+    "free_gb_min": 16.25,
+    "free_gb_max": 23.8,
+    "swap_gb_first": 2.88,
+    "swap_gb_last": 2.8,
+    "pressure_not_normal": 0
+  },
+  "per_task": [
+    {
+      "task_id": "snc-01",
+      "survived": true,
+      "stage_reached": "done",
+      "attempts": 1
+    },
+    {
+      "task_id": "snc-02",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-03",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-04",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-05",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-06",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-07",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-08",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-09",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-10",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-11",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-12",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-13",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-14",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-15",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-16",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-17",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-18",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-19",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-20",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-21",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-22",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-23",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-24",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-25",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-26",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-27",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-28",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-29",
+      "survived": false,
+      "stage_reached": "confinement",
+      "attempts": 2
+    },
+    {
+      "task_id": "snc-30",
+      "survived": false,
+      "stage_reached": "compile",
+      "attempts": 2
+    }
+  ],
+  "verdict": "PROCEED to 14c; write the ceiling down as a product fact (PHASES.md \u00a7 14b). A complete result."
+}

@@ -31,7 +31,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | **13b** | **The edge ideas that gate publication** — unattended mode ✅, memoisation ✅, local retrieval | 🔶 **two of three built** · owner's decision 18 Sep 2026 | `BACKLOG.md` § *The edge ideas* items 4, 3, 1 · all three were Phase 12's and were not built. **Item 6 (two-model agreement) was considered and dropped** — its own precondition is untested |
 | **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12` and `1.07` at `N = 41`, FAIL at both** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · **§2.2: `S_c = 0/29`, OFF BY DEFAULT** · ✅ **all four measured** | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
 | 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ **next** · **cut `v0.1.0`** | `prompts/phase-8-publish.md` · no overnight run · gates: `deriveLineRange` on the AST, `doctor`'s pre-flight questions, ADR-0042, and the owner's sentence on publishing rates as intervals |
-| **14b** | **The editing ceiling: is it the model or the task?** — two probes on §2.2's declared task set | ⬜ | **one evening · needs the machine** · no build, no version. Decides whether "any shape of change" is reachable at all |
+| **14b** | **The editing ceiling: is it the model or the task?** — two probes on §2.2's declared task set | ✅ **`S₁₄ = 2/30`, both probes < 0.10 → PROCEED to 14c.** Neither: the workers do the work, the gate cannot credit it (**ADR-0077**, proposed) | **one evening · needs the machine** · no build, no version. Decides whether "any shape of change" is reachable at all |
 | **14c** | **The reach: symbol-scoped return** (ADR-0075 option C) — half a codebase is currently unaddressable | ⬜ · **cut `v0.2.0`** | 2–3 sessions · **one overnight run** · needs ADR-0075 decided, and the AST work from 14 |
 | **14d** | **Retrieval: local models read the codebase** — the other half of the vision | ⬜ · **cut `v1.0.0`** | 3–4 sessions · **one overnight run** · needs its own ADR first: a machine confirms a symbol *exists*, not that it is *relevant* |
 | 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · **post-1.0** | ADR-0031 options B/C · the remaining slice of the 90 %, and the one nothing measured so far says anything about |
@@ -1106,6 +1106,30 @@ is **1/30 = 0.033**.
 
 **In every branch, 14b cuts no version and adds no code.** It is one evening that decides how three
 later phases are spent.
+
+### Result — 20 Sep 2026. `S₁₄ = 2/30 = 0.067`, 95 % `[0.008, 0.221]`
+
+**Third branch: PROCEED to 14c, and write the ceiling down as a product fact.** Both probes agree;
+neither reaches 0.10. Full result in `experiments/editing-ceiling/`, rule copied and committed before
+either probe ran.
+
+| arm | declined | **target fixed correctly** | unsatisfiable | survived |
+|---|---|---|---|---|
+| pass 1 — 7B, whole-file | 17 | **8** | 12 | 1 |
+| probe 2 — 7B, ask narrowed to one function | 10 | **14** | 18 | 1 |
+| probe 1 — 14B, whole-file | 3 | **17** | 21 | **2** |
+
+**The question had a third answer.** It is not the model and it is not the task size — both probes
+moved the thing they targeted, and the 14B nearly eliminated the decline behaviour. It is the **gate's
+scope**: +6 correct targets bought +6 unsatisfiable tasks on probe 2, +9 bought +9 on probe 1, one to
+one. The sinking error is in a **test file in 21 of 21** of probe 1's unsatisfiable tasks and in
+non-test source in **0** — a narrowed type propagates into fixtures, and tests may not be edited
+because tests *are* the gate (ADR-0046).
+
+**It worsens with capability** (12 → 18 → 21), because a file nobody edits breaks nothing downstream.
+So `14b′` would have been the wrong insert even had the threshold been met, and the Shapes row now
+reads *"the worker can do it, the gate cannot credit it"* — which **ADR-0077 (proposed)** asks the
+owner to resolve, recommending the counterfactual run before choosing.
 
 ---
 

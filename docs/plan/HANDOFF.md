@@ -23,9 +23,9 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | pushed | **no — `main` is well ahead of `origin/main`** (`git log --oneline origin/main..HEAD | wc -l`), including all of Phase 14 |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14b — the editing ceiling.** But first: three owner actions, §3 |
-| ADRs | run to **0076**; start new ones at 0077. **0064 and 0075 are PROPOSED and need the owner** |
-| running | **Phase 14b probe 1**, started 16:55 on 20 Sep — a **14B worker holding ~8.2 GB** and `sidecrew fix` over §2.2's 30 tasks. If you are a different session: leave both alone, or you are the contention ADR-0066 is about. `scripts/editing-ceiling-probe1.sh` stops the worker and sweeps sandboxes on every exit path |
+| next phase | **14c — the reach.** Blocked on **ADR-0075**. 14b is done. Three owner actions still precede the release, §3 |
+| ADRs | run to **0077**; start new ones at 0078. **0064, 0075 and 0077 are PROPOSED and need the owner** |
+| running | **nothing.** Both 14b probes finished 20 Sep; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 
 ## 2. Phase 14 is built. The release is not cut.
 
@@ -71,14 +71,22 @@ first tag, and tag a throwaway `v0.1.0-rc.1` first if that matters.
    *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → 14b. `F ≥ 3` → insert
    `14a′`. **Any failure producing a *wrong verdict* rather than a refusal → STOP and fix**, whatever
    `F` is.
-3. **Phase 14b — the editing ceiling. IN PROGRESS as of 16:55, 20 Sep** — probe 1 (the 14B) is
-   running; see the `running` row above. The rule was copied into
-   `experiments/editing-ceiling/README.md` and **committed before the run** (`fac3cdb`), the result
-   writer is validated against §2.2's published numbers, and probe 2's harness is built and waiting
-   on a free machine. The declared 30-task plan was found intact and was **not** regenerated.
-   Its prompt is **`prompts/phase-14b-editing-ceiling.md`** and
-   its exit rule is already frozen in `PHASES.md`. One evening, needs the machine, **no code in any
-   branch**. It buys **Shapes** — the one scorecard number nobody has measured, and the expensive one.
+3. **Phase 14b is DONE, 20 Sep.** `S₁₄ = 2/30 = 0.067`, 95 % `[0.008, 0.221]`, both probes below
+   0.10 → **PROCEED to 14c**. No code changed, no version cut. `experiments/editing-ceiling/`.
+
+   **The question had a third answer, and it is the thing to carry forward.** Not the model, not the
+   task size — both probes moved what they targeted (declines 17 → 3 on the 14B, 17 → 10 on the
+   narrowed ask). It is the **gate's scope**. Every extra target a worker fixes correctly becomes an
+   *unsatisfiable* task, one for one: +6 correct → +6 unsatisfiable on probe 2, +9 → +9 on probe 1.
+   The sinking error is in a **test file in 21 of 21** cases and in non-test source in **0** — a
+   narrowed type propagates into fixtures, and tests may not be edited because tests *are* the gate.
+   **It gets worse as the worker gets better** (unsatisfiable 12 → 18 → 21), so buying more worker
+   capability on this shape buys nothing measurable.
+
+   **This needs the owner: ADR-0077 (proposed)**, four options, recommending option D first — one
+   short run of the counterfactual, because 15 tasks had a clean target and only test-file errors and
+   would have *reached* the suite under a differently scoped gate. Whether they survive it is the
+   number every other option is betting on, and nobody has it.
 
    **It has a trap that would void it, and the prompt opens with it:** the 30 declared `null_guard`
    tasks live in `experiments/correction-round/plans/project-a-2026-09-20/change_plan.json`, which is

@@ -1,0 +1,293 @@
+{
+  "measured": true,
+  "experiment": "editing-ceiling",
+  "what": "compile-stage failures sorted by whose failure they are",
+  "N": 30,
+  "counts": {
+    "survived": 1,
+    "unsatisfiable_adr_0071": 18,
+    "target_not_fixed": 1,
+    "broke_the_target": 0,
+    "no_edit_at_all": 10,
+    "other": 0
+  },
+  "unsatisfiable_breakdown": {
+    "total": 18,
+    "target_was_fixed_correctly": 13,
+    "target_also_failed": 5,
+    "note": "Both are unsatisfiable and neither could have survived. The split says how many of them the model nevertheless got right in the file it was asked about \u2014 which is the only part that speaks to capability."
+  },
+  "clean_subset": {
+    "n": 12,
+    "survived": 1,
+    "note": "Tasks not excluded by ADR-0071. S14 is NOT recomputed on this denominator \u2014 the rule is applied to 30. This is here so a reader can see the subset without the number being quietly adjusted (\u00a74.0 precondition 4)."
+  },
+  "per_task": {
+    "survived": [
+      {
+        "task_id": "snc-01"
+      }
+    ],
+    "unsatisfiable_adr_0071": [
+      {
+        "task_id": "snc-02",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-03",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-05",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-06",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-09",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 1,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": false,
+        "also_failed_the_target": true
+      },
+      {
+        "task_id": "snc-11",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-12",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-13",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-14",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 3,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": false,
+        "also_failed_the_target": true
+      },
+      {
+        "task_id": "snc-15",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-16",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-17",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-18",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-19",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 1,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": false,
+        "also_failed_the_target": true
+      },
+      {
+        "task_id": "snc-21",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      },
+      {
+        "task_id": "snc-26",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 1,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": false,
+        "also_failed_the_target": true
+      },
+      {
+        "task_id": "snc-28",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 1,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": false,
+        "also_failed_the_target": true
+      },
+      {
+        "task_id": "snc-30",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 0,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 1,
+        "outside_file_count": 1,
+        "target_clean": true,
+        "also_failed_the_target": false
+      }
+    ],
+    "target_not_fixed": [
+      {
+        "task_id": "snc-07",
+        "attempts": 2,
+        "stage_reached": "compile",
+        "remaining_in_target": 1,
+        "introduced_inside_task_files": 0,
+        "introduced_outside": 0,
+        "outside_file_count": 0
+      }
+    ],
+    "broke_the_target": [],
+    "no_edit_at_all": [
+      {
+        "task_id": "snc-04",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-08",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-10",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-20",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-22",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-23",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-24",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-25",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-27",
+        "attempts": 2
+      },
+      {
+        "task_id": "snc-29",
+        "attempts": 2
+      }
+    ],
+    "other": []
+  },
+  "reading": {
+    "target_not_fixed": "the worker did not do the job \u2014 a real model failure",
+    "broke_the_target": "the worker changed the task's own files and made them worse",
+    "unsatisfiable_adr_0071": "the target was fixed and a file the plan may never list gained an error. Guaranteed zero whatever the model does",
+    "no_edit_at_all": "the file came back byte-identical \u2014 the 7B's dominant failure in \u00a72.2"
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "measured": true,
+  "experiment": "editing-ceiling",
+  "section": "Phase 14b",
+  "date": "2026-09-20",
+  "rule": "experiments/editing-ceiling/README.md \u00a71, copied verbatim from docs/plan/PHASES.md \u00a7 14b and committed at fac3cdb BEFORE either probe ran",
+  "commit": "04c7dc6be8b7d427e5f5a5f329dec12b41483ede",
+  "machine": {
+    "model": "Mac14,10",
+    "chip": "Apple M2 Pro",
+    "ram_gb": 32,
+    "macos": "26.6.2",
+    "node": "v22.23.2"
+  },
+  "project": "project-a",
+  "compiler_flags": [
+    "--strictNullChecks"
+  ],
+  "compiler_flags_note": "ADR-0063. A chosen setting; no figure here may share a table cell with one taken under the project's own configuration.",
+  "task_set": {
+    "N": 30,
+    "shape_mix": {
+      "null_guard": 30
+    },
+    "note": "The SAME 30 declared tasks \u00a72.2 used. Verified intact, never regenerated."
+  },
+  "S14": 0.0667,
+  "S14_count": "2 of 30",
+  "S14_interval_95": [
+    0.008,
+    0.221
+  ],
+  "S14_definition": "best of the two probes, per the frozen rule",
+  "baseline": {
+    "S": 0.0333,
+    "count": "1 of 30",
+    "interval_95": [
+      0.001,
+      0.172
+    ]
+  },
+  "verdict": "S14 < 0.10 -> PROCEED to 14c, and write the ceiling down as a product fact. Both probes agree; neither reaches the 0.10 threshold.",
+  "verdict_branch": "PHASES.md \u00a7 14b, third branch \u2014 declared in advance to be a complete result",
+  "probes": {
+    "probe_1_14b": {
+      "S14": 0.0667,
+      "count": "2 of 30",
+      "interval_95": [
+        0.008,
+        0.221
+      ],
+      "worker": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
+      "counts": {
+        "survived": 2,
+        "unsatisfiable_adr_0071": 21,
+        "target_not_fixed": 4,
+        "broke_the_target": 0,
+        "no_edit_at_all": 3,
+        "other": 0
+      },
+      "targets_fixed_correctly": 17
+    },
+    "probe_2_decomposed_7b": {
+      "S14": 0.0333,
+      "count": "1 of 30",
+      "interval_95": [
+        0.001,
+        0.172
+      ],
+      "worker": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+      "counts": {
+        "survived": 1,
+        "unsatisfiable_adr_0071": 18,
+        "target_not_fixed": 1,
+        "broke_the_target": 0,
+        "no_edit_at_all": 10,
+        "other": 0
+      },
+      "targets_fixed_correctly": 14,
+      "decomposition": {
+        "single_function": 23,
+        "multi_function": 5,
+        "no_enclosing_function": 2,
+        "note": "the 2 keep pass 1's whole-file ask and are NOT decomposed"
+      }
+    }
+  },
+  "the_finding": {
+    "what": "Survival is flat because the gate cannot credit the work, not because the work is absent.",
+    "table": [
+      {
+        "arm": "pass 1 (7B, whole-file)",
+        "declines": 17,
+        "targets_fixed_correctly": 8,
+        "unsatisfiable": 12,
+        "survived": 1
+      },
+      {
+        "arm": "probe 2 (7B, ask narrowed)",
+        "declines": 10,
+        "targets_fixed_correctly": 14,
+        "unsatisfiable": 18,
+        "survived": 1
+      },
+      {
+        "arm": "probe 1 (14B, whole-file)",
+        "declines": 3,
+        "targets_fixed_correctly": 17,
+        "unsatisfiable": 21,
+        "survived": 2
+      }
+    ],
+    "one_to_one": "Against pass 1, probe 2 fixed +6 more targets correctly and gained +6 unsatisfiable; probe 1 fixed +9 and gained +9. Every additional target the worker gets right becomes an unsatisfiable task rather than a survivor.",
+    "mechanism": "All outside errors land in TEST files \u2014 21 of 21 on probe 1, 0 in non-test source. Tightening a type under --strictNullChecks propagates into fixtures and mocks, and the gate forbids editing tests because tests ARE the gate (ADR-0046). No legal edit passes.",
+    "perverse_direction": "The unsatisfiable count RISES with worker capability (12 -> 18 -> 21), because a file nobody edits cannot break anything downstream.",
+    "counterfactual_not_claimed": "15 of probe 1's tasks had a clean target with only test-file errors and would have REACHED the suite under different scoping. Whether they would survive it is unmeasured and is not claimed."
+  },
+  "prediction": {
+    "made": "committed at 04c7dc6, after probe 1 reported and before probe 2 produced a verdict",
+    "said": "probe 2 cannot fix this; S14 < 0.10; declines convert to unsatisfiable, not to survival",
+    "outcome": "HELD \u2014 declines 17 -> 10, unsatisfiable 12 -> 18, survival 1 -> 1",
+    "falsifiers_none_triggered": [
+      "S14 >= 0.10 on probe 2 (did not happen: 1/30)",
+      "unsatisfiable staying near 12 while declines fell (did not happen: rose to 18)",
+      "a non-test source file gaining an error (did not happen: 0 across both probes)"
+    ]
+  },
+  "threats": [
+    "The task set was chosen to contain failures, and the strictness setting was chosen too (ADR-0063). No rate here says how often real work hits this shape.",
+    "D = 0.105 is the gate's own measured error rate. S14 = 2/30 = 0.067 sits below the 0.10 threshold by less than D, so the branch is taken on a margin narrower than the instrument's own error. The two probes agreeing is what carries the verdict, not the margin.",
+    "12 of 30 were already unsatisfiable for the 7B, so the reachable maximum on this task set was never 30/30. The frozen rule is applied to 30 regardless, as written."
+  ],
+  "adr_0069_crossing_midnight": {
+    "probe_1": 0,
+    "probe_2": 0,
+    "note": "Both runs finished the same local day they started."
+  },
+  "adr_0066_machine": {
+    "probe_1": {
+      "free_gb_min": 2.62,
+      "free_gb_max": 22.72,
+      "swap_gb_first": 2.15,
+      "swap_gb_last": 3.14,
+      "pressure_not_normal": 4
+    },
+    "probe_2": {
+      "free_gb_min": 16.25,
+      "free_gb_max": 23.8,
+      "swap_gb_first": 2.88,
+      "swap_gb_last": 2.8,
+      "pressure_not_normal": 0
+    }
+  },
+  "worker_tokens_claude": 0
+}

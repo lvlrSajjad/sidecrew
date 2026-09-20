@@ -1,4 +1,41 @@
 # Changelog
+## Unreleased
+
+**Phase 14b — the editing ceiling.** Measurement only: no product code, no version. `S₁₄ = 2/30 =
+0.067`, 95 % `[0.008, 0.221]`, best of two probes on §2.2's same 30 declared `null_guard` tasks.
+Against the rule frozen in `PHASES.md` before either probe ran, that is **`S₁₄ < 0.10` → PROCEED to
+14c, and write the ceiling down as a product fact** — a branch the rule declared in advance to be a
+complete result.
+
+### The ceiling is real and it is not the model's
+- Both probes did what they were built to do. The **14B cut the "returned the file unchanged"
+  failure from 17 tasks to 3**; **narrowing the ask to one named function cut it to 10**, so task
+  *size* was a genuine part of why the 7B would not attempt. Neither converted into survival.
+- **Against pass 1, probe 2 fixed +6 more target files correctly and gained +6 unsatisfiable tasks;
+  probe 1 fixed +9 and gained +9.** One to one in both arms: every extra target a worker gets right
+  becomes a task nobody can pass.
+- **Why, read off `errors.introduced` rather than inferred:** of probe 1's 21 unsatisfiable tasks the
+  sinking error is in a **test file in 21 of 21**, and in a non-test source file in **0**. The guard
+  narrows a type, the type propagates into fixtures and mocks, and the gate forbids editing tests
+  because tests *are* the gate (ADR-0046).
+- **It worsens as the worker improves** — unsatisfiable 12 → 18 → 21 — because a file nobody edits
+  cannot break anything downstream. Further capability on this shape buys nothing measurable, which
+  is also why `14b′` would have been the wrong thing to insert had the threshold been met.
+- **ADR-0077 (proposed)** puts four options to the owner and recommends measuring the counterfactual
+  first: 15 tasks had a clean target and only test-file errors, so they would have *reached* the
+  suite under a differently scoped gate. Whether they survive it is unmeasured and is not claimed.
+
+### Reported the way the rule requires
+- Every rate is `k/30` with an exact Clopper–Pearson interval. **`D = 0.105` exceeds the margin
+  between `S₁₄` and the threshold**, and the result says so: the branch is carried by both probes
+  agreeing and by the mechanism being visible in the fields, not by 0.067 being below 0.10.
+- The reachable maximum was **18/30 = 0.60**, because 12 tasks were already unsatisfiable for the 7B.
+  Recorded beside the thresholds; the rule is still applied to 30 as written.
+- Probe 2's prediction was **committed before probe 2 had a verdict** (`04c7dc6`) with three named
+  falsifiers. It held and none fired.
+- The 30 declared tasks were verified intact and **never regenerated**; a rebuilt set would not be
+  comparable with the 1/30 baseline. 0 Claude tokens on worker inference, enforced by the schema.
+
 ## v0.1.0 — the first public release (2026-09-20)
 
 **Phase 14.** The three hardening items it owed, the publish mechanics, and the numbers re-stated the

@@ -5169,3 +5169,77 @@ and re-export them from where they used to live.
 
 Worth writing down twice over: a cycle here is a **wrong number**, not a crash, and the test that
 caught it was written for a different reason entirely.
+
+## ADR-0077 — `null_guard` under a strictness flag is unpassable by construction, and gets more so as the worker improves (PROPOSED)
+
+**Status:** proposed · 20 Sep 2026 · Phase 14b · **needs the owner.** Nothing is implemented and no
+threshold moves. Phase 14b's own verdict — `PROCEED to 14c` — does not depend on which option is taken.
+
+### Context
+
+Phase 14b asked whether the 7B's `1/30` on `null_guard` work was a capability ceiling or a fixable gap.
+Two probes, both on §2.2's same 30 declared tasks, under `--strictNullChecks` (ADR-0063).
+
+| arm | declined to edit | **target fixed correctly** | unsatisfiable (ADR-0071) | survived |
+|---|---|---|---|---|
+| pass 1 — 7B, whole-file ask | 17 | **8** | 12 | 1 |
+| probe 2 — 7B, ask narrowed to one function | 10 | **14** | 18 | 1 |
+| probe 1 — 14B, whole-file ask | 3 | **17** | 21 | **2** |
+
+`S₁₄ = 2/30 = 0.067`, 95 % `[0.008, 0.221]`, best of the two probes.
+
+**The answer is neither of the two the phase expected.** The workers are not failing to do the work.
+Against pass 1, probe 2 fixed **+6** more target files correctly and gained **+6** unsatisfiable tasks;
+probe 1 fixed **+9** and gained **+9**. The relationship is one to one in both arms: *every additional
+target a worker gets right becomes an unsatisfiable task rather than a survivor.*
+
+**The mechanism, read off `ChangeVerdict.errors.introduced` rather than inferred.** Of probe 1's 21
+unsatisfiable tasks, the errors that sink them land in a **test file in 21 cases out of 21**, and in a
+**non-test source file in 0**. Adding the null guard `--strictNullChecks` demands narrows a type; the
+narrowed type propagates into fixtures and mocks; the gate forbids editing test files, because tests
+**are** the gate (ADR-0046, ADR-0048). There is no legal edit that passes, whatever writes it.
+
+**The direction is the part worth deciding about.** Unsatisfiable rises with capability — 12 → 18 → 21
+— because a file nobody edits cannot break anything downstream. A better worker does not score better;
+it converts *declines* into *impossibilities*. Any future investment in worker capability on this
+shape, including 14b′ had it triggered, would have bought nothing measurable.
+
+### The decision this forces
+
+Phase 14b's frozen rule says `S₁₄ < 0.10` → write the ceiling down as a **product fact**, and
+`README` says which shapes sidecrew is *for*. That is being done. But "the ceiling" is now known to be
+**the gate's scope, not the model**, and the honest product fact depends on which of these is true.
+
+**A — Say it and stop.** `null_guard` driven by a strictness flag is out of scope; `README` lists the
+shapes that work. **For:** truthful today, costs nothing, and the 90 % bar already rests on Reach +
+Cost. **Against:** it writes off a shape the workers demonstrably *can* do, on a project where 763
+files carry such an error.
+
+**B — Let a plan declare the test files a change may disturb**, gated on those tests still *passing*
+rather than still *type-checking*. **For:** matches what a human reviewer would accept — a fixture
+whose mock now needs a `| null` is not a regression. **Against:** it weakens the strongest thing the
+gate says, and ADR-0046 chose "the project's tests, untouched" deliberately. Needs its own proof that
+it cannot be gamed.
+
+**C — Pre-filter the pool.** Add "no test file references this file's type surface" to the selection
+rules, so unsatisfiable tasks are never planned. **For:** cheap, mechanical, and honest about what is
+addressable — it is ADR-0064's shape, a property of the *configuration*. **Against:** on this project
+it removes most of the pool, and a tool that only accepts work nobody depends on is a smaller tool
+than the vision describes. It also makes the funnel look better by declining the hard cases, which is
+the failure mode §4.5 warns about.
+
+**D — Measure before choosing.** The counterfactual this phase could not run: re-gate probe 1's 15
+clean-target tasks with test-file *type* errors demoted to observations, and see how many survive the
+suite. **For:** B and C are both bets on an unmeasured number, and this is one short run. **Against:**
+it is another evening, and 14c is already blocked on ADR-0075.
+
+**Recommendation: D then B.** The counterfactual is cheap and it is the only thing that separates
+"the gate is mis-scoped" from "these changes really do break the tests". **15 of 30 tasks reached a
+clean target and would have reached the suite** under a differently scoped gate; whether they survive
+it is the number nobody has, and every argument for B assumes it.
+
+### Consequences if nothing is decided
+
+Phase 14b still reports `PROCEED to 14c` and 14c is unaffected — its subject is *reach*, and reach is
+ADR-0075's. What lapses is the Shapes row: it would record `null_guard` as "the worker can do it, the
+gate cannot credit it", which is accurate and is not a state to leave a scorecard in indefinitely.

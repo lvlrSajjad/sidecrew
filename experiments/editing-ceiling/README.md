@@ -176,3 +176,74 @@ testing — but each conversion lands in the unsatisfiable bucket rather than in
 **If the prediction holds, `S₁₄ < 0.10` is confirmed by both probes and the frozen rule's third branch
 applies** — with the ceiling recorded as what it measurably is: not the model's, but the gate's scope
 on this shape.
+
+---
+
+## Result, 2026-09-20 — `S₁₄ = 2/30 = 0.067`, and the prediction held
+
+Run against §1 as frozen. Full result in `results/editing-ceiling-2026-09-20.json`; per-probe files
+and per-task classifications beside it.
+
+| | |
+|---|---|
+| probe 1 — 14B, whole-file ask | **2 / 30** = 0.067 · 95 % `[0.008, 0.221]` |
+| probe 2 — 7B, ask narrowed to one function | **1 / 30** = 0.033 · 95 % `[0.001, 0.172]` |
+| **`S₁₄`** (best of the two) | **2 / 30 = 0.067** · 95 % `[0.008, 0.221]` |
+| baseline | 1 / 30 = 0.033 · 95 % `[0.001, 0.172]` |
+| **verdict** | **`S₁₄ < 0.10` → PROCEED to 14c, and write the ceiling down as a product fact** |
+
+§1 said in advance that this branch is **a complete result**, and it is reported without looking for a
+cut of the data where it passes.
+
+### The verdict is not the finding
+
+| arm | declined | **target fixed correctly** | unsatisfiable | survived |
+|---|---|---|---|---|
+| pass 1 — 7B, whole-file | 17 | **8** | 12 | 1 |
+| probe 2 — 7B, narrowed | 10 | **14** | 18 | 1 |
+| probe 1 — 14B, whole-file | 3 | **17** | 21 | 2 |
+
+**Both probes did what they were built to do.** The 14B nearly eliminated the decline behaviour, 17 → 3.
+Narrowing the ask cut it too, 17 → 10 — so task *size* was a real part of why the 7B would not attempt,
+which is the question probe 2 existed to answer. Neither converted into survival.
+
+**Against pass 1, probe 2 fixed +6 more targets correctly and gained +6 unsatisfiable; probe 1 fixed
++9 and gained +9.** One to one, in both arms. Every extra target a worker gets right becomes an
+unsatisfiable task.
+
+**Why:** of probe 1's 21 unsatisfiable tasks the sinking error is in a **test file in 21 of 21**, and
+in a non-test source file in **0**. The guard narrows a type, the narrowed type propagates into
+fixtures and mocks, and the gate forbids editing tests because tests *are* the gate (ADR-0046). No
+legal edit passes. And it worsens with capability — 12 → 18 → 21 — because a file nobody edits cannot
+break anything downstream.
+
+So the ceiling is real and it is **not the model's**. **ADR-0077 (proposed)** puts the four options to
+the owner and recommends measuring the counterfactual before choosing.
+
+### The prediction, and what it would have taken to break it
+
+The amendment above was committed at `04c7dc6` **after probe 1 and before probe 2 had a verdict**. It
+held: declines 17 → 10, unsatisfiable 12 → 18, survival 1 → 1. **None of its three falsifiers fired** —
+probe 2 did not reach 0.10, its unsatisfiable count did not stay near 12, and no non-test source file
+gained an error in either probe.
+
+### What weakens this, stated rather than discovered later
+
+1. **`D = 0.105`.** `S₁₄ = 0.067` sits below the 0.10 threshold **by less than the gate's own measured
+   error rate**. The branch is not carried by that margin; it is carried by **both probes agreeing**
+   and by the mechanism being visible in the fields rather than inferred from the rate.
+2. **The reachable maximum was never 30.** 12 of the 30 were already unsatisfiable for the 7B, so no
+   probe could have scored above 18/30 = 0.60, and the 0.30 threshold sat at half of what was
+   reachable. **The rule is applied to 30 as written** — this is recorded, not used as an adjustment.
+3. **Both choices still bias this set** — chosen to contain failures, under a chosen strictness flag
+   (ADR-0063, §4.5). No rate here says how often real work hits this shape.
+4. **The counterfactual is not claimed.** 15 tasks had a clean target with only test-file errors and
+   would have *reached* the suite under different scoping. Whether they survive it is unmeasured, and
+   ADR-0077 option D is the run that would answer it.
+
+### Environment
+
+Both runs finished on the local day they started, so **ADR-0069 has no purchase**: 0 crossing verdicts
+in either probe, read off `baseline_captured_at` / `verified_at`. Machine state per verdict is in the
+result files; pressure was normal throughout, and the checkout was byte-identical before and after.
+Claude tokens spent on worker inference: **0**, enforced by the schema.
