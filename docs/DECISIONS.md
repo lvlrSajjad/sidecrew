@@ -2235,9 +2235,9 @@ visible in a `BatchResult`.
 
 ---
 
-## Proposed ADR-0042 — a self-contradicting test file is mechanically detectable
+## ADR-0042 — a self-contradicting test file is mechanically detectable
 
-**Status:** proposed · 15 Sep 2026 · found by the project-b trial · **not implemented**
+**Status:** accepted · 15 Sep 2026 · found by the project-b trial · **option 1 implemented in Phase 14, 20 Sep 2026** — see the addendum below
 
 ### Context
 The funnel now collapses at `pass` on every project measured — ten of the fourteen candidates that
@@ -2269,6 +2269,26 @@ Option 1 now, option 2 never without an explicit decision and a fresh baseline. 
 would justify option 2 is not "these two would have survived" — it is whether a salvaged test is one a
 reviewer keeps, which is ADR-0020's argument about survival rate not being the whole story, pointed at
 our own output for once.
+
+### Addendum — implemented, 20 Sep 2026 (Phase 14)
+
+`src/verifier/contradiction.ts`, reached from the retry rule: where a candidate **compiled and did not
+pass**, `shouldRetry` says *"self-contradictory: it asserts `f(1, 2)` is `[1]` on line 4 and `[1, 2]`
+on line 7"* instead of `compiled but did not pass`. Nothing else changed — no verdict field, no
+survival, no score — which is what option 1 means and what keeps every number measured so far
+comparable.
+
+**The work went into what it refuses to call a contradiction**, because this sentence is what the one
+retry is spent on and a confidently wrong sentence is worse than a useless one. It fires only when
+every argument is **written out** — `f(1, "a")`, not `f(x)`, because `x` may have been reassigned and
+a `beforeEach` may have rebuilt the world between the two assertions — the matcher is the same one
+(`toBe` and `toEqual` are different questions), the assertion is not negated, and the expected value is
+a literal too. Eight negative cases are pinned in `test/contradiction.test.ts` against five positive
+ones, deliberately in that proportion.
+
+Built on ADR-0076's compiler, which is also why it is written now and was not in Phase 7: the same
+judgements over a masked string would have been a sixth regular expression.
+
 
 ---
 
@@ -5069,3 +5089,83 @@ enabler for the biggest single capability gain available.
 145 KB service — is still out of reach, because the *answer* is large however it is framed. C moves
 the boundary from *"the file is big"* to *"the change is big"*, which is the right boundary and not
 the absence of one.
+
+---
+
+## ADR-0076 — `deriveLineRange` asks the compiler, and says which of the two answered
+
+**Status:** accepted · 20 Sep 2026 · Phase 14 · implemented on `main`
+
+### Context
+
+The range finder has been patched four times — ADR-0030, ADR-0033 #4, ADR-0035, ADR-0039 — and every
+one of those patches was found the same way: a probe printed `NOT PLANNABLE — no mutants at all` about
+a function whose hand-written range kills mutants. The sentence has been checked four times and been
+wrong four times, which is not a run of bad luck; it is what a regular expression over a masked string
+is for a grammar that is not regular.
+
+Phase 14 owed this fix as hardening. ADR-0075 made it load-bearing: **option C splices a symbol's new
+text back by AST range**, so the reach of workload #2a is bounded by what this function can find.
+
+**The size of the defect, measured rather than argued.** Corpus: this repository's own `src`, 34 files.
+Names were enumerated from the compiler's tree and both implementations were then asked for a range.
+
+| | |
+|---|---|
+| function declarations found | **436** |
+| the scanner **could not see** | **152 — 34.9 %** |
+| the scanner returned a **wrong range** | **5** |
+| agreed | 279 — 64.0 % |
+
+A miss costs a function nobody plans, silently. A wrong range is worse: all five were bodies **cut
+short**, so mutation ran over part of a function and the report said nothing. One of them is
+`tsTargetFor` in `src/plan.ts`, 12 lines reported as 6 — and reducing it gave the diagnosis the four
+previous patches never had: a concise arrow has no closing brace to match, so the scanner ends it at
+the first `;` or blank line, and **`mask` blanks a comment to spaces**, which that search cannot tell
+from a blank line. Every commented concise arrow in the corpus ends at its first comment. No fifth
+pattern would have found that; the fourth three did not.
+
+### Decision
+
+1. **`lineRangeOf` asks the TypeScript compiler first** (`src/verifier/ast.ts`), matching function
+   declarations, methods, class properties, object-literal members and `const` arrows — **and refusing
+   a declaration with no body**, so an overload signature or a `declare function` is no longer mistaken
+   for the thing that has lines in it.
+2. **`typescript` is loaded out of the project being verified**, the way `mlx_lm`, `stryker` and `tsc`
+   already are — `createRequire`, resolution not a path check, so a hoisted workspace is right. It does
+   **not** become a dependency of sidecrew: CLAUDE.md § *Shape* allows one, and every project this tool
+   can verify already has the compiler, because the gate shells out to `tsc` and to Stryker's
+   `typescript-checker`.
+3. **The scanner stays, as the fallback**, and keeps its own tests asserted against it by name rather
+   than against whichever engine is reachable. A machine without the compiler gets the old behaviour,
+   which is worse and is not nothing.
+4. **Which one answered is part of the answer.** `lineRangeOf` returns `via: "ast" | "scanner" | null`.
+   `deriveLineRange` is unchanged for callers that only want the range.
+5. **`doctor` asks the question before a run**, because a project where the compiler is unreachable
+   gets the 34.9 % miss rate and has no other way to find out.
+
+### Why not make `typescript` a dependency
+
+It would guarantee one behaviour everywhere, which is the honest argument for it, and this repository
+has been burned by exactly that class of divergence. Against it: a second runtime dependency for a tool
+whose shape rule is one, ~22 MB in every install including a Swift-only one, and — the deciding
+reason — **the project's own compiler is the more correct one to ask**, because it is the version that
+will parse the same file at the gate. Decision 5 is what keeps the divergence from being silent.
+
+### What this does not fix
+
+Swift. There is no compiler API to ask from Node, so `swift` is always the scanner. That is a stated
+limit rather than a silence, and the Swift pattern has never been one of the four that was wrong.
+
+### One thing it cost, recorded because the failure was silent
+
+`doctor` had to ask two questions that live in `plan.ts` and `verifier/ts.ts`, and importing either
+from `doctor.ts` closed a cycle — `concurrency → serve → doctor → plan → verifier/ts → concurrency`.
+Under ESM that does not throw. It makes `DEFAULT_STRYKER_CONCURRENCY` **`undefined`**, and the only
+thing that noticed was one assertion in `test/concurrency.test.ts` whose whole point is that the
+verifier's default and the run's default are one constant rather than two. The fix was to move
+`testDirFor` and `jestConfigEntry` down to `verifier/shared.ts`, which has no imports of ours at all,
+and re-export them from where they used to live.
+
+Worth writing down twice over: a cycle here is a **wrong number**, not a crash, and the test that
+caught it was written for a different reason entirely.

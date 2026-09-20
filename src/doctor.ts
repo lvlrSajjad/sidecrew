@@ -3,10 +3,11 @@
 // The point of the split is that almost nothing here is fatal. No Swift toolchain means the Swift
 // verifier is unavailable; it does not mean sidecrew is broken. Only node and memory can fail the
 // command, because those two decide whether a worker can run at all.
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { run, ok as exited0, firstLine, pythonBin, MLX_SERVER_MODULE } from "./exec.js";
-import { isResolvable, STRYKER_PLUGIN } from "./verifier/shared.js";
+import { isResolvable, jestConfigEntry, STRYKER_PLUGIN, testDirFor } from "./verifier/shared.js";
+import { tsconfigProgramFiles, typeScriptAvailable } from "./verifier/ast.js";
 import { CapabilityStatus, type MachineSample, type StatusReport } from "./schemas.js";
 import { apiModel, apiTierOptIn, defaultKey, entry, SUPPORTED_MIN_RAM_GB, tierFor, type Tier } from "./models.js";
 import { apiKeyFrom, MISSING_KEY_HINT } from "./api-worker.js";
@@ -384,6 +385,191 @@ const strykerRunnersCheck = (cwd: string | undefined): Check => {
     };
 };
 
+// ── the pre-flight questions, which are facts about a project's layout ────────────────────────────
+//
+// Every row below was a run that failed, or worse, a run that quietly succeeded. They are here rather
+// than in the verifier because all four are properties of how a project is laid out, which is what
+// `doctor` is for, and because each of them costs a candidate — or a whole run — to discover otherwise.
+// ADR-0032's message is the template: name the cause, say whose it is, print the exact remedy.
+
+const TSCONFIG = "tsconfig.json";
+
+/** A TypeScript project at all? The four rows below say nothing useful about a Swift or JS one. */
+const looksTypeScript = (root: string): boolean => existsSync(join(root, TSCONFIG));
+
+/**
+ * Would `tsc` open the candidate sidecrew is about to write? (ADR-0037)
+ *
+ * The defect this reports is the only one of the six real-world blockers that failed **open**: the
+ * compile stage type-checked the project without ever opening the candidate and said `compile ok`
+ * about a file with three type errors in it. The gate detects it per candidate now and widens the
+ * config, so this row is a warning and not a refusal — but a user whose `include` is wrong should hear
+ * it as a sentence before a run rather than infer it from a sandbox they never look at.
+ */
+export const tsconfigIncludeCheck = (cwd: string | undefined): Check => {
+  const root = cwd ?? process.cwd();
+  const name = "tsconfig-include";
+  if (!looksTypeScript(root)) return { name, status: "ok", detail: `no ${TSCONFIG} in ${root} — nothing to check` };
+
+  const testDir = testDirFor(root);
+  const files = tsconfigProgramFiles(join(root, TSCONFIG), root);
+  if (files === null) {
+    return {
+      name,
+      status: "degraded",
+      detail: `${TSCONFIG} could not be parsed by the compiler, so whether it covers ${testDir}/ is unknown — ` +
+        "a candidate written outside every include glob is type-checked by a stage that never opens it (ADR-0037)",
+    };
+  }
+
+  const where = resolve(root, testDir);
+  if (files.some((f) => f.startsWith(`${where}/`))) {
+    return { name, status: "ok", detail: `${testDir}/ is in the ${files.length}-file program ${TSCONFIG} builds` };
+  }
+  const exists = existsSync(where);
+  return {
+    name,
+    status: "degraded",
+    detail: exists
+      ? `sidecrew writes candidates to ${testDir}/, and no file there is in the ${files.length}-file program ` +
+        `${TSCONFIG} builds. Every candidate would be compiled by a stage that never opens it (ADR-0037). ` +
+        `sidecrew widens the config per candidate, so this is survivable; the fix is to add "${testDir}" to ` +
+        `include in ${TSCONFIG}.`
+      : `sidecrew writes candidates to ${testDir}/, which ${root} does not have — so whether ${TSCONFIG} covers ` +
+        `them cannot be known until one is written (ADR-0037). If this project keeps its tests somewhere else, ` +
+        "that directory is where they should go and sidecrew has not been told about it.",
+  };
+};
+
+/**
+ * Can the ts-jest shim be built on this layout? (ADR-0038)
+ *
+ * ts-jest type-checks by default, Stryker instruments the source it mutates, so ts-jest type-checks
+ * Stryker's instrumentation and the mutation stage dies with a page of errors about `stryMutAct_9fa48`
+ * — code nobody wrote, every candidate, in the last and most expensive stage. The shim turns those
+ * diagnostics off, and it is built by loading the project's own config through `jest-config`. Where
+ * `jest-config` cannot be resolved there is no shim, and a stock project cannot be mutated at all.
+ */
+export const tsJestCheck = (cwd: string | undefined): Check => {
+  const root = cwd ?? process.cwd();
+  const name = "ts-jest";
+  if (!isResolvable("ts-jest", root)) {
+    return { name, status: "ok", detail: `ts-jest does not resolve from ${root} — the shim is not needed here` };
+  }
+  return jestConfigEntry(root) !== null
+    ? { name, status: "ok", detail: "ts-jest is in use and `jest-config` resolves, so the diagnostics shim can be written (ADR-0038)" }
+    : {
+      name,
+      status: "degraded",
+      detail: "ts-jest is in use but `jest-config` does not resolve from this project, so the diagnostics shim " +
+        "cannot be written. The mutation stage will fail on Stryker's own instrumentation for every candidate " +
+        "(ADR-0036). Either install jest so `jest-config` is reachable, or set ts-jest `diagnostics: false` in " +
+        "the project's own jest config.",
+    };
+};
+
+/**
+ * Does this project already know it needs more heap than node's default? (ADR-0032)
+ *
+ * Measured on a 576,606-line project: `tsc --noEmit` dies at ~52 s on a machine with 13 GB free, every
+ * candidate, twice — because the retry rule spends an attempt on it. The project's own scripts usually
+ * carry the number, and `NODE_OPTIONS` reaches every stage already, so the pre-flight version of this
+ * is to read the project's number and say whether this process is carrying it.
+ */
+const HEAP_FLAG = /--max-old-space-size[= ](\d+)/;
+
+export const heapCheck = (cwd: string | undefined, env: NodeJS.ProcessEnv = process.env): Check => {
+  const root = cwd ?? process.cwd();
+  const name = "tsc-heap";
+  let scripts = "";
+  try {
+    scripts = JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts ?? {});
+  } catch {
+    return { name, status: "ok", detail: `no readable package.json in ${root} — nothing to read a heap size out of` };
+  }
+
+  const wanted = Number(HEAP_FLAG.exec(scripts)?.[1] ?? 0);
+  const have = Number(HEAP_FLAG.exec(env.NODE_OPTIONS ?? "")?.[1] ?? 0);
+  if (wanted === 0) return { name, status: "ok", detail: "this project's own scripts ask for no extra heap" };
+  if (have >= wanted) return { name, status: "ok", detail: `NODE_OPTIONS carries ${have} MB; the project's scripts ask for ${wanted} MB` };
+  return {
+    name,
+    status: "degraded",
+    detail: `this project's own scripts run tsc with --max-old-space-size=${wanted}, and this process ` +
+      `${have === 0 ? "has no NODE_OPTIONS" : `carries only ${have} MB`}. A compile stage that runs out of heap ` +
+      "reads exactly like a candidate that does not compile, and the retry rule pays for it twice (ADR-0032). " +
+      `Run: NODE_OPTIONS=--max-old-space-size=${wanted} sidecrew run <plan>`,
+  };
+};
+
+/**
+ * Does this project's jest suite collect any tests at all?
+ *
+ * Found in Phase 14: `doctor` reported `jest ok` — jest resolves, jest answers `--version` — on a
+ * project whose suite collects **zero tests** under the node it was run with. Every stage after that
+ * is meaningless and none of them says so: a `pass` stage that runs no tests does not fail, and a
+ * baseline of zero passing tests is a baseline every candidate matches. Resolving a package is not
+ * the same question as the suite working, and `--version` cannot tell them apart.
+ */
+export const jestTestsCheck = async (cwd: string | undefined): Promise<Check> => {
+  const root = cwd ?? process.cwd();
+  const name = "jest-tests";
+  if (!isResolvable("jest", root)) return { name, status: "ok", detail: "jest does not resolve here — not this project's runner" };
+
+  const r = await run("npx", ["--no-install", "jest", "--listTests"], { timeoutMs: 60_000, cwd: root });
+  const listed = r.stdout.split("\n").map((l) => l.trim()).filter((l) => /\.(?:[cm]?[jt]sx?)$/.test(l));
+  if (listed.length > 0) {
+    return { name, status: "ok", detail: `jest collects ${listed.length} test file${listed.length === 1 ? "" : "s"} here` };
+  }
+
+  // Three different silences, and calling them all "no tests" would be the confident wrong answer this
+  // row exists to stop. Only the middle one is the defect.
+  if (r.timedOut) {
+    return { name, status: "degraded", detail: `\`jest --listTests\` did not finish in 60 s in ${root}, so whether the suite collects anything is unknown` };
+  }
+  if (!/no tests found/i.test(`${r.stdout}${r.stderr}`)) {
+    return {
+      name,
+      status: "degraded",
+      detail: `\`jest --listTests\` failed in ${root}, so whether the suite collects anything is unknown — ` +
+        `${firstLine(r) || "no output"}`,
+    };
+  }
+  return {
+    name,
+    status: "degraded",
+    detail: "jest resolves and answers --version, but `jest --listTests` collects no tests in this project. " +
+      "Every stage after the baseline is then meaningless and none of them says so — a run stage that runs no " +
+      "tests does not fail, and a baseline of zero passing tests is one every candidate matches. Usually the " +
+      `node version, a testMatch that covers nothing, or the wrong directory. Check: cd ${root} && npx jest --listTests`,
+  };
+};
+
+/**
+ * Line ranges from the compiler, or from the scanner it replaced? (ADR-0076)
+ *
+ * Measured on this repository's own source: the scanner cannot see **34.9 %** of function declarations
+ * and gets the range **wrong** for another 1.1 %, always by cutting a body short. Both are invisible in
+ * every report — a missed function is one the planner silently drops, and a short range is mutation
+ * over part of a function with the verdict saying nothing. A project where `typescript` cannot be
+ * resolved gets that rate and has no other way to find out.
+ */
+export const lineRangeCheck = (cwd: string | undefined): Check => {
+  const root = cwd ?? process.cwd();
+  const name = "line-ranges";
+  if (!looksTypeScript(root)) return { name, status: "ok", detail: `no ${TSCONFIG} in ${root} — nothing to range` };
+  return typeScriptAvailable(root)
+    ? { name, status: "ok", detail: "from the TypeScript compiler's own tree (ADR-0076)" }
+    : {
+      name,
+      status: "degraded",
+      detail: `typescript does not resolve from ${root}, so line ranges come from the regular-expression ` +
+        "scanner it replaced. Measured against the compiler on a real TypeScript codebase, that scanner " +
+        "cannot see 34.9 % of function declarations and cuts the body short on another 1.1 %, silently in " +
+        `both cases (ADR-0076). Fix: npm i -D typescript in ${root}.`,
+    };
+};
+
 const binCheck = async (name: string, args: string[], hint: string): Promise<Check> => {
   const r = await run(name, args, { timeoutMs: 60_000 });
   return exited0(r) ? { name, status: "ok", detail: firstLine(r) } : { name, status: "missing", detail: hint };
@@ -398,7 +584,7 @@ export interface DoctorOpts {
 /** Every row, probed for real. Also what `sidecrew_status` reports. */
 export async function collect(opts: DoctorOpts = {}): Promise<{ checks: Check[]; memory: Memory | null; port: number }> {
   const port = opts.port ?? DEFAULT_PORT;
-  const [memory, mlx, worker, tsc, vitest, jest, stryker, swift, muter] = await Promise.all([
+  const [memory, mlx, worker, tsc, vitest, jest, stryker, swift, muter, jestTests] = await Promise.all([
     readMemory(),
     mlxCheck(),
     workerCheck(port),
@@ -408,13 +594,21 @@ export async function collect(opts: DoctorOpts = {}): Promise<{ checks: Check[];
     localBinCheck("stryker", opts.cwd),
     binCheck("swift", ["--version"], "no Swift toolchain — the Swift verifier is unavailable"),
     binCheck("muter", ["--version"], "not installed — brew install muter-mutation-testing/formulae/muter"),
+    jestTestsCheck(opts.cwd),
   ]);
   // vitest and jest are both "missing" on a project that uses the other one, and that is correct
   // rather than alarming: they are alternatives, and `render` lists a missing capability without
   // failing the command. Only `stryker-runner` reports on the pair as a pair.
   const tier = memory === null ? "local" : tierFor(memory.total_gb).tier;
   return {
-    checks: [platformCheck(), nodeCheck(), tierCheck(memory), mlx, worker, memoryCheck(memory, tier), tsc, vitest, jest, stryker, strykerRunnersCheck(opts.cwd), swift, muter],
+    checks: [
+      platformCheck(), nodeCheck(), tierCheck(memory), mlx, worker, memoryCheck(memory, tier),
+      tsc, vitest, jest, stryker, strykerRunnersCheck(opts.cwd), swift, muter,
+      // The pre-flight questions: not "is it installed" but "will it do the thing", which is a
+      // different question and the one six real projects failed on.
+      lineRangeCheck(opts.cwd), tsconfigIncludeCheck(opts.cwd), tsJestCheck(opts.cwd),
+      heapCheck(opts.cwd), jestTests,
+    ],
     memory,
     port,
   };
@@ -423,7 +617,7 @@ export async function collect(opts: DoctorOpts = {}): Promise<{ checks: Check[];
 const MARK: Record<CapabilityStatus, string> = { ok: "ok      ", degraded: "DEGRADED", missing: "MISSING " };
 
 export const render = (checks: Check[]): string => {
-  const lines = checks.map((c) => `${MARK[c.status]} ${c.name.padEnd(14)} ${c.detail}`);
+  const lines = checks.map((c) => `${MARK[c.status]} ${c.name.padEnd(16)} ${c.detail}`);
   const degraded = checks.filter((c) => c.status === "degraded" || (c.status === "missing" && !FATAL_ROWS.has(c.name)));
   const fatal = checks.filter((c) => c.status === "missing" && FATAL_ROWS.has(c.name));
 

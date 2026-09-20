@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import type { RunResult } from "../exec.js";
 import { MAX_ERROR_CHARS } from "../schemas.js";
+import { astLineRange } from "./ast.js";
 import { mask, type Dialect } from "./tautology.js";
 
 /**
@@ -69,6 +70,40 @@ export function isResolvable(pkg: string, projectDir: string): boolean {
     }
   }
 }
+
+/**
+ * Where `jest-config` can be loaded from, or `null` (ADR-0038).
+ *
+ * ADR-0036's shim guards itself on `isResolvable("jest-config", projectDir)`, and `jest-config` is a
+ * **transitive** dependency of `jest`. pnpm's strict layout does not expose transitive dependencies at
+ * the project root, so the guard was false on exactly the package manager the other half of ADR-0036
+ * exists to support: the plugin fix would get such a project as far as the mutation stage, and the
+ * ts-jest fix would then be silently off when it arrived.
+ *
+ * Measured on a pnpm project: `ts-jest` resolves from the root and `jest-config` throws — but it
+ * resolves in one hop from `jest`'s own location, because pnpm puts a package's dependencies next to it.
+ * The anchors are tried in order and the resolved path is baked into the shim, so the guard and the
+ * shim cannot disagree about whether the fix is available. A fix that turns itself off must not do it
+ * quietly; that is the shape of ADR-0037.
+ */
+export function jestConfigEntry(projectDir: string): string | null {
+  const require_ = createRequire(join(resolve(projectDir), "package.json"));
+  for (const anchor of [null, "jest", "jest-cli", "@jest/core"]) {
+    try {
+      const from = anchor === null ? require_ : createRequire(require_.resolve(anchor));
+      return from.resolve("jest-config");
+    } catch {
+      // Next anchor. Exhausting them means this project cannot have the shim, which the caller says.
+    }
+  }
+  return null;
+}
+
+/** Where a candidate goes. Detected, not imposed (`references/conventions.md`). */
+const TS_TEST_DIRS = ["test", "tests", "__tests__", "src/__tests__"];
+
+export const testDirFor = (projectDir: string): string =>
+  TS_TEST_DIRS.find((d) => existsSync(join(projectDir, d))) ?? TS_TEST_DIRS[0]!;
 
 /** The machine cannot run the verifier at all. Not a failed candidate — do not retry, fix the setup. */
 export class VerifierSetupError extends Error {
@@ -151,19 +186,56 @@ const DECLARATION: Record<Dialect, (escaped: string) => RegExp> = {
   swift: (name) => new RegExp(`^[ \\t]*(?:(?:@[\\w.():, ]+|[A-Za-z_]\\w*)[ \\t]+)*func\\s+${name}\\s*[(<]`, "m"),
 };
 
+/** Which of the two implementations answered. `null` when neither found the function. */
+export type RangeSource = "ast" | "scanner" | null;
+
+export interface DerivedRange {
+  readonly range: readonly [number, number] | null;
+  readonly via: RangeSource;
+}
+
+export interface RangeOpts {
+  /** Where to resolve `typescript` from — the project being verified. TypeScript only. */
+  projectDir?: string;
+  /** The source's own name, so `.tsx` parses as `.tsx`. TypeScript only. */
+  fileName?: string;
+  /**
+   * Which implementation to use. Default: the compiler, then the scanner.
+   *
+   * `"scanner"` exists so the two can be compared on the same corpus — the test that keeps the fallback
+   * honest, and the only way a later session can re-measure what the scanner still gets wrong without
+   * uninstalling `typescript`.
+   */
+  engine?: "ast" | "scanner";
+}
+
 /**
- * The first and last line of a function, by brace matching over the masked source so a `}` in a string
- * or a comment cannot end it early.
+ * The first and last line of a function — from the TypeScript compiler when it is reachable, and from
+ * the brace-matching scanner below when it is not (ADR-0076).
  *
- * A stand-in, and it says so: from Phase 5 the range arrives in the `TestPlan`, which knows it from the
- * module the planner actually read. Until then the verifier has to find the function itself, and
- * finding nothing is an answer — the caller mutates the whole file and pays for it.
+ * **Which answered is part of the answer.** The scanner has been wrong four times about where a body
+ * ends, each time reading downstream as `NOT PLANNABLE — no mutants at all`, and each time invisible in
+ * every report. `via` is what makes a run that fell back to it say so — `doctor` asks the question before
+ * a run and `--validate` prints it after one.
+ *
+ * Swift has no compiler API to ask, so `swift` is always `scanner`. That is a known limit, not a
+ * silence: the scanner's Swift pattern has never been the one that was wrong.
  */
-export function deriveLineRange(
+export function lineRangeOf(
   source: string,
   functionName: string,
   dialect: Dialect = "typescript",
-): readonly [number, number] | null {
+  opts: RangeOpts = {},
+): DerivedRange {
+  if (dialect === "typescript" && opts.engine !== "scanner") {
+    const fromAst = astLineRange(source, functionName, opts);
+    if (fromAst !== null) return { range: fromAst, via: "ast" };
+    if (opts.engine === "ast") return { range: null, via: null };
+  }
+
+  // The compiler was unreachable, or it was reachable and this walk does not know the shape. Both fall
+  // here, because a miss costs a function nobody plans (ADR-0033) and the scanner is what found those
+  // shapes in the first place.
   const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const masked = mask(source, dialect);
 
@@ -172,9 +244,24 @@ export function deriveLineRange(
     const declaration = pattern.exec(masked);
     if (!declaration) continue;
     const range = bodyRange(source, masked, declaration.index);
-    if (range !== null) return range;
+    if (range !== null) return { range, via: "scanner" };
   }
-  return null;
+  return { range: null, via: null };
+}
+
+/**
+ * The first and last line of a function, or `null`.
+ *
+ * Finding nothing is an answer — the caller mutates the whole file and pays for it. Callers that need
+ * to know *how* it was found use `lineRangeOf`.
+ */
+export function deriveLineRange(
+  source: string,
+  functionName: string,
+  dialect: Dialect = "typescript",
+  opts: RangeOpts = {},
+): readonly [number, number] | null {
+  return lineRangeOf(source, functionName, dialect, opts).range;
 }
 
 /**

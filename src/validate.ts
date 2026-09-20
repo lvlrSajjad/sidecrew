@@ -113,6 +113,16 @@ export async function validatePlan(planPath: string, opts: ValidateOpts = {}): P
   const source = await readFile(modulePath, "utf8");
   const lines = source.split("\n").length;
   const dialect = plan.language === "swift" ? "swift" : "typescript";
+  // Where to resolve the project's own `typescript` from, for AST-derived line ranges (ADR-0076). The
+  // block below computes the same root again and reports the failure; here a failure is not an error,
+  // because a module outside any project still has line ranges and they are still worth checking.
+  const tsRoot = ((): string | undefined => {
+    try {
+      return findProjectRoot(modulePath, plan.language);
+    } catch {
+      return undefined;
+    }
+  })();
 
   // ── shapes ────────────────────────────────────────────────────────────────────────────────────
   const defined = new Set<ShapeKind>();
@@ -154,7 +164,7 @@ export async function validatePlan(planPath: string, opts: ValidateOpts = {}): P
     // A range that does not start at the declaration mutates lines belonging to something else
     // (ADR-0013). `deriveLineRange` finds only the declaration forms it knows, so finding nothing is
     // not evidence of anything and says nothing.
-    const derived = deriveLineRange(source, fn.name, dialect);
+    const derived = deriveLineRange(source, fn.name, dialect, { projectDir: tsRoot, fileName: modulePath });
     if (derived !== null && (from > derived[0] || to < derived[1])) {
       errors.push(issue(
         "range_not_function",

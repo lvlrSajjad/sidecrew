@@ -23,13 +23,13 @@ import { run } from "../exec.js";
 import { MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
 import { analyseTautology, type TautologyReport } from "./tautology.js";
 import {
-  deriveLineRange, isResolvable, isTestRunner, looksLikeOom, output, resolveNodeModules, safeName,
+  deriveLineRange, isResolvable, isTestRunner, jestConfigEntry, looksLikeOom, output, resolveNodeModules, safeName,
   STRYKER_PLUGIN, TEST_RUNNERS, truncateError, VerifierSetupError, type TestRunner,
 } from "./shared.js";
 
 // Re-exported so this module stays the one place a caller has to know about to verify TypeScript.
 // The implementations moved to `shared.ts` in Phase 3, where the Swift verifier could reach them.
-export { deriveLineRange, isTestRunner, looksLikeOom, STRYKER_PLUGIN, TEST_RUNNERS, truncateError, VerifierSetupError };
+export { deriveLineRange, isTestRunner, jestConfigEntry, looksLikeOom, STRYKER_PLUGIN, TEST_RUNNERS, truncateError, VerifierSetupError };
 export type { TestRunner };
 
 /** What the candidate was asked to test. Phase 4 fills this from the `TestPlan`; Phase 2 is explicit. */
@@ -280,34 +280,6 @@ export interface StrykerConfigOpts {
   ignorePatterns?: readonly string[];
   /** Absolute paths to plugins Stryker's own glob cannot see, e.g. under pnpm (ADR-0036). */
   plugins?: readonly string[];
-}
-
-/**
- * Where `jest-config` can be loaded from, or `null` (ADR-0038).
- *
- * ADR-0036's shim guards itself on `isResolvable("jest-config", projectDir)`, and `jest-config` is a
- * **transitive** dependency of `jest`. pnpm's strict layout does not expose transitive dependencies at
- * the project root, so the guard was false on exactly the package manager the other half of ADR-0036
- * exists to support: the plugin fix would get such a project as far as the mutation stage, and the
- * ts-jest fix would then be silently off when it arrived.
- *
- * Measured on a pnpm project: `ts-jest` resolves from the root and `jest-config` throws — but it
- * resolves in one hop from `jest`'s own location, because pnpm puts a package's dependencies next to it.
- * The anchors are tried in order and the resolved path is baked into the shim, so the guard and the
- * shim cannot disagree about whether the fix is available. A fix that turns itself off must not do it
- * quietly; that is the shape of ADR-0037.
- */
-export function jestConfigEntry(projectDir: string): string | null {
-  const require_ = createRequire(join(resolve(projectDir), "package.json"));
-  for (const anchor of [null, "jest", "jest-cli", "@jest/core"]) {
-    try {
-      const from = anchor === null ? require_ : createRequire(require_.resolve(anchor));
-      return from.resolve("jest-config");
-    } catch {
-      // Next anchor. Exhausting them means this project cannot have the shim, which the caller says.
-    }
-  }
-  return null;
 }
 
 /**
@@ -975,7 +947,10 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
       }), "utf8");
       const stryker = binary(projectDir, "stryker");
       const range = target.lineRange === undefined
-        ? deriveLineRange(await readFile(join(projectDir, target.sourceFile), "utf8"), target.functionName)
+        ? deriveLineRange(
+          await readFile(join(projectDir, target.sourceFile), "utf8"), target.functionName, "typescript",
+          { projectDir, fileName: target.sourceFile },
+        )
         : target.lineRange;
       // The config file is a positional argument, and it has to come last: `stryker run --mutate X cfg`.
       const mutated = await run(stryker.cmd, [...stryker.args, "run", "--mutate", mutateArg(target.sourceFile, range), STRYKER_CONFIG], {

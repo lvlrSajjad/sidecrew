@@ -20,7 +20,11 @@ import { basename, dirname, extname, join, relative, resolve, sep } from "node:p
 import { TestPlan, type Candidate, type PlannedFunction, type ShapeKind, type Verdict, type WorkerTask } from "./schemas.js";
 import { isTestRunner, verifyTs, type TestRunner, type TsTarget } from "./verifier/ts.js";
 import { verifySwift, type SwiftFramework, type SwiftTarget } from "./verifier/swift.js";
-import { deriveLineRange, safeName } from "./verifier/shared.js";
+import { deriveLineRange, safeName, testDirFor } from "./verifier/shared.js";
+
+// Re-exported from where it lives now: `doctor` asks the same question before a run, and importing
+// this module from there would close a cycle through `serve` (ADR-0076).
+export { testDirFor } from "./verifier/shared.js";
 
 /** The plan is wrong, missing, or does not describe the code on disk. Not a machine problem. */
 export class PlanError extends Error {
@@ -61,11 +65,6 @@ export function findProjectRoot(moduleFile: string, language: string): string {
   }
 }
 
-/** Where a candidate goes. Detected, not imposed (`references/conventions.md`). */
-const TS_TEST_DIRS = ["test", "tests", "__tests__", "src/__tests__"];
-
-export const testDirFor = (projectDir: string): string =>
-  TS_TEST_DIRS.find((d) => existsSync(join(projectDir, d))) ?? TS_TEST_DIRS[0]!;
 
 /** Directories that never contain a project's own tests and are expensive to walk. */
 const NOT_TESTS = new Set(["node_modules", ".git", "dist", "build", "coverage", ".next", ".sidecrew", "reports"]);
@@ -374,7 +373,9 @@ export function rangeFor(loaded: LoadedPlan, name: string): readonly [number, nu
   const planned = loaded.plan.functions.find((f) => f.name === name);
   if (planned !== undefined) return planned.line_range;
   const dialect = loaded.plan.language === "swift" ? "swift" : "typescript";
-  const derived = deriveLineRange(loaded.source, name, dialect);
+  const derived = deriveLineRange(loaded.source, name, dialect, {
+    projectDir: loaded.projectDir, fileName: loaded.modulePath,
+  });
   if (derived === null) {
     throw new PlanError(
       `neither ${basename(loaded.planPath)} nor ${loaded.sourceFile} has a function called ${name} — ` +

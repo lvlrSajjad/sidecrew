@@ -52,6 +52,7 @@ import { readRecord, sidecrewDir, type WorkerRecord } from "./serve.js";
 import { benchBaseline, ThermalGuard, type BackOff } from "./throttle.js";
 import { complete, decodeTokensPerSecond } from "./worker.js";
 import { safeName, truncateError, VerifierSetupError } from "./verifier/shared.js";
+import { describeContradiction, findContradiction, type Contradiction } from "./verifier/contradiction.js";
 
 /**
  * One seed for every task in a run. Not per task: the prompt already differs per function × shape, so
@@ -286,7 +287,7 @@ export interface RetryDecision {
  * Does this failure deserve the one retry? Two of them do not, and both would look like the test's
  * fault to a loop that only read `survived`.
  */
-export function shouldRetry(verdict: Verdict): RetryDecision {
+export function shouldRetry(verdict: Verdict, contradiction: Contradiction | null = null): RetryDecision {
   if (verdict.survived) return { retry: false, reason: "survived" };
   if (verdict.stage_reached === "mutation") {
     return { retry: false, reason: "the mutation tool produced no report — a machine problem, not the candidate's (ADR-0012)" };
@@ -299,7 +300,16 @@ export function shouldRetry(verdict: Verdict): RetryDecision {
   // tautological too — the detector reads text that never got as far as calling anything — and
   // "did not compile" is the sentence that names the thing to fix.
   if (!verdict.compile_ok) return { retry: true, reason: "did not compile" };
-  if (!verdict.pass_ok) return { retry: true, reason: "compiled but did not pass" };
+  if (!verdict.pass_ok) {
+    // ADR-0042. `compiled but did not pass` is true and says nothing a worker can act on; the retry is
+    // then spent on a pasted jest failure. Where the file is wrong **on its own terms** the useful
+    // sentence is available without running anything, and it is this one. It changes no verdict —
+    // `survived` is already false here, and `retry` is the same either way.
+    return {
+      retry: true,
+      reason: contradiction === null ? "compiled but did not pass" : describeContradiction(contradiction),
+    };
+  }
   if (verdict.tautological) return { retry: true, reason: "tautological — it passes without testing the function" };
   return { retry: true, reason: "killed no mutant" };
 }
@@ -578,7 +588,14 @@ export async function runBatch(planPath: string, opts: RunBatchOpts = {}): Promi
         await writeJson(join(runDir, "verdicts", `${safeName(current.task_id)}.json`), verdict);
         attempts.push({ task: current, candidate, verdict });
 
-        const decision = shouldRetry(verdict);
+        // Read once, from the candidate that just failed, and only when it failed at `pass` — the
+        // stage the funnel collapses at, and the only stage where the answer means anything.
+        const contradiction = verdict.compile_ok && !verdict.pass_ok
+          ? findContradiction(candidate.test_source, functionOfTaskId(current.task_id), {
+            projectDir: loaded.projectDir, fileName: loaded.sourceFile,
+          })
+          : null;
+        const decision = shouldRetry(verdict, contradiction);
         reason = decision.reason;
         const willRetry = decision.retry && attempt === 0;
         say(verdict.survived
