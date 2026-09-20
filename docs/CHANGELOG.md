@@ -1,6 +1,29 @@
 # Changelog
 ## Unreleased
 
+**CI is green again.** `ci.yml` had failed on `main` on every push since 18 Sep and nobody looked:
+the local suite was green and `release.yml` had never run. It blocked the release outright, because
+the release gate runs `npm test`. Two independent causes, both found by tagging `v0.1.0-rc.2`, which
+is what the release candidate was for. No product code changed.
+
+- **The 24 GB floor refused the runner.** `assertSupportedMachine` (ADR-0073) throws below 24 GB and a
+  GitHub macOS runner has 7. Five `runBatch` tests died on it — three of them `--dry-run` tests, which
+  never reach a worker at all. They now pass `workerKind: "local"`, the bypass the function's own
+  docstring blesses for a harness, so the tests move off the floor and the floor does not move.
+  **Whether `--dry-run` should be subject to the floor is a product question and is still open** —
+  written up in `BACKLOG.md` rather than settled by a test fix.
+- **One test asserted on ambient state.** `test/serve.test.ts`'s *"finds the nearest .sidecrew at or
+  above the directory it is asked about"* expected `sidecrewDir(process.cwd(), {})` to end in
+  `.sidecrew`, which holds only on a machine that has already run sidecrew — never on a fresh clone or
+  a runner. It builds its own tree now. A commit on 19 Sep fixed the same class of bug in a different
+  place and did not catch this one.
+- `test/batch.test.ts` no longer asserts `worker_kind === "local"` in the dry-run test, because with
+  the kind passed in the claim would be about the argument. `test/batch.slow.test.ts` still derives it
+  from installed RAM on a machine that has the RAM.
+- Verified against the runner's conditions rather than assumed: the floor bypass exercised at
+  `total_gb: 7.0`, and both test files run green in a tracked-files-only tree with no `.sidecrew` in
+  it.
+
 **Phase 14b — the editing ceiling.** Measurement only: no product code, no version. `S₁₄ = 2/30 =
 0.067`, 95 % `[0.008, 0.221]`, best of two probes on §2.2's same 30 declared `null_guard` tasks.
 Against the rule frozen in `PHASES.md` before either probe ran, that is **`S₁₄ < 0.10` → PROCEED to

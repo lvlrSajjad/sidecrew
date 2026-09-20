@@ -769,3 +769,25 @@ ADR-0067 and ADR-0068 **changed the gate** on 18 Sep and nothing re-verified tha
 it caught before. Those four candidates are a better regression suite than anything synthetic: store
 them as fixtures and assert the gate rejects each **for the right reason and at the right stage**.
 Cheap, and it protects the one component every other number depends on.
+
+## Noticed while fixing CI (20 Sep 2026) — an undecided product question, deliberately left undecided
+
+**Should the 24 GB floor (ADR-0073) fire on a run that never starts a worker?**
+
+`runBatch` and `fix` call `assertSupportedMachine` before they know whether the run will generate
+anything, so `sidecrew run --dry-run` is refused on a 16 GB laptop. A dry run stops before the first
+token and picks no worker: it renders tasks and prompts and counts estimated tokens, none of which
+needs RAM sidecrew does not have.
+
+That is arguably wrong — *"what would this cost me?"* is exactly the question somebody on an
+unsupported machine wants to ask before buying a supported one, and refusing it is a worse first
+experience than answering it. It is arguably right too: a floor that holds everywhere is one rule, and
+a floor with an exception is two, and the exception is the kind that grows.
+
+**Not decided here, and not decided by the CI fix.** The five tests that hit this now pass
+`workerKind: "local"` explicitly — the bypass `assertSupportedMachine`'s own docstring already blesses
+for a harness — which moves the tests off the floor without moving the floor. Whoever takes this
+should decide the product question on its merits and write the ADR, not inherit it from a test.
+
+**Do not reach for `SIDECREW_TIER=api` as the answer.** It opts into a tier ADR-0073 descoped and
+whose survival and cost figures were never measured.

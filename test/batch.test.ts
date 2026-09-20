@@ -219,11 +219,13 @@ describe("runBatch --dry-run", () => {
   it("writes every task and stops before the first token", async () => {
     const dir = `.sidecrew-test-${process.pid}`;
     dirs.push(dir);
-    const result = await runBatch(FIXTURE_PLAN, { dryRun: true, dir, ports: [await deadPort()] });
+    const result = await runBatch(FIXTURE_PLAN, { dryRun: true, dir, ports: [await deadPort()], workerKind: "local" });
 
     expect(result.stats.tasks).toBeGreaterThan(0);
     expect(result.stats).toMatchObject({ survived: 0, retried: 0, escalated: 0, peak_rss_mb: 0 });
-    expect(result.config.worker_kind).toBe("local");
+    // `worker_kind` is no longer asserted here: this harness passes it, so the claim would be about
+    // the argument. `test/batch.slow.test.ts` still derives it from installed RAM on a machine that
+    // has the RAM to derive it from.
     expect(result.stats.claude_tokens.workers).toBe(0);
 
     const written = readFileSync(join(dir, "runs", result.run_id, "tasks", "commonPrefix.boundary.0.json"), "utf8");
@@ -236,7 +238,7 @@ describe("runBatch --dry-run", () => {
     // the exemplar is inlined. "Prompts built, nothing sent" is the point of the flag.
     const dir = `.sidecrew-test-prompts-${process.pid}`;
     dirs.push(dir);
-    const result = await runBatch(FIXTURE_PLAN, { dryRun: true, dir, ports: [await deadPort()] });
+    const result = await runBatch(FIXTURE_PLAN, { dryRun: true, dir, ports: [await deadPort()], workerKind: "local" });
 
     const prompt = readFileSync(join(dir, "runs", result.run_id, "prompts", "commonPrefix.boundary.0.md"), "utf8");
     expect(prompt).not.toMatch(/\{\{/);
@@ -251,7 +253,7 @@ describe("runBatch --dry-run", () => {
     const dir = `.sidecrew-test-tokens-${process.pid}`;
     dirs.push(dir);
     const lines: string[] = [];
-    await runBatch(FIXTURE_PLAN, { dryRun: true, dir, ports: [await deadPort()], onEvent: (l) => lines.push(l) });
+    await runBatch(FIXTURE_PLAN, { dryRun: true, dir, ports: [await deadPort()], workerKind: "local", onEvent: (l) => lines.push(l) });
     expect(lines.join("\n")).toMatch(/~\d+ estimated prompt tokens/);
   });
 
@@ -278,7 +280,7 @@ describe("a task that throws", () => {
     dirs.push(dir);
     const f = await fake({ httpError: { status: 500, body: "Exceeded model context window size" } });
 
-    const result = await runBatch(FIXTURE_PLAN, { dir, ports: [f.port] });
+    const result = await runBatch(FIXTURE_PLAN, { dir, ports: [f.port], workerKind: "local" });
 
     expect(result.stats.tasks).toBeGreaterThan(0);
     expect(result.stats.survived).toBe(0);
@@ -294,7 +296,7 @@ describe("a task that throws", () => {
     dirs.push(dir);
     const f = await fake({ httpError: { status: 500, body: "nope" } });
 
-    const result = await runBatch(FIXTURE_PLAN, { dir, ports: [f.port] });
+    const result = await runBatch(FIXTURE_PLAN, { dir, ports: [f.port], workerKind: "local" });
     const runDir = join(dir, "runs", result.run_id);
     expect(existsSync(join(runDir, ESCALATIONS_FILE))).toBe(true);
 

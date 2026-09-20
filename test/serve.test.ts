@@ -119,11 +119,25 @@ describe("sidecrewDir — ADR-0029", () => {
     expect(sidecrewDir("/anywhere", { SIDECREW_DIR: "/state/.sidecrew" })).toBe("/state/.sidecrew");
   });
 
-  it("finds the nearest .sidecrew at or above the directory it is asked about", () => {
+  it("finds the nearest .sidecrew at or above the directory it is asked about", async () => {
     // `serve` at a repo root and `run` in one of its workspaces is the common case, and it used to mean
     // the second found no record — which used to mean it guessed.
-    expect(sidecrewDir(process.cwd(), {})).toBe(join(process.cwd(), SIDECREW_DIR));
-    expect(sidecrewDir(join(process.cwd(), "src", "verifier"), {})).toBe(join(process.cwd(), SIDECREW_DIR));
+    //
+    // It builds the tree it walks. This asserted against `process.cwd()`, which only holds once
+    // somebody has run sidecrew *here* — so it passed on a developer's machine and failed on every
+    // fresh clone and every CI runner. A test about walking up a directory tree was reading ambient
+    // state, and it was red on `main` for days before anybody looked.
+    const root = await mkdtemp(join(tmpdir(), "sidecrew-dir-"));
+    try {
+      await mkdir(join(root, SIDECREW_DIR));
+      const nested = join(root, "packages", "web", "src");
+      await mkdir(nested, { recursive: true });
+
+      expect(sidecrewDir(root, {})).toBe(join(root, SIDECREW_DIR));
+      expect(sidecrewDir(nested, {})).toBe(join(root, SIDECREW_DIR));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("falls back to a relative .sidecrew where a fresh serve would create one", () => {
