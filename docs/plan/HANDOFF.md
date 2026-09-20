@@ -33,7 +33,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
 | version | **`0.1.0`** — bumped off `0.1.0-rc.2` on 21 Sep in all six places (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json`) and `dist` rebuilt, so the tarball announces `0.1.0`. **Ready to publish and to tag `v0.1.0`.** `ci.yml` checks four of the six, `release.yml` five; the lockfile is checked by neither |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
-| published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
+| published | **`sidecrew@0.1.0` IS ON npm** (21 Sep, hand-published, `latest`), and the **Trusted Publisher is registered** — `github` / `lvlrSajjad/sidecrew` / `release.yml`, publish + stage-publish. **GitHub Pages is on.** The `v0.1.0` tag is pushed and **its `release.yml` run failed in `gate`**, so `npm` and `registry` were skipped: **the MCP Registry entry does not exist yet.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — **inputs verified present 21 Sep**, but it needs a harness written first, not just a replay |
 | ADRs | run to **0079**; start new ones at 0080. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
@@ -160,7 +160,29 @@ pushing the fix for the first two and reading the job that had never been read.*
   exercised directly at `total_gb: 7.0`, and both test files run green in a tracked-files-only copy of
   the tree with no `.sidecrew` in it.
 
-**1. The owner actions — and the order is forced, see §2.** Pages is **done**. The versions are
+**0′. Re-run the `v0.1.0` release — this is the first thing tomorrow, and it is small.**
+`0.1.0` is on npm and the trusted publisher is registered, so **the product is published**; what did
+not happen is the **MCP Registry** entry, because `gate` failed and skipped both later jobs.
+
+The failure was **not** the version check and not the suite. It was the *"doctor runs from the packed
+tarball"* step: `doctor` **exits 1 on a machine that cannot host a worker**, and a GitHub runner is
+one — 7 GB against ADR-0073's 24 GB floor. `doctor` was right; the step was asserting the wrong
+thing. It is the **third** instance this week of a check that only passes on a developer's machine.
+
+**Fixed 21 Sep** — the step now asserts what it was always for: `doctor` runs from the installed
+tarball, its exit code is 0 **or 1** (anything higher is a crash, not an unsupported machine), its
+`--json` carries the expected rows, and **the five `dist/prompts/*.md` runtime assets are present** —
+the assets `tsc` does not copy and whose absence nothing else would notice until a run tried to render
+a prompt. Verified locally against a real `npm pack` install.
+
+**To re-run:** `release.yml` has `workflow_dispatch`, and the `gate` reads the tag from
+`GITHUB_REF_NAME`, so it must be dispatched **on the tag ref** —
+`gh workflow run release.yml --ref v0.1.0` — or the tag deleted and re-pushed. **Dispatch-on-tag is
+untested here**; if the version gate reports a tag of `main`, that is why, and re-pushing the tag is
+the fallback. The `npm` job will **skip** (0.1.0 already published) and `registry` will run for the
+first time — **its `login github-oidc` flow has still never executed.**
+
+**1. The remaining owner actions — the order is forced, see §2.** Pages is **done**. The versions are
 **already at `0.1.0`** and `dist` is rebuilt. What is left: **hand-publish `0.1.0`** (the package must
 exist before Trusted Publishing can be configured — measured, §2), **then** configure Trusted
 Publishing, **then** tag `v0.1.0`. `v0.1.0-rc.1` and `v0.1.0-rc.2` are both pushed and both failed;

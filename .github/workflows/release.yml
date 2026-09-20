@@ -103,7 +103,34 @@ jobs:
           cd "$tmp"
           npm init -y > /dev/null
           npm i --silent "./$tgz"
-          ./node_modules/.bin/sidecrew doctor
+          # **`doctor` exits 1 on a machine that cannot host a worker, and a CI runner is one** —
+          # 7 GB against ADR-0073's 24 GB floor. That is `doctor` being right, and it was the wrong
+          # assertion for this step, which is about the *tarball*: that the install resolves, its code
+          # loads, and the runtime assets `tsc` does not copy are present. `v0.1.0` failed here with
+          # `0.1.0` already on npm, which is how this was found. Assert the tarball, not the runner.
+          set +e
+          out=$(./node_modules/.bin/sidecrew doctor --json 2>&1); code=$?
+          set -e
+          printf '%s\n' "$out"
+          # 0 = supported machine, 1 = a fatal row (here: tier). Anything else is a crash.
+          [ "$code" -le 1 ] || { echo "::error::doctor exited $code — that is a crash, not an unsupported machine"; exit 1; }
+          printf '%s' "$out" | node -e '
+            let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+              const j = JSON.parse(s);
+              const names = new Set(j.checks.map(c => c.name));
+              for (const need of ["platform", "node", "tier", "line-ranges", "tsconfig-include"]) {
+                if (!names.has(need)) { console.error(`::error::doctor produced no \`${need}\` row — the install is not whole`); process.exit(1); }
+              }
+              console.log(`doctor ran from the tarball and reported ${j.checks.length} checks`);
+            });
+          '
+          # The assets a script copies into `dist`, which `tsc` would not, and which nothing else here
+          # would notice were missing until a run tried to render a prompt.
+          for f in worker.md fixer.md retry.md fix-retry.md bench.md; do
+            test -f "node_modules/sidecrew/dist/prompts/$f" \
+              || { echo "::error::missing runtime asset dist/prompts/$f — the tarball is not a working install"; exit 1; }
+          done
+          echo "all five prompt templates present in the installed tarball"
 
   npm:
     needs: gate
