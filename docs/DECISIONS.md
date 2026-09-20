@@ -4995,3 +4995,77 @@ the thing being deleted on the fixture was the comment documenting the trap the 
 **What it still cannot see**, unchanged from the original: a comment rewrapped across different line
 boundaries with identical words, and whether a reword was *right*. The second is a judgement for a
 reviewer and explicitly not for the gate.
+
+## ADR-0075 — The whole-file return format, not the model, caps the addressable surface at about half a codebase (PROPOSED)
+
+**Status:** proposed · 20 Sep 2026 · owner's question, measured the same day · needs the owner
+**Bears on:** the *"anything Opus does"* goal, ADR-0047 §2, and Phase 14's AST item
+
+### The question
+
+> *"How do we perform on large files? 1000+ line files? Considering our local 7B models don't have a
+> huge context window — won't they corrupt the file?"*
+
+### They do not corrupt it. Three things stop that, and one of them is measured
+
+1. **The validator refuses the task before a worker sees it.** `files_too_large_to_rewrite`:
+   `rewriteCost(sources) > MAX_FIX_TOKENS` is an error, not a warning, so the plan does not validate.
+2. **If a model truncates anyway, the candidate says so.** `ChangeCandidate.truncated` is on the
+   contract and the gate treats it as a problem; a cut-off file cannot be scored as a survivor.
+3. **Measured: 0 truncated and 0 unparsed across 59 candidates** in §2.2, on files up to 18.9 KB.
+
+So the failure mode the question feared is closed. **The real cost is worse in a way that is easier
+to miss, because nothing fails.**
+
+### What it actually costs, measured on project-a
+
+| | |
+|---|---|
+| TypeScript files under `src/` | **2,160** |
+| over the ~22,674-character whole-file ceiling | **71 — 3.3 %** |
+| files of **1000+ lines** | **52**, and **every one** is over the ceiling |
+| **share of the codebase those 71 files are, by bytes** | **48.1 %** |
+
+**Three percent of the files are half the code.** And the work concentrates there: the Phase 12
+planner, surveying independently, reported that project-a's misspelled identifiers live in service
+files of 30–145 KB — *"1,975 of 2,042 files are individually under it; the ones carrying the work are
+not."*
+
+> **Roughly half of a real codebase is unaddressable, and it is the half where the work is.** That is
+> a property of the **return format**, not of the model's ability, and no amount of better weights
+> moves it.
+
+### Why this matters against the 90 % goal
+
+The owner's bar is *"anything Opus does… even 90 % is a win."* Opus edits a 4,000-line file without
+thinking about it. Today sidecrew declines, correctly and loudly. So the ceiling — not the 7B's
+reasoning — is the first binding constraint on that number, and it binds at roughly 50 % by volume
+before model quality is even reached.
+
+### Options
+
+- **A — keep whole-file and accept the ceiling.** Honest, zero work, and caps the product at about
+  half a codebase. It is also the status quo, so it is what ships if nothing is decided.
+- **B — unified-diff hunks.** ADR-0047 §2 rejected this and the reasons still hold: a 7B emitting
+  correct `@@` headers against code it is reading for the first time fails in a way that says nothing
+  about whether it understood the change, and it adds a whole stage — *the patch did not apply* — for
+  a verdict to represent. **No.**
+- **C — symbol-scoped return.** The task names a declaration; the worker returns **that declaration's
+  new text** and nothing else; sidecrew splices it back by AST range. The model never writes a line
+  number, so B's failure mode does not exist. Confinement stays decidable before a byte is written
+  (it is still a pure function of the task's sources and the answer). The bound becomes the *symbol*,
+  not the file — a 60-line method inside a 4,000-line service is suddenly in reach.
+- **D — a larger-context local model.** Moves the ceiling without removing it, costs memory the gate
+  needs (CLAUDE.md #5), and Phase 6 measured the 14B matching the 7B on TypeScript while costing 2.2×
+  the generation time.
+
+**Recommendation: C.** It is the only option that changes the *shape* of the limit rather than its
+size, and it makes an item already owed load-bearing: **C needs `deriveLineRange` to read the
+TypeScript AST**, which is Phase 14's DoD item and has been patched four times as a regex with *"no
+mutants at all"* wrong every time anybody checked. That item stops being hardening and becomes the
+enabler for the biggest single capability gain available.
+
+**What C does not fix**, said now: a change that genuinely spans a whole file — a wide rename inside a
+145 KB service — is still out of reach, because the *answer* is large however it is framed. C moves
+the boundary from *"the file is big"* to *"the change is big"*, which is the right boundary and not
+the absence of one.
