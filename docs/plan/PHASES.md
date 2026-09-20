@@ -26,8 +26,8 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | 10 | **Workload #2a: behaviour-preserving changes** — gate, sandbox, task and verdict contracts | ✅ done | `prompts/phase-10-workload-2a.md` |
 | 11 | Workload #2a go/no-go: the frozen decision rule and its number | ✅ done | `prompts/phase-11-go-no-go-2a.md` · **§4 frozen 16 Sep 2026** · GO on project-a by zero margin, NO-GO on the fixture, project-b inconclusive |
 | **11b** | **sidecrew against not using sidecrew** — Opus alone, Sonnet alone, sidecrew, and the gate applied to Opus's own output | ✅ **done, both projects** — project-a: a local 7B produced **byte-identical output to Opus on 18/19** tasks, arm C **19/19**, arm D 19/19. project-b: the first non-saturated rate, arm C **15/19** `[0.544, 0.939]` with **3 real worker defects** (122 compile errors on one) and 1 failure Opus reproduces exactly — **15/18** worker-attributable. **0 worker tokens** against 80,131/95,335 (Opus). Arm D found **no defect in Opus's output**: the gate's value is making a free worker usable, not second-guessing an expensive one | `prompts/phase-11b-against-the-status-quo.md` · **§4 frozen 18 Sep 2026** · **verdict WITHHELD per §4.4** (19/19 `rename`), declared before the first arm · five defects: ADR-0066/0067/0068/0069 + O8 · `experiments/status-quo/` |
-| 12 | Management: the code-change planner, the correction round, what a stuck worker says | 🔶 **built, unmeasured** | `prompts/phase-12-management.md` · ADR-0044, ADR-0057, ADR-0058 · the four deliverables are done; **§2.1 and §2.2 are a later session's**, against rules frozen 18 Sep before either existed. §2.2's denominator is unblocked by ADR-0063 |
-| 13 | The `api` tier: Haiku as the worker on machines with 16 GB or less | 🔶 **built and merged, unmeasured** | `prompts/phase-13-api-tier.md` · §5 frozen 18 Sep · ADR-0045, ADR-0059 – ADR-0062 · the client, both guards, tier selection and the accounting are in and tested. **§5 waits on API credits** — the Console account has none, and a subagent substitute was considered and refused (§5's amendment, dated). Blocks nothing before 14 |
+| 12 | Management: the code-change planner, the correction round, what a stuck worker says | ✅ **built and measured** — see 12m | `prompts/phase-12-management.md` · ADR-0044, ADR-0057, ADR-0058 · the four deliverables are done; **§2.1 and §2.2 are a later session's**, against rules frozen 18 Sep before either existed. §2.2's denominator is unblocked by ADR-0063 |
+| 13 | ~~The `api` tier~~ — **off the publish path, 20 Sep 2026 (ADR-0073)** | ⬛ **descoped by the owner** | The owner narrowed the supported surface: *24 GB+ laptops*. **§5 is cancelled** — the tier is no longer something publication waits on. The client stays, tested, behind `SIDECREW_TIER=api`, unsupported and unpriced; below 24 GB sidecrew now **refuses with a reason** rather than falling back. `WorkerKind` keeps `"api"` — Phase 11's C3 and 11b's arm D record it, including the corpus `D` was measured on |
 | **13b** | **The edge ideas that gate publication** — unattended mode ✅, memoisation ✅, local retrieval | 🔶 **two of three built** · owner's decision 18 Sep 2026 | `BACKLOG.md` § *The edge ideas* items 4, 3, 1 · all three were Phase 12's and were not built. **Item 6 (two-model agreement) was considered and dropped** — its own precondition is untested |
 | **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12` and `1.07` at `N = 41`, FAIL at both** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · **§2.2: `S_c = 0/29`, OFF BY DEFAULT** · ✅ **all four measured** | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
 | 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ | `prompts/phase-8-publish.md` |
@@ -35,9 +35,9 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
 | 17 | The edge ideas: fine-tune on survivors, worker pooling, two-model agreement | 🔷 proposed | `BACKLOG.md` § *The edge ideas* |
 
-**The path to publish is 10 → 11 → 11b → 12 → 13 → 14**, in that order, and numbers are the order ("don't start
+**The path to publish is 10 → 11 → 11b → 12 → 14**, in that order, and numbers are the order ("don't start
 N+1 until N's DoD is met"). Workload #2b is behind publish on purpose: the owner's bar is the worked
-example in `VISION.md`, which is #2a with the management loop, on both tiers. 2b is in the vision and is
+example in `VISION.md`, which is #2a with the management loop on the supported tier. 2b is in the vision and is
 not in the bar.
 
 ## Publishing moved, twice, and the second move is the owner's decision of 16 Sep 2026
@@ -56,8 +56,11 @@ harder to escape later than it is to broaden now. Phase 14 is the old Phase 8 pr
 
 **Refined later the same day**, and now the bar `VISION.md` spells out: *"everything should be published
 when what I proposed works properly and people can use it on their code base with no problem."* That
-sentence added one phase — 13, the Haiku tier — because a tool that does not run on a 16 GB laptop is not
-one people can use (ADR-0045).
+sentence added one phase — 13, the Haiku tier — because a tool that does not run on a 16 GB laptop was
+judged not to be one people can use (ADR-0045). **The owner reversed that on 20 Sep 2026 (ADR-0073):
+sidecrew is a 24 GB+ tool, it refuses below the floor with a reason, and Phase 13 leaves the publish
+path.** The reversal is kept visible rather than edited away — the original judgement was reasonable
+and the scope decision is the owner's to make.
 
 **What this decision costs, stated honestly:** workload #1 is finished, measured on unmodified real
 projects, and will sit unreleased for the length of Phases 10–13 and the publish phase itself. Nobody else gets to use it or find its
@@ -164,7 +167,9 @@ different decision, needs its own ADR and a fresh baseline, and is explicitly no
   a per-run budget); and the stuck signal. ADR-0044 §3–4. It waits for 11's number because the correction
   round is only worth building if the *uncorrected* survival rate leaves room for it to matter, and its own
   value is a measurement — corrected-attempt survival against the tokens each correction cost.
-- **Phase 13 — Haiku on 16 GB machines. BUILT, UNMEASURED (18 Sep 2026).** The `api` client that
+- **Phase 13 — Haiku on 16 GB machines. BUILT, then DESCOPED by the owner (20 Sep 2026, ADR-0073).**
+  *Everything below describes the phase as it stood; it is kept because the reasoning was sound and the
+  scope call is the owner's, not the phase's.* The `api` client that
   ADR-0009 decided and nothing built now exists: `src/api-worker.ts`, tier selection from *installed*
   RAM, `runBatch`/`runFix` no longer hard-coding `local`, accounting from the API's own usage fields,
   and a tier row in `doctor`. Three ADRs settled §2's open decisions — **ADR-0059** (a `fetch` client,
@@ -180,7 +185,7 @@ different decision, needs its own ADR and a fresh baseline, and is explicitly no
     the only configuration anything has been measured in.
 
 ### Not next, and why
-- **Publish (Phase 14).** The owner's decision above, and its refinement: both tiers, unmodified projects,
+- **Publish (Phase 14).** The owner's decision above, and its refinement: the supported tier, unmodified projects,
   `doctor` naming every remaining failure with its fix. Items 3–6 above are workload #1 hardening with no
   phase of their own; they are part of Phase 14's DoD, because "no problem on their code base" is what
   each of them is about.
@@ -794,7 +799,16 @@ returns locations a machine confirms before Opus reads them, and the measurement
 per task with and without it — and **unattended mode** — a stepped run that survives a closed lid and
 ends in a report, measured as Opus tokens spent between filing the plan and reading the report.
 
-## 13 — The `api` tier: Haiku on machines with 16 GB or less
+## 13 — ~~The `api` tier: Haiku on machines with 16 GB or less~~ — **descoped, 20 Sep 2026**
+
+> **ADR-0073, the owner's call: sidecrew is a 24 GB+ tool.** §5 is cancelled, Phase 13 is off the
+> publish path, and below the floor sidecrew refuses with a reason instead of falling back. The client
+> remains behind `SIDECREW_TIER=api` — tested, unsupported, unpriced. `WorkerKind` keeps `"api"`
+> because Phase 11's C3 control and Phase 11b's arm D record it, including the corpus the gate's own
+> error rate was measured on.
+>
+> **The rest of this section is the phase as it was built and is kept unedited.** Its reasoning was
+> good and its defect (ADR-0062) was real and is still fixed; what changed is the product's scope.
 
 **Status, 18 Sep 2026: built, merged, unmeasured.** A `fetch` client with its own `assertApiTier` guard
 (`assertLocalTier` untouched, and a test asserts the two are **disjoint** — one client with a flag would
@@ -931,7 +945,19 @@ there is anything to save — §2.1 needs a fresh session and is owed anyway.
 ## 14 — Publish
 `npm publish` dry-run, `server.json` validated against the registry schema, release workflow green on a
 `v0.1.0` tag, docs site (`docs/` → GitHub Pages like simframe), README numbers replaced with measured ones
-— from Phase 11 on both tiers, not from Phase 6. The DoD includes the four "people can use it" lines from
+— from Phases 11/11b/12 on the supported tier, not from Phase 6.
+
+**Two things changed under this DoD on 19–20 Sep 2026 and a reader should meet them before planning
+the release:**
+
+- **"Both tiers" is gone** (ADR-0073). One supported configuration: 24 GB+, local worker.
+- **"README numbers replaced with measured ones" now collides with the gate's own error rate.**
+  `D = 2/19 = 0.105` triggered `experiments/gate-error-rate/README.md` §4.3's UNACCEPTABLE clause,
+  which says **no survival rate may be published as a point estimate until the cause is diagnosed**.
+  That is not a reason to delay publication and it is a reason the README cannot say what this line
+  originally imagined. Three ways out, and it is the owner's call: diagnose O8 first; publish the
+  rates **as intervals with `D` beside them**; or amend §4.3 in the open. Doing none of them and
+  printing a bare `15/19` is the one option the frozen rule forecloses. The DoD includes the four "people can use it" lines from
 `VISION.md`, **and the workload #1 hardening items from the prioritised list** (`deriveLineRange` on the
 AST, `doctor`'s three pre-flight questions, rendering what a body's meaning depends on, ADR-0042), because
 each is a way a stranger's project fails today. The README and the Claude skill are rewritten to lead

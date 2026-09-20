@@ -205,14 +205,14 @@ done by Phase 12 on 18 Sep 2026**, and are kept with their outcomes because the 
    task no worker could pass. Cloning `node_modules` when TS2883 appears is still open.
 6. **`doctor` learns what Phase 11 found**: the project's `engines.node` (ADR-0049, built), a large
    shared runner cache (ADR-0055), and the three pre-flight questions from workload #1.
-7. ~~**A 16 GB machine cannot run sidecrew at all.**~~ **Built, 18 Sep 2026 (Phase 13)** — the `api`
-   tier runs both workloads with `claude-haiku-4-5` as the worker behind the same gate, and `doctor`
-   names the tier and why. **Its number does not exist**: Phase 13 §5 spends real money and was left
-   for the owner, so the tier ships buildable and unpriced. ADR-0059 kept the one-runtime-dependency
-   rule; ADR-0060 pinned the id and said plainly that the pin is weaker than a commit sha; ADR-0061
-   decided the number is taken fresh on the current tool rather than against Phase 11's arms — which
-   means **a same-commit local arm would remove the one caveat on it**, and Phase 11b is the phase that
-   would produce one.
+7. ~~**A 16 GB machine cannot run sidecrew at all.**~~ → **Descoped by the owner, 20 Sep 2026
+   (ADR-0073).** It was built (Phase 13) and then judged out of scope rather than unfinished:
+   **sidecrew is a 24 GB+ tool.** Below the floor it now refuses with the machine's RAM, the floor and
+   the reason, instead of quietly handing the user a different worker with a different cost model and
+   no measured survival rate. The client survives behind `SIDECREW_TIER=api`, unsupported. Phase 13 §5
+   is cancelled and publication no longer waits on it. *One supported configuration is a smaller and
+   more defensible product than two, one of which was never measured.*
+
 8. **ADR-0062 (PROPOSED)** — a refusal on a **single-file** task is swallowed by the bare-answer
    fallback, on both tiers. Phase 11 measured only single-file tasks, so Phase 12's refusal shape is
    inert in every configuration this repository has numbers for and `refusals: 0` is a constant. It

@@ -58,12 +58,18 @@ deciding, and what is cheap and local (a resident 7B, a CPU, a disk) is spent on
 only work if the deciding is *much* smaller than the doing — which is a constraint on the design, not a
 hope. See "What this rules out".
 
-**Not every desk has the room.** A machine with 16 GB or less cannot host a 7B beside a normal working
-set (ADR-0009, measured). On those machines the worker is **Haiku**, reached over the API, doing exactly
-the same small pieces behind exactly the same gate (ADR-0045). The contract does not change; what changes
-is that the zero-worker-tokens guarantee does not hold there, and `BatchResult` records which tier ran so
-that nobody has to remember. The analogy survives: the compute moves to the cheapest place that can do
-the work, and on a 16 GB laptop that is the cheapest model, not the local one.
+**Not every desk has the room, and sidecrew says so rather than becoming a different product.**
+A machine with less than 24 GB cannot host a 7B beside a normal working set (ADR-0009, measured), and
+as of 20 Sep 2026 **sidecrew refuses to run there** — with the number, the floor, and the reason
+(ADR-0073). It used to fall back to Haiku over the API on those machines. That fallback is now an
+unsupported opt-in, because it was a *second product* — a different worker, a different cost model,
+and survival figures that were never measured — reached by a RAM check that most users would never
+see happen.
+
+Refusing is the honest version of the same value. The failure mode of trying anyway is swapping, and
+ADR-0066 measured what swapping does to this gate: it manufactures false negatives indistinguishable
+from real defects. A stated hardware requirement is an ordinary thing for a tool that hosts a 7B to
+have; quietly handing someone an unmeasured second product is not.
 
 **The measure, in the owner's words (16 Sep 2026):**
 
@@ -221,8 +227,12 @@ line in Phase 14 rather than a sentiment:
 
 - it has run on **unmodified** real projects, on both stacks sidecrew supports, and the number it prints
   is one a frozen decision rule (Phase 11) produced rather than one chosen during construction;
-- it has run on **both tiers** — the local 7B and Haiku on a 16 GB machine (Phase 13) — because a tool
-  that cannot run on half the laptops is not one people can use;
+- it states its hardware requirement — **24 GB of installed RAM** — and refuses below it with the
+  cause and the remedy, rather than silently becoming something else (ADR-0073). *This line used to
+  read "it has run on both tiers … because a tool that cannot run on half the laptops is not one
+  people can use." The owner narrowed the scope on 20 Sep 2026 and that sentence is now wrong about
+  this tool; it is replaced rather than softened, and the old wording is kept here so the change is
+  legible.*
 - every failure a user would hit on a project sidecrew has not seen before is either fixed or named by
   `doctor` with its remedy, in the shape ADR-0032 set: the cause, whose fault it is, and the exact fix;
 - it does not need the user to change their project to be verified. Six trials say this is the hard part.
