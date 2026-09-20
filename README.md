@@ -232,10 +232,15 @@ note — after the free retry that already carries the compiler's own words — 
 and 27 of 29 landed at exactly the same gate stage as the free retry had
 (`experiments/correction-round/`). On the tasks where the worker simply returned the file unchanged,
 **16 of 17 did it again** after being told specifically that returning it unchanged was the failure.
-On the shape that work belongs to — adding a null guard — the local 7B attempted it at all in
-**1 of 30 `[0.001, 0.172]`** tasks. That is a capability ceiling, not a prompting problem.
-That is a fact about small models, not about the wording of notes, and it is why `sidecrew fix` ships
-with the round switched off.
+On the shape that work belongs to — adding a null guard — the local 7B **survived**
+**1 of 30 `[0.001, 0.172]`** tasks, and returned the file unchanged on 17 of them. Rewording an
+instruction does not move that, which is why `sidecrew fix` ships with the round switched off.
+
+**It is not, however, a capability ceiling, and a later measurement says so.** Phase 14b put a 14B on
+the same 30 tasks and narrowed the asks to a single named function on another pass. Both cut the
+"returned it unchanged" failure sharply — 17 tasks → 3 on the 14B, 17 → 10 on the narrowed ask — and
+neither moved survival, which went 1 → 2 `[0.008, 0.221]`. The workers do the work; the **gate cannot
+credit it**. See *What v0.1.0 does not have* below.
 
 ## Why, on workload #1 (tests)
 
@@ -479,9 +484,25 @@ and cost 2.2× the generation time.
 **What v0.1.0 does not have.** Half a real codebase is out of reach: 3.3 % of a project's files are
 48.1 % of its bytes, and every file over 1,000 lines is refused, because a worker returns a whole file
 and a whole file has to fit (ADR-0075 — symbol-scoped return is the proposed fix and it is not in this
-release). Of the five behaviour-preserving shapes, **one** works at a usable rate; `null_guard` is
-1/30 `[0.001, 0.172]`, and two more are unmeasured. `docs/plan/PHASES.md` is the road from here and
-names what each step buys.
+release).
+
+**Which shapes this is actually for.** Of the five behaviour-preserving shapes, **one — renames and
+dead-import removal — works at a usable rate.** `null_guard` does not, and Phase 14b measured *why*,
+which changes what to do about it: **`S₁₄ = 2/30 `[0.008, 0.221]`, best of a 14B worker and
+single-function asks.** Neither model size nor task size is the obstacle — both probes moved what they
+targeted. **Every additional file a worker fixed correctly became a task nobody can pass**, one for
+one: +6 correct → +6 unsatisfiable, +9 → +9. The reason is in the gate's own fields — the error that
+sinks those tasks is in a **test file in 21 of 21** cases and in non-test source in **0**. A null guard
+narrows a type, the narrowed type propagates into fixtures and mocks, and `sidecrew` may not edit tests
+because **the tests are the gate**.
+
+So the honest statement is not "small models cannot do this". It is: **under a strictness flag on a
+project whose tests touch the types being tightened, this shape is unpassable however good the worker
+is — and it gets worse as the worker gets better** (12 → 18 → 21 unsatisfiable across the three arms).
+`api_migration` and `dead_code` remain **unmeasured**. ADR-0077 records the options and the owner has
+taken the one that measures the counterfactual before choosing between them.
+
+`docs/plan/PHASES.md` is the road from here and names what each step buys.
 
 **One measurement worth reading before believing the pitch above.** The design says exemplars are what
 make a small model usable (research §B). Our own ablation says otherwise: bare scores 4/20, and *every*
@@ -528,8 +549,9 @@ scorecard rather than a feeling:
 | **Cost** | `R` — Opus tokens to plan ÷ paying a model per task | **2.84** at 12 tasks, **1.07** at 41 | ≤ 1.0 at 12 |
 | **Trust** | `D` — how often the gate disagrees with itself | **0.105** `[0.013, 0.331]` | ≤ 0.02, or diagnosed |
 
-Only Cost improves on its own as jobs get bigger. Reach is ADR-0075's symbol-scoped return; Shapes is
-a measurement nobody has taken; Trust needs a diagnosis, not a threshold. `docs/plan/PHASES.md` has
+Only Cost improves on its own as jobs get bigger. Reach is ADR-0075's symbol-scoped return; Shapes has
+now been measured once (Phase 14b) and the ceiling turned out to be the gate's scope rather than the
+worker's, which is ADR-0077's to resolve; Trust needs a diagnosis, not a threshold. `docs/plan/PHASES.md` has
 the phase for each, and **every one of them ends with a rule written before the phase runs** — a fork
 chosen after seeing a result is a description of how somebody felt about the result.
 

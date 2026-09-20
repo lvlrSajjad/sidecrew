@@ -5172,8 +5172,23 @@ caught it was written for a different reason entirely.
 
 ## ADR-0077 — `null_guard` under a strictness flag is unpassable by construction, and gets more so as the worker improves (PROPOSED)
 
-**Status:** proposed · 20 Sep 2026 · Phase 14b · **needs the owner.** Nothing is implemented and no
-threshold moves. Phase 14b's own verdict — `PROCEED to 14c` — does not depend on which option is taken.
+**Status:** **option D accepted by the owner, 20 Sep 2026** · Phase 14b · A, B and C remain open and
+are deliberately not decided — D is the decision to *measure before choosing*, and it is the whole of
+what was agreed. Phase 14b's own verdict — `PROCEED to 14c` — does not depend on any of them.
+
+**What D commits to, so a later session does not widen it.** One run: re-gate probe 1's **15
+clean-target tasks** — those whose target file compiled clean and whose only introduced errors were in
+test files — with test-file *type* errors demoted to observations, and count how many survive the
+project's suite. The candidates are already on disk from probe 1, so **no worker and no generation is
+needed**; this is a replay of the verify stage, and its cost is the suite.
+
+**Two constraints on how it is run, both load-bearing.** `changeSurvives` is **not** modified: the
+production gate is what ADR-0046 and ADR-0048 made it, and a measurement that edits the gate to get a
+better number is the thing this whole project is built against. The counterfactual is computed by a
+harness applying its own rule to a replayed verify, and the result is reported as a **counterfactual**
+rather than as a survival rate. And its denominator is **15, stated with the 30** — it is a
+conditional number about a subset chosen after seeing failures, which is exactly the adjustment
+§4.0 precondition 4 forbids doing silently.
 
 ### Context
 
