@@ -1,4 +1,17 @@
 # Changelog
+## Unreleased — a standing handoff, and a rule that it stays current (2026-09-20)
+- **`docs/plan/HANDOFF.md`** is the first file a session reads: where we are, what the four
+  measurements were worth, what to do next, which decisions wait on the owner, and the standing
+  hazards. Short enough to stay true — the detail lives in `PHASES.md`, `ROADMAP.md` and the ADRs,
+  and the handoff points at them.
+- **CLAUDE.md now requires it to be updated before a session finishes**, whenever the phase state,
+  the next action, an open owner decision or a standing hazard changes — not only at a phase
+  boundary. *A stale handoff is worse than none, because it is trusted.*
+- The handoff's own first draft put the client's checkout paths in a **tracked** file, which
+  CLAUDE.md #7 forbids. Caught before committing and recorded in the file itself: **the third catch
+  of that class in one session**, after a run id built from the project directory's name and a client
+  directory name in a code comment.
+
 ## Unreleased — every phase now ends with an exit check whose fork is named in advance (2026-09-20)
 - **The owner's process decision:** a phase does not simply finish. It re-measures a four-number
   scorecard and applies a rule **written before the phase started**, producing exactly one of

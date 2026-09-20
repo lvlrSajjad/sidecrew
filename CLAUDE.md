@@ -60,6 +60,12 @@ progress** — a workload a machine cannot check does not belong here at any pri
 - Every phase ends with: `npm run lint && npm test` green, `PHASES.md` status updated, an ADR if anything was decided, a line in `docs/CHANGELOG.md`.
 - Don't pull features forward from later phases; note them in `docs/plan/BACKLOG.md`.
 - Measured numbers → `experiments/go-no-go/results/*.json` with `"measured": true` plus machine info.
+- **`docs/plan/HANDOFF.md` is the standing handoff and is always current.** It is the first file a new
+  session reads. **Update it before you finish**, whenever the phase state, the next action, an open
+  owner decision, or a standing hazard changes — not only at a phase boundary. A stale handoff is
+  worse than none, because it is trusted: it says where we are, so a session that believes an old one
+  starts by redoing or contradicting finished work. Keep it short enough to stay true; the detail
+  belongs in `PHASES.md`, `ROADMAP.md` and the ADRs, and the handoff points at them.
 
 ## When unsure
 Smallest working thing. If a decision is bigger than a function signature, write the options into `docs/DECISIONS.md` as a proposed ADR and ask.
