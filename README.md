@@ -4,9 +4,16 @@
 
 Claude Opus plans, writes one exemplar per kind of task, and reviews. Small models running **on your Mac**
 (MLX, no network) do the narrow work in parallel. A mechanical gate — compile → run → mutation-kill — decides
-what Claude ever sees. **On the local tier, workers cost zero Claude tokens** — that headline is a
-local-tier headline (ADR-0045). On machines with under 24 GB of RAM, which cannot host a local model,
-the worker is Haiku over the API and it is billed; `sidecrew doctor` says which tier you are on and why.
+what Claude ever sees. **Workers cost zero Claude tokens.**
+
+**sidecrew needs 24 GB of installed RAM.** Below that a 7B cannot sit beside a normal working set
+(measured), so sidecrew **refuses to run and tells you why** rather than quietly becoming a different
+tool (ADR-0073). `sidecrew doctor` answers this before you plan anything.
+
+**And the other half of the ledger, measured 19–20 Sep 2026:** the workers are free, the
+*coordination* is not. Opus planning costs **8,400–22,100 tokens per task**, depending almost entirely
+on how many tasks are in the plan — see *What this costs to run* below. A page that says "the work is
+free" without saying that is telling you half of it.
 
 First workload: **unit tests for an existing Swift or TypeScript project**, and the benchmark numbers
 below are about that one.
@@ -93,12 +100,13 @@ and pressure detection are `sysctl`/`vm_stat`. `sidecrew doctor` tells you rathe
 
 ### What to expect on your machine
 
-The tier is decided by **installed** RAM, never by free RAM, so a machine that can host a worker never
-falls back silently (`sidecrew doctor` names your tier and why). The threshold is **24 GB**.
+The check is on **installed** RAM, never free RAM — free RAM swings by 8 GB when you open Xcode, and a
+tool that changes what it is based on that is a tool you cannot reason about. The floor is **24 GB**
+and below it sidecrew refuses (ADR-0073).
 
 | installed | tier | worker | gates in flight | what that means for you |
 |---|---|---|---|---|
-| **16 GB** | `api` | Haiku, over the network | 1 | It runs, and **the worker is billed** — the zero-token headline is a local-tier claim. Its survival, approval and dollar-per-task figures **have never been measured** (Phase 13 §5). Treat this tier as supported and unpriced. |
+| **under 24 GB** | — | **none: sidecrew refuses** | — | A 7B cannot sit beside a normal working set here (measured), and trying anyway means swapping — which makes the gate reject changes that were fine (ADR-0066). You are told your RAM, the floor and the reason. There is an unsupported escape hatch (`SIDECREW_TIER=api`, Haiku over the network, billed to your key, **never measured**); it is not what any number on this page describes. |
 | **24–32 GB** | `local` | 7B on your Mac | **1** | Everything on this page was measured here. Worker tokens are zero. One task at a time: **~4 min each**, so a 19-task plan is **~70 min**, unattended. Memory is the binding constraint — see the false-negative note below. |
 | **48–64 GB** | `local` | 7B, or a 14B comfortably | ~3 *(estimated)* | The gate stops competing with the model for memory. The same 19-task plan should land nearer **~25 min** *(estimated)*, and ADR-0066's whole false-negative class — a starved gate failing closed — stops applying. You can keep using the machine. |
 
@@ -115,10 +123,22 @@ renamed seven times over, one renamed a file it was given, one touched a type de
 worker was never shown, and one was byte-identical to what Opus produced. The first two are the
 model; the third wants retrieval, not RAM.
 
-**Read the survival numbers below as lower bounds.** Phase 11b found three independent sources of
-false negatives in the gate — memory pressure (ADR-0066), a still-undiagnosed one on an idle machine,
-and a baseline captured on a different calendar day (ADR-0069) — and only one is understood. Two
-further defects changed the gate itself (ADR-0067, ADR-0068), so the Phase 11 table above was
+**Read every survival number on this page as a lower bound, and here is how loose.** Replaying a
+frontier model's own diffs — which the gate finds no defect in — through the gate a second time, **it
+disagreed with itself on 2 of 19 candidates** (`experiments/gate-error-rate/`, against a rule frozen
+before the first replay). Three things follow and they belong together:
+
+- **`2/19` is an order of magnitude, not a point.** One disagreement either way spans 0.053 to 0.158.
+  Never quote it bare, and do not compare two of our rates without asking whether their difference
+  survives it.
+- **The safety property is untouched.** That number counts the gate **refusing changes that were
+  fine**. Nothing here is evidence of it *admitting* something bad. *The gate admits nothing that
+  fails* still stands; *it refuses only things that fail* is measured false at roughly one in ten.
+- **Two of the three causes are now understood and recorded on every verdict** — memory pressure
+  (ADR-0066) and a baseline captured on a different calendar day (ADR-0069). The third is
+  undiagnosed, and both measured disagreements were on a quiet machine, so it is not the first two.
+
+Two further defects changed the gate itself (ADR-0067, ADR-0068), so the Phase 11 table above was
 measured on a gate that has since been fixed in two ways.
 
 ---
@@ -140,6 +160,40 @@ pass` cannot see any of it.
 Not a test framework. Vitest, Jest and XCTest run the tests; StrykerJS/Muter mutate the code. sidecrew
 orchestrates. The runner is a seam: same plan, same seed, Vitest and Jest return **identical verdicts**
 (ADR-0028).
+
+## What this costs to run
+
+**Workers are free. Coordination is not, and this is the number that says by how much.**
+
+Measured 19–20 September 2026 on an unmodified commercial Nest/jest codebase, against a rule frozen
+before the planner existed (`experiments/planner-cost/`):
+
+| plan size | Opus tokens to plan | **per task** | vs. paying a model per task |
+|---|---|---|---|
+| 12 tasks | 265,607 | **22,134** | 2.84× |
+| 41 tasks | 343,144 | **8,369** | 1.07× |
+
+**Planning cost barely moved for 3.4× the work** — 1.29×. It is a large *fixed* cost (reading the
+codebase, ~233k tokens) plus a small per-task one (~2,700). So:
+
+> **sidecrew's coordination is not worth paying for on a dozen tasks, and the economics move sharply
+> in its favour as the job gets bigger.**
+
+Both rows are above 1.0, so by the frozen rule both **fail** — planning still costs more than handing
+each task to a paid model would. The honest reading is the sentence above, not "it fails": one plan
+size would have supported a much harsher and much less true claim, which is exactly why the rule
+demands two.
+
+**Never quote a per-task figure without the plan size.** Same planner, same project, same week, 2.6×
+apart.
+
+**The correction round is off, and that is measured too.** Giving a failing worker one Opus-written
+note — after the free retry that already carries the compiler's own words — rescued **0 of 29** tasks,
+and 27 of 29 landed at exactly the same gate stage as the free retry had
+(`experiments/correction-round/`). On the tasks where the worker simply returned the file unchanged,
+**16 of 17 did it again** after being told specifically that returning it unchanged was the failure.
+That is a fact about small models, not about the wording of notes, and it is why `sidecrew fix` ships
+with the round switched off.
 
 ## Why
 
@@ -168,15 +222,18 @@ why the 7B is the default and why starting a worker is gated on free RAM at that
 
 ## Install
 
-**An Apple Silicon Mac with ≥ 24 GB of RAM runs workers locally.** 16 GB is not enough to host a 7B next
-to a normal working set, so those machines are the **`api` tier**: the worker is `claude-haiku-4-5` over
-the Anthropic API, doing the same small tasks behind the same gate (ADR-0009, ADR-0045, ADR-0060). Set
-`ANTHROPIC_API_KEY` and it runs; worker inference is then **billed to you**, and `BatchResult`/`FixResult`
-record which tier ran. `sidecrew doctor` tells you which side of the line you are on, why, and what to do.
+**Requirement: an Apple Silicon Mac with at least 24 GB of installed RAM.** Below that a 7B cannot sit
+beside a normal working set (ADR-0009, measured), and sidecrew **refuses to start**, naming your RAM,
+the floor and the reason. `sidecrew doctor` answers it before you plan anything.
 
-**The api tier's numbers do not exist yet.** It is built and tested; its survival rate, blind approval
-rate and dollar-per-surviving-task are Phase 13 §5's measurement and have not been run. Phase 6's Haiku
-figures are an upper bound from a subagent harness and are not this tier's cost (ADR-0045 §7).
+Refusing is deliberate rather than lazy. Running anyway means swapping, and swapping makes this gate
+reject changes that were fine, in a way its own verdict cannot distinguish from a real defect
+(ADR-0066, measured). Handing that to the users least able to spot it is worse than saying no.
+
+**There is one escape hatch and it is unsupported.** `SIDECREW_TIER=api` runs the worker as
+`claude-haiku-4-5` over the Anthropic API, behind the same gate, billed to your key. It is built and
+tested, its survival and dollar-per-task figures have **never been measured**, and no number on this
+page describes it (ADR-0073). `doctor` labels it *unsupported, opted in*.
 
 Everything except generation (planning, validating, verifying) works anywhere node does.
 
@@ -339,7 +396,13 @@ Phase 7. The pipeline runs end to end — plan, generate on a local worker, veri
 and the go/no-go has been run. **Read `experiments/go-no-go/results/REPORT.md` before believing anything
 here.** Its verdict is split: TypeScript is a **conditional go** at 0.85 of Haiku for zero worker tokens
 and half the latency (ADR-0020), and Swift is a **no-go** at 0.64 of Haiku even after the prompt fix that
-more than doubled it (ADR-0021). The 14B is never the right trade on this evidence — it matched the 7B on
+more than doubled it (ADR-0021).
+
+> **That 0.85 is a fixture number and it overstates.** Measured afterwards on unmodified real
+> projects, workload #1's survival came in nearer **0.40** — the fixture is more than 2× optimistic,
+> because its functions are small, self-contained and free of the imports, shared types and framework
+> scaffolding that real code is mostly made of. The ratio against Haiku is still the comparison
+> ADR-0020 drew; the absolute rate is not a number to plan against. The 14B is never the right trade on this evidence — it matched the 7B on
 TypeScript, lost on Swift, and cost 2.2× the generation time.
 
 **One measurement worth reading before believing the pitch above.** The design says exemplars are what
