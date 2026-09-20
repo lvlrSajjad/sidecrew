@@ -18,13 +18,9 @@
 // wrong number rather than a crash.
 import { readFile, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
+import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
-const [planPath, runDir, outPath] = process.argv.slice(2);
-if (planPath === undefined || runDir === undefined || outPath === undefined) {
-  process.stderr.write("usage: editing-ceiling-decompose.ts <plan.json> <pass1-run-dir> <out-plan.json>\n");
-  process.exit(1);
-}
 const say = (s: string): void => { process.stdout.write(`${s}\n`); };
 
 interface Enclosing { name: string; start: number; end: number; kind: string }
@@ -36,7 +32,7 @@ interface Enclosing { name: string; start: number; end: number; kind: string }
  * the method that happens to contain the callback, and naming the outer one would widen the ask back
  * out to roughly the whole file on exactly the large tasks this probe is about.
  */
-const enclosingOf = (source: string, file: string, line: number): Enclosing | null => {
+export const enclosingOf = (source: string, file: string, line: number): Enclosing | null => {
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const target = line - 1;
   let best: Enclosing | null = null;
@@ -66,6 +62,17 @@ const enclosingOf = (source: string, file: string, line: number): Enclosing | nu
   ts.forEachChild(sf, visit);
   return best;
 };
+
+// The driver runs only when this file is executed directly, so `enclosingOf` can be validated on our
+// own source without the driver reaching for a client plan. The validation is the point: a range that
+// silently cut a body short would narrow an ask to the wrong lines, which is a wrong number rather
+// than a crash — which is exactly what ADR-0076 measured the old scanner doing, 5 times out of 436.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+const [planPath, runDir, outPath] = process.argv.slice(2);
+if (planPath === undefined || runDir === undefined || outPath === undefined) {
+  process.stderr.write("usage: editing-ceiling-decompose.ts <plan.json> <pass1-run-dir> <out-plan.json>\n");
+  process.exit(1);
+}
 
 const plan = JSON.parse(await readFile(planPath, "utf8")) as {
   project: string;
@@ -128,3 +135,4 @@ say(`${basename(outPath)}: ${single} single-function, ${multi} multi-function, $
 say(unresolved === 0
   ? "  every task narrowed — probe 2 varies scope on all 30"
   : `  ${unresolved} task(s) keep pass 1's whole-file ask; they are NOT decomposed and the result says so`);
+}
