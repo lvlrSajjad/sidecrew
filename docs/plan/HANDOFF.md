@@ -4,8 +4,12 @@
 disagrees with anything else, it is the thing that was updated last and the other file is the bug
 (CLAUDE.md § *Conventions*).
 
-**Last updated: 20 Sep 2026**, end of the session that took Phase 12's four measurements and phased the
-road to the 90 % bar. Commit `ad75dfc`.
+**Last updated: 20 Sep 2026**, end of the session that took Phase 12's four measurements and phased
+the road to the 90 % bar.
+
+*Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
+this file. If later commits changed the phase state and this file was not among them, the rule in
+CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix it.
 
 ---
 
@@ -19,6 +23,7 @@ road to the 90 % bar. Commit `ad75dfc`.
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14 — publish, cut `v0.1.0`.** No overnight run needed |
 | ADRs | run to **0075**; start new ones at 0076. **0064 and 0075 are PROPOSED and need the owner** |
+| running | **nothing.** No worker, no background run, no scratch process. Start a worker with `sidecrew serve` only when a phase needs one |
 
 ## 2. What is done, and what each thing is worth
 
