@@ -966,11 +966,65 @@ AST, `doctor`'s three pre-flight questions, rendering what a body's meaning depe
 each is a way a stranger's project fails today. The README and the Claude skill are rewritten to lead
 with the worked example, not with unit tests.
 
+### Exit check — frozen 20 Sep 2026, before publication
+
+Publication is the first time this tool meets a project nobody here chose, so the exit check is about
+**strangers' projects**, not about the release mechanics.
+
+Let `F` be the number of distinct *first-run* failures reported or reproduced on projects outside
+`project-a`/`project-b` within the first two weeks, where a first-run failure is one that stops a user
+before a single candidate is generated — `doctor` clean, plan refused, baseline uncapturable.
+
+- **`F ≤ 2` → PROCEED to 14b.** The pre-flight questions cover what they need to.
+- **`F ≥ 3` → INSERT `14a′` — "what a stranger's project does that ours does not."** Named now: each
+  failure becomes a `doctor` row in ADR-0032's shape — the cause, whose fault it is, and the exact fix
+  — and a fixture reproducing it. Six trials produced this list once already; a seventh source of
+  them outranks new capability, because a tool that does not start is not measured by any of the four
+  scorecard numbers.
+- **Any failure that produces a *wrong verdict* rather than a refusal → STOP and fix immediately**,
+  whatever `F` is. A tool that refuses loudly is usable; one that quietly scores a bad candidate as a
+  survivor is ADR-0037 again, and that is the failure this whole architecture is paranoid about.
+
+**Two weeks is the window and it is deliberate**: long enough for someone other than us to try it,
+short enough that 14b is not blocked indefinitely waiting for users who may not arrive.
+
 ## The road to the 90 % bar — 14 → 14b → 14c → 14d, decided 20 Sep 2026
 
 **The owner's goal, in their words:** *"be able to achieve what Opus does, our way — even 90 % is a
 win."* Phases 14b–14d are that road. They are numbered with letters for the same reason 11b and 13b
 were: numbers are the order, and these sit between publish and everything already numbered after it.
+
+### Every phase ends with an exit check, and the fork is named before the phase runs
+
+**The owner's process decision, 20 Sep 2026.** A phase does not simply finish. It ends by
+re-measuring the scorecard below and applying a rule that was **written before the phase started**,
+which produces exactly one of:
+
+- **PROCEED** — the next phase as planned;
+- **INSERT `Nx`** — a named phase, described in advance, that this result makes necessary;
+- **STOP** — the phase's premise did not hold, and the plan after it is wrong rather than late.
+
+**The rule is frozen before the number exists**, for the reason every `§4` in `experiments/` is: a
+fork chosen after seeing the result is a description of how somebody felt about the result. Naming
+the inserted phase in advance is the other half — *"insert something here"* is not a plan, and under
+pressure it becomes whatever is easiest.
+
+### The scorecard — four numbers, re-measured at every phase exit
+
+This is what *"90 %"* means operationally. Without it the bar is a feeling.
+
+| | what it measures | today (20 Sep 2026) | at the 90 % bar |
+|---|---|---|---|
+| **Reach** | share of a real codebase **by bytes** that a task may touch | **51.9 %** | ≥ 90 % |
+| **Shapes** | behaviour-preserving shapes surviving at a usable rate | **1 of 5** (`rename`, `unused_import`; `null_guard` 1/30, `api_migration` and `dead_code` unmeasured) | ≥ 4 of 5 |
+| **Cost** | `R` — Opus tokens to plan ÷ what a paid model would cost per task | **2.84** at `N = 12`, **1.07** at `N = 41` | ≤ 1.0 at `N = 12` |
+| **Trust** | `D` — how often the gate disagrees with itself | **2/19 ≈ 0.105** | ≤ 0.02, or diagnosed |
+
+Three of the four are already measured, so re-measuring is cheap — Reach is one script, Cost is two
+planner passes, Trust is a replay. **Shapes is the expensive one and 14b is the phase that buys it.**
+
+**The honest reading of the table**: the bar is not one number away. It is four, and only one of them
+(Cost) improves on its own as plans get bigger.
 
 ### What "90 % of what Opus does" decomposes into, and where each part stands
 
@@ -1010,6 +1064,28 @@ the reachable ones failed.
 **Freeze the rule first**, as every measurement here does: what result would mean *ceiling*, what
 would mean *gap*, before either number exists.
 
+### Exit check — frozen 20 Sep 2026, before either probe ran
+
+Let `S₁₄` be `null_guard` survival on the 30 declared tasks, best of the two probes. Today's baseline
+is **1/30 = 0.033**.
+
+- **`S₁₄ ≥ 0.30` → INSERT `14b′` — "make the thing that worked the default."** A shape going from
+  unusable to usable changes the product more than 14c does, and it would be wrong to ship 14c first
+  on the grounds that it was already planned. `14b′` is: whichever of the two probes won (a 14B
+  worker, or planner-side decomposition into single-function tasks) becomes the default, with the
+  memory arithmetic re-done if it is the 14B — CLAUDE.md #5 is not negotiable, and one 14B means one
+  worker rather than two.
+- **`0.10 ≤ S₁₄ < 0.30` → PROCEED to 14c, and record the shape as *"improvable but not usable"*.**
+  Worth returning to after the reach work, not worth reordering for.
+- **`S₁₄ < 0.10` → PROCEED to 14c, and write the ceiling down as a product fact.** The Shapes row
+  stops being a thing to fix by tuning, the 90 % bar rests on Reach + Cost + a narrower shape list,
+  and `README` says which shapes sidecrew is for rather than implying all of them. **This is a
+  complete result**, and the same sentence §2.2 earned: a negative result reported without looking
+  for a cut of the data where it passes.
+
+**In every branch, 14b cuts no version and adds no code.** It is one evening that decides how three
+later phases are spent.
+
 ---
 
 ## 14c — The reach: symbol-scoped return · **cut `v0.2.0`**
@@ -1038,6 +1114,26 @@ follows 14 rather than replacing part of it.
 
 **Why cut a version here.** It roughly doubles what the tool can touch, which is the first change
 since publication that a user would feel without reading the changelog.
+
+### Exit check — to be frozen **before** 14c starts, in this shape
+
+Two numbers, and the second is the one people forget: reach is worthless if what it reaches cannot be
+changed. Let `Reach` be the addressable share by bytes, and `S_big` survival on tasks in files that
+were previously refused, against `S_small` on files that were always in reach.
+
+- **`Reach ≥ 0.85` and `S_big ≥ 0.75 × S_small` → PROCEED to 14d.** The surface grew and the tool
+  works on the new part.
+- **`Reach ≥ 0.85` but `S_big < 0.75 × S_small` → INSERT `14c′` — "a big change is not a big file."**
+  The symbol-scoped return moved the boundary from *the file is big* to *the change is big*, and the
+  remaining failures are the second thing, which is a planner problem rather than a format one:
+  splitting one ask across several declarations, and an ordering between them. Named now so it is not
+  invented later.
+- **`Reach < 0.85` → STOP and re-open ADR-0075.** Option C did not do what it claimed; option D (a
+  larger-context local model, with the memory cost it implies) is the remaining candidate and it is a
+  different phase, not a patch to this one.
+
+`S_big` is measured on the **same** project and the same declared task set as `S_small`, or the two
+are not comparable — the mistake §4.4 exists to prevent, one level up.
 
 ---
 
@@ -1072,6 +1168,28 @@ checkable before building anything.
 moved first release earlier, which was right. This is the phase where the worked example actually runs
 end to end — **Opus decides, local models read *and* write, a mechanical gate judges, and the user
 sees only what survived.** That is the product the vision describes, and it is a fair `1.0`.
+
+### Exit check — to be frozen **before** 14d starts, in this shape
+
+`R` at `N = 12`, the plan size a new user actually starts with, re-measured by
+`experiments/planner-cost/` §4's method with retrieval on.
+
+- **`R ≤ 1.0` → PROCEED: cut `v1.0.0`.** Coordination finally costs less than paying per task at the
+  size people begin with, and the whole scorecard is defensible.
+- **`1.0 < R ≤ 2.0` → INSERT `14d′` — "the second lever."** Retrieval helped and did not close it.
+  `14d′` is the remaining fixed-cost reduction named in advance: cache the *reading* across runs of
+  the same project, so the 233k-token survey is paid once per codebase rather than once per plan.
+  ADR-0065's key discipline applies — a cache whose key misses an input serves a stale answer.
+  **`1.0` waits**, because cutting it on a tool that costs more than it saves at the starting size is
+  the one thing the whole measurement programme exists to stop.
+- **`R > 2.0` → STOP.** Retrieval was the best idea available for the fixed term and it did not move
+  it. The honest response is to say the coordination model does not pay at small plan sizes and to
+  publish `v0.x` describing the sizes where it does — which the curve already shows is real.
+
+**The quality veto applies to all three branches**, as it does in `experiments/correction-round/`
+§4.3: if retrieval makes Opus read *fewer of the right files*, survival or blind approval will fall,
+and a cheaper plan that produces worse changes is not a saving. Measure both, and let precision
+override the token number.
 
 ---
 

@@ -1,4 +1,25 @@
 # Changelog
+## Unreleased — every phase now ends with an exit check whose fork is named in advance (2026-09-20)
+- **The owner's process decision:** a phase does not simply finish. It re-measures a four-number
+  scorecard and applies a rule **written before the phase started**, producing exactly one of
+  PROCEED, **INSERT `Nx`** (a phase described in advance), or STOP.
+- **Naming the inserted phase in advance is half the point.** *"Insert something here"* is not a
+  plan, and under pressure it becomes whatever is easiest — the same reason every `§4` in
+  `experiments/` is frozen before its number exists.
+- **The scorecard makes "90 %" operational**, which it was not before: **Reach** 51.9 % of a codebase
+  by bytes (bar: ≥ 90 %), **Shapes** 1 of 5 usable (bar: ≥ 4), **Cost** `R` 2.84 at `N = 12` (bar:
+  ≤ 1.0), **Trust** `D` ≈ 0.105 (bar: ≤ 0.02 or diagnosed). Three of the four are cheap to re-measure;
+  Shapes is the expensive one and 14b is the phase that buys it.
+- **The forks, all named:** 14 → `14a′` if three or more strangers' projects fail before generating a
+  candidate; 14b → `14b′` if a probe lifts `null_guard` survival to 0.30, because a shape going from
+  unusable to usable outranks work that was merely planned first; 14c → `14c′` if reach grows but the
+  newly-reached files survive worse, because *a big change is not a big file*; 14d → `14d′` if
+  retrieval helps without closing `R`, caching the codebase survey across runs.
+- **Two STOP conditions are written down**, which is the part that matters: a publication failure
+  producing a *wrong verdict* rather than a refusal stops everything (ADR-0037's failure mode), and
+  `R > 2.0` after retrieval means the coordination model does not pay at small plan sizes and `1.0`
+  is not cut on it.
+
 ## Unreleased — the road to the 90 % bar is phased, with version cuts and overnight runs marked (2026-09-20)
 - **`14 → 14b → 14c → 14d`** is the path from publish to the owner's *"even 90 % is a win"* bar, with
   what that bar decomposes into written down: edit a file of any size, do any shape of change, read
