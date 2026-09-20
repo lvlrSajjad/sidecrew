@@ -9,7 +9,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import {
+import { relevantDiagnostics,
   assertInProgram, parseTestReport, parseTscErrors, programFiles, sandboxCacheDir, suiteArgs, typecheck,
   PROJECT_SCOPE,
 } from "../src/change.js";
@@ -328,5 +328,44 @@ describe("a generated test name is not a regression — ADR-0053", () => {
     const seen = new Set(after.seen_ids);
     const passed = new Set(after.passed_ids);
     expect(before.filter((id) => !passed.has(id) && seen.has(id))).toEqual([]);
+  });
+});
+
+describe("the verdict quotes the compiler about the right files — ADR-0072", () => {
+  // Shaped like real `tsc --pretty false` output: a diagnostic line, then indented continuations.
+  const MESSAGE = [
+    "src/cba/permission.guard.ts(39,57): error TS2345: Argument of type 'UserProfile | null' is not assignable.",
+    "  Type 'null' is not assignable to type 'UserProfile'.",
+    "src/common/mutable.fields.util.ts(50,13): error TS18048: 'meta' is possibly 'undefined'.",
+    "src/zzz/unrelated.ts(1,1): error TS2322: Type 'string' is not assignable to type 'number'.",
+    "test/modules/workorder/workorder.e2e-spec.ts(12,3): error TS2345: Argument of type 'X' is not assignable.",
+    "  Type 'X' is missing the following properties.",
+  ].join("\n");
+
+  it("keeps the task's own files and the ones that gained an error, and drops the rest", () => {
+    // The measured failure: on a project with 11,412 errors this field carried the alphabetically
+    // first 2 KB — all of it about `src/cba/…`, a file that was neither the task's nor the casualty.
+    const out = relevantDiagnostics(MESSAGE, ["src/common/mutable.fields.util.ts"],
+      { "test/modules/workorder/workorder.e2e-spec.ts": 1 });
+    expect(out).toContain("mutable.fields.util.ts(50,13)");
+    expect(out).toContain("workorder.e2e-spec.ts(12,3)");
+    expect(out).not.toContain("permission.guard.ts");
+    expect(out).not.toContain("unrelated.ts");
+  });
+
+  it("carries a diagnostic's indented continuation lines with it", () => {
+    // TS2345's second line is where the actual reason lives; keeping the header alone would hand a
+    // corrector the symptom and not the cause.
+    const out = relevantDiagnostics(MESSAGE, [], { "test/modules/workorder/workorder.e2e-spec.ts": 1 });
+    expect(out).toContain("missing the following properties");
+    // ...and does not drag along the continuation of a diagnostic it dropped.
+    expect(out).not.toContain("'null' is not assignable");
+  });
+
+  it("returns the whole message rather than nothing when it can attribute none of it", () => {
+    // An empty `message` reads as "the compiler said nothing", which is the opposite of what a failed
+    // compile stage means. Less is better than misleading; nothing is worse than both.
+    expect(relevantDiagnostics(MESSAGE, ["src/nowhere.ts"], {})).toBe(MESSAGE);
+    expect(relevantDiagnostics(MESSAGE, [], {})).toBe(MESSAGE);
   });
 });

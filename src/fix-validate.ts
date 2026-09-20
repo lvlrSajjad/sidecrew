@@ -24,6 +24,7 @@ import { rm } from "node:fs/promises";
 import {
   DEFAULT_CHANGE_TIMEOUTS, makeChangeSandbox, toPosix, typecheck, type ChangeTimeouts,
 } from "./change.js";
+import { isToolConfig } from "./confinement.js";
 import { estimateTokens } from "./prompt.js";
 import { MAX_FIX_TOKENS } from "./fix.js";
 import { ChangeValidationReport, ChangePlan, type ChangeShape, type ValidationIssue } from "./schemas.js";
@@ -66,7 +67,11 @@ const FORBIDDEN = (file: string): string | null => {
   if (file.split("/").some((p) => p === "__tests__" || p === "__mocks__" || p === "__snapshots__")) return "a test directory";
   if (/^(tsconfig|jsconfig)([.-][\w.-]+)?\.json$/.test(base)) return "a TypeScript config";
   if (/^(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|\.eslintrc.*|\.babelrc.*|\.swcrc)$/.test(base)) return "a build config";
-  if (/^[\w.-]+\.(config|conf)\.[\w.]+$/.test(base)) return "a tool config";
+  // ADR-0070. The one predicate both gates share on purpose: the *rule* stays duplicated (ADR-0048
+  // says it must not be switchable from a plan, and a rule with one implementation has one place to
+  // get it wrong), but "what is a tool config" is a fact about a filename, and two answers to that
+  // would be a bug rather than a safeguard. A test asserts the two agree.
+  if (isToolConfig(file)) return "a tool config";
   return null;
 };
 
@@ -241,6 +246,49 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
       const run = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile, plan.compiler_flags);
       const program = run.program;
       const byFile = run.errors.by_file;
+
+      /**
+       * ADR-0071 option A: **report the exposure, gate nothing.**
+       *
+       * `compile_ok` is *zero errors in the task's own files **and** no file anywhere with more than
+       * before*, and a plan may never list a test file (ADR-0046 — the tests are the gate). So when a
+       * project's `tsc` program includes its tests, a task can be unsatisfiable purely because of the
+       * **type change the ask requires**: nothing needs editing, and merely narrowing an exported type
+       * makes a file nobody may touch report one more error.
+       *
+       * Measured on a real service: 24 of 24 compile failures were this, and **22 of them introduced
+       * exactly one error into the same app-wide e2e spec** while editing 22 unrelated source files.
+       * The project-wide error count went *down*. `validateChangePlan` passed every one of them,
+       * because the refusal above is a property of a file *before* the change and this is a property
+       * of what the change *does*.
+       *
+       * This warns and does not refuse, deliberately. Predicting a compiler's output without running
+       * the compiler is how `deriveLineRange`'s special cases accumulated, and the one survivor in
+       * that run would have been refused by a rule that guessed. A planner who reads *"a spec carrying
+       * 165 errors is in your program and you may not touch it"* writes a different plan; that is the
+       * whole intent.
+       */
+      const testsInProgram = [...program]
+        .filter((f) => FORBIDDEN(f) !== null)
+        .map((f) => ({ file: f, errors: byFile[f] ?? 0 }))
+        .sort((a, b) => b.errors - a.errors);
+      const errorfulTests = testsInProgram.filter((t) => t.errors > 0);
+      if (errorfulTests.length > 0) {
+        const worst = errorfulTests[0]!;
+        const total = errorfulTests.reduce((n, t) => n + t.errors, 0);
+        warnings.push(issue(
+          "tests_in_program_carry_errors",
+          `${tsconfig} puts ${testsInProgram.length} test file(s) in the program, and ${errorfulTests.length} ` +
+          `of them already carry ${total} tsc error(s) — the worst is ${worst.file} with ${worst.errors}. ` +
+          "A plan may never list a test file, and `compile_ok` fails if any file anywhere gains an error, " +
+          "so a task whose change narrows an exported type can be unsatisfiable through no fault of a " +
+          "worker — even while it reduces the project's total. This is a warning, not a refusal: it " +
+          "cannot be predicted without running the compiler on the change (ADR-0071). Give the tsconfig " +
+          "an `include` that separates source from tests, or prefer tasks whose files those specs do not " +
+          "reach.",
+          planPath,
+        ));
+      }
 
       for (const step of plan.steps) {
         for (const task of step.tasks) {

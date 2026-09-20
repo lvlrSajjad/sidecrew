@@ -35,14 +35,48 @@ const BUILD_CONFIG = [
   /^\.eslintrc([.-][\w.-]+)?$/,
   /^\.babelrc([.-][\w.-]+)?$/,
   /^\.swcrc$/,
-  // `vite.config.ts`, `jest.config.js`, `vitest.config.mts`, `stryker.conf.json`, `eslint.config.js`.
-  // Anchored on the `.config.` / `.conf.` segment rather than on a list of tool names, because the
-  // list would be a list of the tools we happened to think of — and it is the *shape* of the name
-  // that a worker reaches for when it wants the check turned off.
-  /^[\w.-]+\.(config|conf)\.[\w.]+$/,
+  // The `.config.` / `.conf.` shape is handled by `isToolConfig` below, which also asks *where* the
+  // file is — see ADR-0070 for why the shape alone was too eager.
 ];
 
-const isBuildConfig = (path: string): boolean => BUILD_CONFIG.some((r) => r.test(basename(path)));
+/**
+ * A tool config is one at the **project root**, or one whose stem names a tool — ADR-0070.
+ *
+ * The pattern used to be the `.config.` / `.conf.` shape alone, on any extension. That refused
+ * ordinary application source: `src/<domain>/<domain>.config.ts` is the dotted-name convention NestJS
+ * and Angular use throughout, and two real tasks were written, validated INVALID and dropped because
+ * of it.
+ *
+ * **Narrowing by extension would have been the wrong fix**, and it is the reason this is an ADR. The
+ * configs that matter most here are TypeScript — `vitest.config.ts`, `jest.config.ts`,
+ * `playwright.config.ts`, `stryker.config.js` — and those are the gate's own configuration, which
+ * ADR-0048 says a worker may never reach.
+ *
+ * The direction of error is the whole decision: a false positive costs a task, a false negative lets
+ * a worker reconfigure the gate that is judging it. So this stays deliberately eager — a root-level
+ * `app.config.ts` is still refused, which is safe — and only stops reaching **into** the source tree.
+ */
+const TOOL_STEMS = new Set([
+  "vite", "vitest", "jest", "webpack", "rollup", "esbuild", "next", "nuxt", "tailwind", "postcss",
+  "babel", "eslint", "prettier", "stryker", "playwright", "cypress", "karma", "svelte", "astro",
+  "metro", "jasmine", "nx", "turbo", "drizzle", "knex", "tsup", "tsdown", "commitlint", "lint-staged",
+]);
+
+const CONFIG_SHAPE = /^([\w.-]+)\.(config|conf)\.[\w.]+$/;
+
+/**
+ * True when `path` names a tool's configuration. `path` is posix and relative to the project root, so
+ * "at the root" is "has no directory part" — which is exactly where a tool looks for its own config.
+ */
+export const isToolConfig = (path: string): boolean => {
+  const base = basename(path);
+  const m = CONFIG_SHAPE.exec(base);
+  if (!m) return false;
+  return !path.includes("/") || TOOL_STEMS.has(m[1]!.toLowerCase());
+};
+
+const isBuildConfig = (path: string): boolean =>
+  BUILD_CONFIG.some((r) => r.test(basename(path))) || isToolConfig(path);
 
 /** The same pattern the workload-#1 sandbox uses to decide what a test file is. One definition, two gates. */
 const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;

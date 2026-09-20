@@ -8,7 +8,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { checkConfinement, codeLines, confinementMessage, observe } from "../src/confinement.js";
+import { isToolConfig, checkConfinement, codeLines, confinementMessage, observe } from "../src/confinement.js";
 import { ChangeCandidate, ChangeTask, ConfinementRule, type ConfinementBreach } from "../src/schemas.js";
 
 const FIXTURE = "fixtures/fix-fixture";
@@ -243,5 +243,42 @@ describe("observe — true of the candidate, and nothing gates on it (ADR-0057)"
       files: [{ path: "src/rates.ts", source: withComment, source_sha: "sha", errors: 1 }],
     });
     expect(observe(t, candidate([{ path: "src/rates.ts", contents: "export const a = 1;\n" }]))).toEqual([]);
+  });
+});
+
+describe("a tool config is where it lives, not just what it is called — ADR-0070", () => {
+  it("still refuses every real tool config, including the TypeScript ones", () => {
+    // The direction of error is the whole decision: a false positive costs a task, a false negative
+    // lets a worker reconfigure the gate judging it. Narrowing by EXTENSION — the obvious fix — would
+    // have admitted every one of these, because the configs that matter here are TypeScript.
+    for (const f of [
+      "vitest.config.ts", "jest.config.ts", "jest.config.js", "playwright.config.ts",
+      "stryker.config.js", "vite.config.mts", "eslint.config.js", "tailwind.config.ts",
+      "webpack.config.cjs", "stryker.conf.json",
+    ]) expect(isToolConfig(f)).toBe(true);
+  });
+
+  it("stops refusing ordinary source in a dotted-name convention", () => {
+    // NestJS and Angular name files this way throughout. Two real tasks were written, validated
+    // INVALID and dropped because `src/<domain>/<domain>.config.ts` matched the old shape-only rule.
+    for (const f of [
+      "src/exception/exception.config.ts",
+      "src/exception/model/exception.config.model.ts",
+      "src/modules/billing/billing.conf.ts",
+    ]) expect(isToolConfig(f)).toBe(false);
+  });
+
+  it("stays eager at the project root, which is the safe direction", () => {
+    // A root-level `app.config.ts` is still refused. That may cost a task; it cannot cost the gate.
+    expect(isToolConfig("app.config.ts")).toBe(true);
+    // And a tool's config parked in a subdirectory is still caught by its stem.
+    expect(isToolConfig("config/vitest.config.ts")).toBe(true);
+    expect(isToolConfig("packages/web/jest.config.js")).toBe(true);
+  });
+
+  it("is not fooled by a name that merely contains the word", () => {
+    expect(isToolConfig("src/config.ts")).toBe(false);
+    expect(isToolConfig("src/configuration.service.ts")).toBe(false);
+    expect(isToolConfig("src/app.module.ts")).toBe(false);
   });
 });

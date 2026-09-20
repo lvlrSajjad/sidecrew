@@ -501,6 +501,36 @@ export interface VerifyChangeOpts {
   compilerFlags?: readonly string[];
 }
 
+/**
+ * The compiler's words about the files this verdict is *about*, in the compiler's own order.
+ *
+ * ADR-0072. A diagnostic line begins `path(line,col): error TS…`, and its continuation lines are
+ * indented — so a line with no leading space starts a new diagnostic and decides whether the lines
+ * under it are kept. Anything unparseable is dropped rather than guessed at: a correction quoting a
+ * fragment it could not attribute is worse than one quoting less.
+ *
+ * Falls back to the whole message when nothing matches, because an empty `message` would read as "the
+ * compiler said nothing", which is the opposite of what a failing compile stage means.
+ */
+export const relevantDiagnostics = (
+  message: string, taskFiles: readonly string[], introduced: Record<string, number>,
+): string => {
+  const wanted = new Set([...taskFiles.map(toPosix), ...Object.keys(introduced).map(toPosix)]);
+  if (wanted.size === 0) return message;
+  const kept: string[] = [];
+  let keeping = false;
+  for (const line of message.split("\n")) {
+    if (/^\s/.test(line)) {
+      if (keeping) kept.push(line);
+      continue;
+    }
+    const at = line.indexOf("(");
+    keeping = at > 0 && wanted.has(toPosix(line.slice(0, at)));
+    if (keeping) kept.push(line);
+  }
+  return kept.length > 0 ? kept.join("\n") : message;
+};
+
 const pick = (counts: ErrorCounts, files: string[]): Record<string, number> => {
   const out: Record<string, number> = {};
   for (const f of files) {
@@ -621,7 +651,13 @@ export async function verifyChange(
       const introduced = introducedBy(before, after);
       compile_ok = Object.keys(remaining).length === 0 && Object.keys(introduced).length === 0;
       if (!compile_ok) {
-        errorMessage = truncateError(tsc.message);
+        // ADR-0072: the task's own files and the ones that just gained an error — not the project's.
+        // `tsc.message` is every diagnostic the compiler produced, and `truncateError` cuts it at
+        // 2 KB, so on a project with 11,412 errors this field carried the alphabetically-first 2 KB
+        // and mentioned neither. It is the one field a correction is written from (ADR-0044 §4 rule
+        // 1) and ADR-0047 §3 claims the verdict was designed for that reader; the first time such a
+        // reader existed it reported, unprompted, that this told it nothing about any of its tasks.
+        errorMessage = truncateError(relevantDiagnostics(tsc.message, targets, introduced));
         problems.push(
           `tsc is not satisfied: ${Object.keys(remaining).length > 0
             ? `${Object.entries(remaining).map(([f, n]) => `${n} error(s) left in ${f}`).join(", ")}`

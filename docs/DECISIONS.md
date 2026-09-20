@@ -4576,9 +4576,9 @@ tests are the gate; a workload that edits its own oracle is not this workload (A
 here becomes an action it is `doctor` answering the question before a plan is written, which is the
 shape ADR-0032 set and where the other pre-flight questions already went.
 
-## ADR-0070 — The tool-config rule refuses ordinary source in a dotted-name convention (PROPOSED)
+## ADR-0070 — The tool-config rule refuses ordinary source in a dotted-name convention
 
-**Status:** proposed · 19 Sep 2026 · found by the change planner during §2.1 · needs the owner
+**Status:** **accepted, option C** · owner's decision, 20 Sep 2026 · implemented the same day, addendum at the end of this file
 **Bears on:** every plan written against a NestJS/Angular-style codebase · **evidence:** measured, below
 
 ### The measurement
@@ -4635,9 +4635,9 @@ that gets a rule quietly distrusted.
 The duplication is deliberate (a rule with one implementation is a rule with one place to get it
 wrong), and the failure mode of deliberate duplication is exactly one copy being fixed.
 
-## ADR-0071 — `validateChangePlan` cannot see the task that is unsatisfiable *because of what it will change* (PROPOSED)
+## ADR-0071 — `validateChangePlan` cannot see the task that is unsatisfiable *because of what it will change*
 
-**Status:** proposed · 20 Sep 2026 · measured in Phase 12 §2.2 pass 1 · needs the owner
+**Status:** **accepted, options A and D** · owner's decision, 20 Sep 2026 · implemented the same day, addendum at the end of this file
 **Bears on:** every `#2a` plan on a project whose `tsc` program includes its tests · **evidence:** measured
 
 ### The measurement
@@ -4724,10 +4724,10 @@ and that is exactly what excluding them now would be. The run reports `S_c` over
 and the number that means something. Which is the honest way round: the rule was frozen for a reason,
 and the reason is that a denominator adjusted after the fact is a description of the adjustment.
 
-## ADR-0072 — `ChangeVerdict.errors.message` quotes the wrong compiler output, and it is the one field a correction is written from (PROPOSED)
+## ADR-0072 — `ChangeVerdict.errors.message` quotes the wrong compiler output, and it is the one field a correction is written from
 
-**Status:** proposed · 20 Sep 2026 · found by the corrector in Phase 12 §2.2 · needs the owner
-**Deliberately not implemented** — see *Why this is not being fixed tonight*.
+**Status:** **accepted, accepted in full** · owner's decision, 20 Sep 2026 · implemented the same day, addendum at the end of this file
+**Implemented 20 Sep 2026**, once §2.2 had reported — see *Why this is not being fixed tonight*, which is why it waited.
 
 ### The measurement
 
@@ -4857,3 +4857,46 @@ The alternative considered and rejected was **measuring** the tier instead (Phas
 credits). It was rejected on scope rather than cost: a second tier is a second set of numbers, a
 second worker to keep pinned, and a second thing every future measurement has to be reported per. One
 supported configuration is a smaller and more defensible product.
+
+## ADR-0070, ADR-0071 and ADR-0072 addendum — decided and implemented on `main`, 20 Sep 2026
+
+The owner took **ADR-0070 option C**, **ADR-0071 option A** (with D left as later work), and ADR-0072
+in full. All three landed together with 707 fast tests green.
+
+### ADR-0070 — `isToolConfig`, one predicate, two gates
+
+A tool config is now one **at the project root** *or* one whose stem names a known tool. The shape
+alone was reaching into the source tree and refusing `src/<domain>/<domain>.config.ts`.
+
+**The rule stays duplicated and the predicate does not**, which is the distinction worth keeping.
+ADR-0048 says the confinement rules must not be switchable from a plan, so `confinement.ts` and
+`fix-validate.ts` keep their own copies of the *rule*. But *"is this filename a tool config"* is a
+fact about a string, and two answers to it would be a bug rather than a safeguard. The tests pin both
+directions: every real TypeScript tool config still refused, and a root-level `app.config.ts` still
+refused too — eager at the root is the safe direction, and it may cost a task but cannot cost the gate.
+
+### ADR-0071 — the validator reports the exposure and gates nothing
+
+`validateChangePlan` now warns when the `tsc` program contains test files that already carry errors,
+naming how many, the worst offender, and the mechanism: a plan may never list a test file, and
+`compile_ok` fails if any file anywhere gains one, so a task can be unsatisfiable purely because of
+the type change its ask requires.
+
+**It warns rather than refuses, and the run that motivated it is the argument.** Of the 30 tasks, one
+survived — and a rule that predicted the compiler's output without running the compiler would have
+refused that one too. Option D (`doctor` answering once per project, before a plan exists) is not
+built and stays open; the warning is where a planner will actually meet it.
+
+### ADR-0072 — `relevantDiagnostics`
+
+The verdict now carries the compiler's words about **the task's own files and the files that just
+gained an error**, in the compiler's own order, with each diagnostic's indented continuation lines
+kept — TS2345's second line is where the reason lives. It falls back to the whole message when it can
+attribute none of it, because an empty `message` reads as *"the compiler said nothing"*, which is the
+opposite of what a failed compile stage means.
+
+**One thing that cannot be repaired.** The verdicts already on disk were truncated to 2 KB *before*
+being stored, so the information the filter needs was discarded at write time. §2.2's twelve
+compile-shape corrections were written from the degraded field and that remains a stated confound of
+`S_c = 0/29`; it is not retroactively fixable, and re-running §2.2 on the fixed field would be a new
+measurement rather than a correction of that one.
