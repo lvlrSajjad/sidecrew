@@ -1015,6 +1015,39 @@ short enough that 14b is not blocked indefinitely waiting for users who may not 
 win."* Phases 14b–14d are that road. They are numbered with letters for the same reason 11b and 13b
 were: numbers are the order, and these sit between publish and everything already numbered after it.
 
+### The framework these phases are building toward — read this before planning any of them
+
+**Stated by the owner, 20 Sep 2026, and it is the thing a new session must not drift from:**
+
+> Opus receives the task and **plans a session to gather the info needed**. Opus receives the info from
+> the workers. **Opus asks the user if needed**, and plans based on what the user decides and what the
+> workers found. Opus asks the workers to act on that. **The loop continues until what was asked is
+> satisfied.**
+
+This is `VISION.md`'s philosophy section — *"the local model can scan the code, go through several
+files looking for something, report back to Opus; Opus says okay, let's do this"* — and **the phases
+below are the order in which its parts become true**, not a list of features:
+
+| the loop's step | what it needs | phase |
+|---|---|---|
+| Opus plans a gathering session, workers read and report | retrieval on the contract, and a gate for it | **14d** (ADR-0079) |
+| Opus asks the **user**, and plans on the answer | the negotiation surface — *"your config reports 0, this flag reports 763"* | **14d**, and ADR-0079 option A can ship before the rest |
+| workers act on any part of the codebase | symbol-scoped return, so file size stops deciding | **14c** (ADR-0075, accepted) |
+| a machine decides what Opus sees | built, both workloads | done (ADR-0046, ADR-0048) |
+| the loop terminates when *satisfied* | a machine-checkable definition of satisfied | per workload — see below |
+
+**Two constraints that come from measurements and bind every phase here.**
+
+1. **Each cycle must be cheap for Opus.** Planning is **233,500 fixed tokens, 68 % of the total even
+   at 41 tasks**, overwhelmingly Opus *reading*. A loop that re-plans `n` times risks paying that `n`
+   times, which inverts the product. Batched, one round trip per phase over a summary, **never per
+   task**. *A chatty loop is a more expensive Opus session with extra steps*, and `R` would say so.
+2. **"Until satisfied" needs a machine-checkable definition, or the loop cannot terminate honestly.**
+   It exists for every workload that belongs here and for none that does not: type errors → *zero
+   under the agreed flag*; lint → *clean exit*; tests → *a mutation threshold*; a bug → *the
+   reproducing test passes*. **A feature has no termination condition for the same reason it has no
+   gate** (CLAUDE.md), which is why Phase 15 is post-1.0 and narrow.
+
 ### Every phase ends with an exit check, and the fork is named before the phase runs
 
 **The owner's process decision, 20 Sep 2026.** A phase does not simply finish. It ends by
@@ -1037,7 +1070,7 @@ This is what *"90 %"* means operationally. Without it the bar is a feeling.
 | | what it measures | today (20 Sep 2026) | at the 90 % bar |
 |---|---|---|---|
 | **Reach** | share of a real codebase **by bytes** that a task may touch | **51.9 %** | ≥ 90 % |
-| **Shapes** | behaviour-preserving shapes surviving at a usable rate | **1 of 5** (`rename`, `unused_import`; `null_guard` 1/30, `api_migration` and `dead_code` unmeasured) | ≥ 4 of 5 |
+| **Shapes** | behaviour-preserving shapes surviving at a usable rate | **1 of 5** (`rename`, `unused_import`; `null_guard` **2/30** measured by 14b, and ADR-0077 found the limit is the **gate's scope**, not the model; `api_migration` and `dead_code` unmeasured) | ≥ 4 of 5 |
 | **Cost** | `R` — Opus tokens to plan ÷ what a paid model would cost per task | **2.84** at `N = 12`, **1.07** at `N = 41` | ≤ 1.0 at `N = 12` |
 | **Trust** | `D` — how often the gate disagrees with itself | **2/19 ≈ 0.105** | ≤ 0.02, or diagnosed |
 
@@ -1052,8 +1085,8 @@ planner passes, Trust is a replay. **Shapes is the expensive one and 14b is the 
 | what Opus can do to a codebase | sidecrew today | fixed by |
 |---|---|---|
 | edit a file **of any size** | **~52 % of a codebase by bytes**; every 1000+ line file is refused | **14c** |
-| do **any shape** of behaviour-preserving change | renames and dead imports well; null guards **1/30** | **14b** measures whether this is a ceiling; **17** if it is not |
-| **read** the codebase to decide what to do | Opus does it, and it is **68 % of planning cost** | **14d** |
+| do **any shape** of behaviour-preserving change | renames and dead imports well; null guards **2/30** | **14b** measured it — the ceiling is the **gate's scope**, not the model (ADR-0077). A/B/C wait on D's counterfactual; **more worker capability buys nothing here** |
+| **read** the codebase to decide what to do | Opus does it, and it is **68 % of planning cost** | **14d**, and **ADR-0079** is the shape it takes |
 | behaviour-**changing** work | not attempted, deliberately | **15**, and it is post-1.0 |
 
 The first three are the 90 %. The fourth is the rest, and ADR-0031 says why it is last.
@@ -1135,7 +1168,8 @@ owner to resolve, recommending the counterfactual run before choosing.
 
 ## 14c — The reach: symbol-scoped return · **cut `v0.2.0`**
 
-**2–3 sessions. One overnight run. ADR-0075 must be decided first.**
+**2–3 sessions. One overnight run. ADR-0075 is DECIDED — option C, accepted by the owner 20 Sep
+2026 — so this phase is unblocked and can start.**
 
 **Half of a real codebase is unaddressable and it is the half the work is in** — 3.3 % of files are
 48.1 % of the bytes, and every 1000+ line file is refused. That is the *return format*, not the model
@@ -1150,7 +1184,8 @@ that for publication and building on it here is the cheapest ordering available,
 follows 14 rather than replacing part of it.
 
 **Definition of done**
-- ADR-0075 decided; the contract change lands with a spec update in the same commit (CLAUDE.md).
+- ~~ADR-0075 decided~~ **done, 20 Sep**; the contract change lands with a spec update in the same
+  commit (CLAUDE.md).
 - Confinement is still decidable **before** anything is written, and a test asserts it.
 - A control fixture per new failure mode, as the coverage test demands.
 - **Measured, against a rule frozen first**: survival on tasks in files that were previously refused.
@@ -1199,6 +1234,31 @@ confirm a symbol **exists**; it cannot confirm it is **relevant**. Ten confirmed
 locations pass the gate and save nothing — a Goodhart shape the rest of this design does not have,
 where a cheap pass yields a *valid* artefact that fails to help. Decide what makes a retrieval answer
 checkable before building anything.
+
+**ADR-0079 is that ADR's starting point, and it carries a candidate answer.** The owner's *"Opus asks
+the user if needed"* supplies a relevance oracle that is **neither a machine nor Opus** — the person
+who asked. The division it proposes:
+
+| question | who decides | cost |
+|---|---|---|
+| does this location **exist** | a machine — `tsc`, the AST, a grep | free |
+| is it **relevant** | the **user**, on a batched summary | one question |
+| is the change **correct** | the gate (ADR-0046, ADR-0048) | the suite |
+
+This does not make retrieval gateable on its own. It makes the ungateable half *somebody's* rather
+than nobody's, and whether that is sufficient is exactly what the ADR has to settle.
+
+**Ship ADR-0079 option A first — it needs no oracle at all.** *Recon-as-report* answers *"your config
+reports 0 errors, `--strictNullChecks` reports 763 files — do you want to see them?"*. The user asked
+the question the report answers, so relevance is not in doubt and the Goodhart shape above does not
+arise. It is the smallest useful piece of the framework, it is independently valuable (it answers
+*"how many issues are there?"* completely), and it can land before the ADR that the rest waits on.
+
+**What it must not do yet:** offer to *fix* what it counts. ADR-0077 measured `null_guard` under
+`--strictNullChecks` at **2/30**, sunk by errors landing in test files in 21 of 21 cases. **A report
+that quantifies work the gate cannot then deliver is worse than no report**, because it converts a
+quiet limitation into a loud broken promise. Fixing follows ADR-0077's A/B/C, and its D
+counterfactual is on the critical path.
 
 **Definition of done**
 - The ADR, with the relevance problem answered rather than noted.

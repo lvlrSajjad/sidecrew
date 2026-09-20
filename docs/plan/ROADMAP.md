@@ -34,7 +34,7 @@ thing the scientific half could publish, because nobody runs it: the literature 
 
 ---
 
-## What to do next, in order — decided 20 Sep 2026
+## What to do next, in order — decided 20 Sep 2026, **state refreshed 21 Sep**
 
 *The owner's call: publish 14 if nothing gates it, then take the rest in this order. The goal is
 restated in their words — **"be able to achieve what Opus does, our way; even 90 % is a win."***
@@ -43,25 +43,27 @@ restated in their words — **"be able to achieve what Opus does, our way; even 
 
 | gate | state |
 |---|---|
-| `deriveLineRange` reads the TypeScript AST | **open** — still a regex, patched four times, *"no mutants at all"* wrong every time it was checked |
-| `doctor` learns the three pre-flight questions | **open** — and a fourth now: it reports `jest ok` on a project whose suite collects **zero tests** under the wrong node |
-| ADR-0042 — name a self-contradicting candidate | **open** — decided, never implemented |
-| README numbers vs the gate's own error rate | **open, and it is the owner's call** — §4.3's UNACCEPTABLE clause forbids publishing a survival rate as a point estimate until O8 is diagnosed. The 20 Sep diagnostic found *why* it could not be diagnosed (ADR-0074) and did not diagnose it. Publishing the rates **as intervals with `D` beside them** satisfies the rule and costs nothing |
+| `deriveLineRange` reads the TypeScript AST | **closed** — ADR-0076, on `main`. The regex missed 152 of 436 declarations in our own `src` and got 5 wrong |
+| `doctor` learns the pre-flight questions | **closed** — five rows, including `jest ok` on a suite that collects zero tests |
+| ADR-0042 — name a self-contradicting candidate | **closed** — option 1, on `main` |
+| README numbers vs the gate's own error rate | **closed** — every rate is `k/n` with an exact Clopper–Pearson interval and `D` beside it, which satisfies §4.3's UNACCEPTABLE clause rather than amending it |
+| CI green | **closed 20 Sep** — red since 18 Sep on three causes, all fixed. `release.yml`'s gate runs `npm test`, so this blocked the release outright |
+| the release itself | **OPEN, and all three are the owner's** — npm **Trusted Publishing** on npmjs.com (*not* a token), GitHub Pages on, and the real `v0.1.0` tag. `v0.1.0-rc.1` and `v0.1.0-rc.2` both failed and published nothing |
 | ~~both tiers~~ | **closed** — ADR-0073 descoped it |
 | ~~13b item 1 before publish~~ | **relaxed by the owner, 20 Sep** — it is now item 2 below rather than a publish gate |
 
-**Nothing here is research.** The first three are a session of ordinary work; the fourth is a
-sentence the owner picks.
+**Nothing here was research, and it is all done but the release.** What remains needs an npm account
+and a GitHub settings page, not a session.
 
-### 1. The whole-file ceiling — ADR-0075, and it is the biggest single capability gain available
+### 1. The whole-file ceiling — **ADR-0075 accepted (option C), 20 Sep** · the biggest single capability gain available · **Phase 14c, unblocked**
 
 **Half of a real codebase is unaddressable, and it is the half the work is in** (3.3 % of files,
 48.1 % of bytes; every 1000+ line file). That is the *return format*, not the model. Option C —
 symbol-scoped return, splice by AST range — moves the boundary from *"the file is big"* to *"the
 change is big"*.
 
-It shares a prerequisite with Phase 14's DoD: **`deriveLineRange` on the AST**. Doing that item for
-publication and then building on it is the cheapest ordering available, and it is why 0 comes before 1.
+It shares a prerequisite with Phase 14's DoD: **`deriveLineRange` on the AST** — **which landed as
+ADR-0076**, so the prerequisite is paid and 14c can start directly.
 
 ### 2. Retrieval — the half of the vision that is not built
 
@@ -73,19 +75,42 @@ Needs its own ADR first, because its gate is weaker **in kind**: a machine confi
 **exists**, never that it is **relevant**, and ten confirmed-useless locations pass while saving
 nothing. Then build, then measure against a rule frozen first — the number is the whole justification.
 
-### 3. Two probes on the editing ceiling — one evening, before spending a session trying to fix it
+**ADR-0079 (proposed, 20 Sep) is the shape this takes, and it is the owner's own framing.** The loop:
+*Opus plans a gathering session → workers report → **Opus asks the user** → Opus plans on the answer →
+workers act → repeat until satisfied.* Two things it contributes:
 
-The 7B returns files **unchanged** on `null_guard` work: 1/30, and 16 of 17 did it again after being
-told. Whether that is a ceiling or a gap is worth one evening of measurement rather than a campaign:
+- **A candidate answer to the relevance problem.** *"Opus asks the user"* is a relevance oracle that is
+  neither a machine nor Opus. Existence → a machine; **relevance → the user, on a batched summary**;
+  correctness → the gate. It does not make retrieval gateable alone; it makes the ungateable half
+  somebody's rather than nobody's.
+- **A first piece that needs no oracle at all.** *Recon-as-report* — *"your config reports 0 errors,
+  `--strictNullChecks` reports 763 files; want to see them?"* — answers a question the user just asked,
+  so relevance is not in doubt. Smallest useful piece, independently valuable, ships before the ADR.
+  **It must not offer to fix what it counts until ADR-0077 is decided** (see item 3).
 
-- **the 14B on the same 30 tasks** — settles model size in one run (the machine hosts one 14B *or*
-  two 7Bs, so it is a clean swap);
-- **one task decomposed to a single function** — settles whether the failure is task *size* rather
-  than task *kind*.
+**The binding constraint on the whole loop:** the 68 % is a *fixed per-session* term. A loop that
+re-plans `n` times risks paying it `n` times. Batched, one round trip per phase, never per task — *a
+chatty loop is a more expensive Opus session with extra steps*, and `R` is the number that says so.
 
-*A third probe — "is it the whole-file format?" — is already partly answered and the answer is no:
-every one of those 30 files was **under** the ceiling, the largest at 18.9 KB, with 0 truncated. The
-format caps what can be **reached**; it is not why the reachable ones failed.*
+### 3. ~~Two probes on the editing ceiling~~ — **DONE, Phase 14b, 20 Sep. The answer was neither option.**
+
+`S₁₄ = 2/30 = 0.067`, 95 % `[0.008, 0.221]` → **PROCEED to 14c** under the rule frozen beforehand.
+
+**Both probes did what they were built to do and neither converted into survival.** The 14B cut
+"returned the file unchanged" from 17 tasks to 3; narrowing the ask to one function cut it to 10. So
+neither model size nor task size was the binding constraint.
+
+**The limit is the gate's scope** (ADR-0077). Every extra target a worker fixes correctly becomes an
+*unsatisfiable* task, one for one: +6 correct → +6 unsatisfiable, +9 → +9. The sinking error is in a
+**test file in 21 of 21** cases and in non-test source in **0** — the guard narrows a type, the type
+propagates into fixtures, and tests may not be edited because tests *are* the gate. **It gets worse as
+the worker improves** (unsatisfiable 12 → 18 → 21), so buying more worker capability on this shape
+buys nothing measurable.
+
+**What this leaves open, and it gates item 2's fix half:** ADR-0077's options A/B/C. **Option D is
+accepted** — re-gate probe 1's 15 clean-target tasks with test-file *type* errors demoted to
+observations, and count how many survive the suite. Candidates are on disk, **no worker, ~1 hour**.
+That number decides whether recon-as-report may ever offer to fix what it counts.
 
 ### 4. Then, and only then, the ambition
 

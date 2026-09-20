@@ -1,10 +1,21 @@
 # Where we are — the standing handoff
 
-**Read this first, then `VISION.md` → `ROADMAP.md` → `PHASES.md`.** This file is always current; if it
+**Read this first, then `VISION.md` → `ROADMAP.md` → `PHASES.md`.**
+
+> **The direction, so no session drifts from it.** Opus receives a task and **plans a session to
+> gather the info needed**; workers read and report; **Opus asks the user** where a machine cannot
+> decide; Opus plans on the answer; workers act; the loop repeats **until a machine-checkable
+> definition of *satisfied*** is met. That is `VISION.md`'s philosophy and the owner's own framing
+> (20 Sep 2026). **`PHASES.md` § *The framework these phases are building toward* is the table of
+> which phase makes which step true** — read it before planning 14c or 14d. ADR-0079 is the write-up;
+> ADR-0075 (accepted) is the *act on any file* half; 14d is the *read and ask* half. This file is always current; if it
 disagrees with anything else, it is the thing that was updated last and the other file is the bug
 (CLAUDE.md § *Conventions*).
 
-**Last updated: 20 Sep 2026**, end of the session that **fixed CI and got `main` green** for the
+**Last updated: 21 Sep 2026**, after a session that **fixed CI**, took two owner decisions
+(ADR-0075 option C, ADR-0078), wrote **ADR-0079** and **re-pointed `PHASES.md` and `ROADMAP.md` at
+the framework** so a new session does not plan against an outdated one. It was the session that
+**got `main` green** for the
 first time since 18 Sep. The session before it ran **Phase 14b**, pushed `main` for the first time,
 and tagged **`v0.1.0-rc.1`**.
 
