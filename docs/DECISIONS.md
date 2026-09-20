@@ -5433,3 +5433,59 @@ Whether recon belongs in `sidecrew run`/`fix` as a pre-flight, in a subcommand o
 MCP where Opus is already in the conversation. The owner's framing — *"Opus receives the task and
 decides to add these checks to the plan before any action"* — points at MCP, and that is the cheapest
 place to try it, but it is not settled.
+
+### ADR-0079 addendum, 20 Sep 2026 — the framework the recon step is an instance of, and the one gap it closes
+
+The owner generalised the proposal the same day:
+
+> Opus receives the task, plans a session to gather the info needed. Opus receives the info from the
+> Qwens. Opus asks the user if needed, and plans based on what the user decides and the info. Opus
+> asks the Qwens to act on that. The loop continues until what was asked is satisfied.
+
+**This is not a new direction — it is `VISION.md`'s philosophy section, and it was written the same
+day.** *"The local model can scan the code, go through several files looking for something, report
+back to Opus; Opus says okay, let's do this, and so on."* Steps 1–2 are `BACKLOG.md` § *The edge
+ideas* item 1, reassigned to **Phase 13b**, and `VISION.md` §3 already calls retrieval *"the shape of
+the product, not an optimisation of it."* Recording it here so ADR-0079 is read as an instance of the
+framework rather than as a feature beside it.
+
+**It has a measured target, which is why it outranks most of the backlog.** Planning costs **233,500
+fixed tokens** on a real project — **68 % of the total even at 41 tasks** — and that fixed term is
+overwhelmingly Opus *reading*: 15.5M cache reads against 89k of output. It is the one part of the cost
+curve that does not amortise as the task count grows, and steps 1–2 attack exactly it.
+
+**The open problem sits precisely in the loop's step 2, and `VISION.md` states it.**
+
+> *"A local model that returns ten **confirmed** locations Opus did not need has passed its gate and
+> saved nothing. Existence is checkable by machine; relevance is not."*
+
+That is why edge idea 1 *"needs its own ADR before it is built"*, and why recon is a different
+Goodhart shape from every other workload here: the gate can prove a symbol is where a worker said it
+is, and cannot prove Opus needed to see it. A recon workload gated only on existence can be passed
+perfectly while making the session more expensive, not less.
+
+**The owner's step 3 is a candidate answer to that, and it is the contribution this framing adds.**
+*"Opus asks the user if needed"* supplies a **relevance oracle that is not a machine and not Opus** —
+the person who asked. The division is clean and it is cheap:
+
+| | who decides | cost |
+|---|---|---|
+| **does this location exist** | a machine — `tsc`, the AST, a grep | free |
+| **is this location relevant** | the **user**, on a batched summary | one question |
+| **is this change correct** | the gate (ADR-0046, ADR-0048) | the suite |
+
+This does not make recon gateable on its own; it makes the ungateable half *somebody's* rather than
+nobody's. Whether that is sufficient is the ADR edge idea 1 still owes.
+
+**The constraint to design against, from the same measurement.** The 68 % is a *fixed* per-session
+term dominated by Opus reading. A loop that re-plans `n` times risks paying it `n` times, which would
+invert the entire point of the product. So the framework is only worth building if each cycle is
+**batched and cheap for Opus** — one round trip per phase over a summary, never per task, and workers
+reporting in aggregate rather than streaming findings. **A chatty loop is a more expensive Opus
+session with extra steps**, and it would be measurable as such: planning tokens per task is the number
+that says which one was built.
+
+**Sequencing this implies**, and it does not change ADR-0079's recommendation: recon-as-report
+(option A) is the cheapest instance of step 1–2 and needs no relevance oracle at all, because the user
+asked the question the report answers. It is therefore both the smallest useful piece of the framework
+and the one that dodges the unsolved problem — which is a good reason to build it first.

@@ -194,7 +194,14 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   rather than the file and a 60-line method inside a 4,000-line service comes into reach. **ADR-0076
   had already landed its prerequisite**, the AST range finder, so 14c can start on it directly.
   Nothing further is owed here; it is listed only so the next session does not re-open it.
-- **ADR-0079 — recon before planning**, the owner's proposal of 20 Sep: sidecrew reports *"your
+- **ADR-0079 — recon before planning + the framework it belongs to** (addendum, 20 Sep). The owner's
+  generalised loop — Opus plans a gathering session, workers report, Opus asks the user, workers act,
+  repeat — **is `VISION.md`'s philosophy section and `BACKLOG` edge idea 1 (Phase 13b)**, which still
+  owes its own ADR. Target: planning is **233,500 fixed tokens, 68 % of the total even at 41 tasks**,
+  overwhelmingly Opus *reading*. Open problem, in the vision's words: *existence is checkable by
+  machine; relevance is not*. The owner's *"ask the user"* step is a candidate answer — the **user as
+  relevance oracle** — and the constraint is that each cycle must be batched and cheap, or the loop
+  pays the 68 % `n` times. The proposal proper: sidecrew reports *"your
   config says 0 errors, `--strictNullChecks` says 763 files — want to fix them?"*, fixes them, then
   offers to turn the flag on. Recommendation: **A now** (recon only), **B next** (fix, scoped to
   shapes that survive today), **C once ADR-0077 is decided**, never D. The blocker on C is honest and
