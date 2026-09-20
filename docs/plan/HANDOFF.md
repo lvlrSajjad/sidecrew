@@ -31,7 +31,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
-| version | **0.1.0-rc.2** in `package.json`, `server.json` (twice), `plugin.json`, `src/mcp.ts` **and `package-lock.json`** — the lockfile was a stale fifth place reading `0.0.1`; it is aligned now. The gate compares the tag against the first five |
+| version | **`0.1.0`** — bumped off `0.1.0-rc.2` on 21 Sep in all six places (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json`) and `dist` rebuilt, so the tarball announces `0.1.0`. **Ready to publish and to tag `v0.1.0`.** `ci.yml` checks four of the six, `release.yml` five; the lockfile is checked by neither |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
@@ -55,13 +55,26 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 **What is deliberately not done, because it is the owner's:**
 
-1. **Configure npm Trusted Publishing** — **not** a token. npm is ending token publishing, so there
-   is no secret to add to this repository at all. It is a one-time setup **on npmjs.com**: Package →
-   Settings → Trusted Publisher → GitHub Actions, pointing at this repo and `release.yml`. Until that
-   entry exists the publish fails `ENEEDAUTH`, **which looks exactly like a missing token and is
-   not one.** `~/Coding/ME/simframe` publishes this way and its `release.yml` is the reference.
-2. **Turn GitHub Pages on** — Settings → Pages → `main` / `docs`. Adding the files does not turn it on.
-3. **Tag `v0.1.0` for real**, after moving the five version places back off `0.1.0-rc.1`.
+1. **Publish `0.1.0` to npm by hand — this must come FIRST, and it is not optional.**
+   **Trusted Publishing cannot be configured for a package that does not exist.** Measured on
+   21 Sep: `npm trust github sidecrew --file release.yml --allow-publish` prompts, **takes the 2FA
+   code**, and only then fails
+   `npm error 404 Not Found - POST https://registry.npmjs.org/-/package/sidecrew/trust`. The CLI
+   validates existence *after* authenticating, so reaching the prompt proves nothing — do not read it
+   as progress. `sidecrew` is still a 404 on the registry and the name is unclaimed.
+2. **Then configure npm Trusted Publishing** — **not** a token; npm is ending token publishing, so
+   there is no secret to add to this repository at all. Either `npm trust github sidecrew --file
+   release.yml --allow-publish` (needs npm ≥ 11.5.1 — the machine is on **11.19.1** as of 21 Sep) or
+   npmjs.com → the package → Settings → Trusted Publisher → GitHub Actions, with
+   org `lvlrSajjad`, repo `sidecrew`, workflow `release.yml`, **environment blank** (`release.yml`
+   declares none), allowed action `npm publish`. Until that entry exists the *workflow's* publish
+   fails `ENEEDAUTH`, **which looks exactly like a missing token and is not one.**
+   `~/Coding/ME/simframe` publishes this way and its `release.yml` is the reference.
+3. ~~**Turn GitHub Pages on**~~ — **DONE, 21 Sep.**
+4. **Tag `v0.1.0`.** The version places are already at `0.1.0`. `release.yml`'s `npm` job treats an
+   already-published version as a **skip, not a failure**, so publishing by hand and then tagging is
+   the designed path — the `registry` job still runs and its `login github-oidc` flow is **still
+   unverified**.
 
 **`release.yml` ran for the first time on 20 Sep**, twice, and **both runs failed** — which is the
 whole reason to have tagged a release candidate rather than `v0.1.0`.
@@ -147,12 +160,11 @@ pushing the fix for the first two and reading the job that had never been read.*
   exercised directly at `total_gb: 7.0`, and both test files run green in a tracked-files-only copy of
   the tree with no `.sidecrew` in it.
 
-**1. The three owner actions.** npm **Trusted Publishing** configured on npmjs.com (a one-time entry
-against this repo and `release.yml` — *no repository secret*, npm is ending token publishing),
-GitHub Pages on (Settings → Pages → `main` / `docs`), and then the real tag. **For the real release the five version places must go
-back to `0.1.0`** — they sit at **`0.1.0-rc.2`** now, because the gate compares the tag against them.
-`v0.1.0-rc.1` and `v0.1.0-rc.2` are both pushed and both failed; neither published anything, so npm
-and the registry are still untouched and the name is unclaimed.
+**1. The owner actions — and the order is forced, see §2.** Pages is **done**. The versions are
+**already at `0.1.0`** and `dist` is rebuilt. What is left: **hand-publish `0.1.0`** (the package must
+exist before Trusted Publishing can be configured — measured, §2), **then** configure Trusted
+Publishing, **then** tag `v0.1.0`. `v0.1.0-rc.1` and `v0.1.0-rc.2` are both pushed and both failed;
+neither published anything, so npm and the registry are untouched and the name is unclaimed.
 
 **2. ADR-0077's counterfactual — the nearest piece of actual work, and it is short.** Option D is
 **accepted**; A, B and C are deliberately still open and wait on this number.

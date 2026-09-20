@@ -48,7 +48,7 @@ restated in their words — **"be able to achieve what Opus does, our way; even 
 | ADR-0042 — name a self-contradicting candidate | **closed** — option 1, on `main` |
 | README numbers vs the gate's own error rate | **closed** — every rate is `k/n` with an exact Clopper–Pearson interval and `D` beside it, which satisfies §4.3's UNACCEPTABLE clause rather than amending it |
 | CI green | **closed 20 Sep** — red since 18 Sep on three causes, all fixed. `release.yml`'s gate runs `npm test`, so this blocked the release outright |
-| the release itself | **OPEN, and all three are the owner's** — npm **Trusted Publishing** on npmjs.com (*not* a token), GitHub Pages on, and the real `v0.1.0` tag. `v0.1.0-rc.1` and `v0.1.0-rc.2` both failed and published nothing |
+| the release itself | **OPEN, owner's, and the order is forced** — **hand-publish `0.1.0` first**, because Trusted Publishing cannot be configured for a package that does not exist (measured 21 Sep: `npm trust` takes the 2FA code and *then* 404s). Then Trusted Publishing, then the `v0.1.0` tag. **Pages is done**; the version places are already at `0.1.0` |
 | ~~both tiers~~ | **closed** — ADR-0073 descoped it |
 | ~~13b item 1 before publish~~ | **relaxed by the owner, 20 Sep** — it is now item 2 below rather than a publish gate |
 
