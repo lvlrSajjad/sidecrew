@@ -34,6 +34,76 @@ thing the scientific half could publish, because nobody runs it: the literature 
 
 ---
 
+## Capability against the philosophy — an honest assessment, 20 Sep 2026
+
+*Written after Phase 12's four measurements, against the owner's own statement in `VISION.md`
+(20 Sep 2026) rather than against a pitch. The point of measuring was to be able to write this.*
+
+### The ambition, and what is actually true today
+
+> *"Anything with the code that Opus does."*
+
+| the work | measured | verdict |
+|---|---|---|
+| renames, unused imports | 19/19 and 15/19 on unmodified real projects; **byte-identical to Opus on 18 of 19** | **works** |
+| null guards, under a stricter compiler | **1/30**, and **16 of 17** workers returned the file unchanged *again* after a note saying that returning it unchanged was the failure | **does not** |
+| behaviour-changing work (#2b) | not started, deliberately (ADR-0031) | the majority of what Opus does |
+
+The honest sentence is **"renames and dead imports, reliably; very little else yet."** That is a real
+capability — it is exactly the boring, wide, parallel work worth farming out — and it is not *anything*.
+
+### The economics currently run the wrong way at the sizes people try first
+
+> *"Opus does the smart thingies, our local models do the heavy lifting."*
+
+Workers cost **zero**. Coordination costs **8,400–22,100 Opus tokens per task**, and at a 12-task plan
+that is **2.84×** what simply handing each task to a paid model would cost. Break-even is somewhere
+near 40–50 tasks. So at small jobs **Opus is doing the smart work *and* paying more than the heavy
+lifting saves.** The curve is strongly favourable with size; the first thing a new user tries is not.
+
+### The half of the vision that is not built is the half the numbers point at
+
+> *"The local model can scan the code, go through several files looking for something, report back to
+> Opus; Opus says okay, let's do this."*
+
+Nothing of this exists. And **68 % of planning cost is fixed, overwhelmingly Opus reading** — 15.5M
+cache reads against 89k of output. It is the one term in the cost curve that does not amortise with
+plan size.
+
+### The finding that should reorder the work
+
+The philosophy has two halves — *local models read* and *local models edit* — and Phase 12 measured
+them differently.
+
+- **The editing half is weaker than hoped, and it is a ceiling rather than a tuning problem.** Given a
+  real file and asked for a null guard, the 7B mostly hands the file back unchanged. Not wrong code —
+  *no* code. That is why the correction round bought nothing: there was no defect for a note to
+  correct.
+- **The reading half is untested and the bar is far lower.** Finding where something lives does not
+  require writing correct TypeScript. It requires being tireless, which is precisely what a resident
+  7B is, and a machine can check the answer cheaply.
+
+> **The measurements argue that the owner's own example — *scan the code, read across files, report
+> back* — is the half that works, and *the local model makes the change* is the half that is fragile.**
+
+That inverts the current build order: the tool today is all editing and no reading.
+
+**The caveat that keeps item 1 behind an ADR.** Its gate is weaker *in kind*. A machine can confirm a
+symbol **exists**; it cannot confirm it is **relevant**. Ten confirmed, real, useless locations pass
+the gate and save nothing — a different Goodhart shape from everywhere else here, where a cheap pass
+produces a bad artefact the gate catches.
+
+### Bluntly
+
+The **architecture** matches the philosophy: the gate is real, it is measured, and it now has its own
+error rate, which is more than most of this field can say. The **capability** matches it partially —
+one shape of work reliably, one not at all, and the half that would fix the economics unbuilt.
+
+Nothing measured says the idea is wrong. What it says is that **the next thing to build is the
+reading, not more editing** — which is the owner's own sentence rather than a conclusion imposed on it.
+
+---
+
 ## The caveat that now has a number — and it applies to every rate below
 
 **Measured 19 Sep 2026: `D = 2/19 = 0.105`.** Replaying a frontier model's own diffs — which the gate
