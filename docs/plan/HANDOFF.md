@@ -163,6 +163,28 @@ errors — with test-file *type* errors demoted to observations, and count how m
 replayed verify, and its cost is the suite, about an hour. `scripts/gate-replay.ts` is the nearest
 existing thing.
 
+**Inputs verified present, 21 Sep** — all of it is on disk and the run is genuinely feasible:
+probe 1's run dir — named in `probe1-report.json`'s `run_dir`, under `.sidecrew/runs/`, and **not
+reproduced here because those directory names are built from the project's own name** — has **58
+candidates, 58 verdicts, 58 tasks**, plus `diffs/` and `baselines/`; the 30 declared tasks are
+intact; `project-a`'s checkout
+is **clean** at `77953e627f`. `.sidecrew/` is gitignored at `.gitignore:3` and nothing under it is
+tracked, which matters because those run-directory *names* carry the client's name.
+
+**The 15 are `unsatisfiable_breakdown.target_was_fixed_correctly` in
+`experiments/editing-ceiling/results/probe1-14b-classified.json`** — 21 unsatisfiable, of which 15 had
+the target fixed correctly and 6 also failed the target. (Do not confuse this with that file's
+`clean_subset`, which is `n = 9` and means something else: tasks *not excluded* by ADR-0071.)
+
+**The "about an hour" estimate is optimistic, and here is why.** `scripts/gate-replay.ts` is the
+nearest existing thing and it is **not** the thing: it replays the production gate as-is to measure
+the gate's own error rate. **`verifyChange` short-circuits — `src/change.ts:683` — so for all 15 the
+suite never ran**, because `compile_ok` was already false from the test-file errors. There is
+therefore no suite result on disk to re-read, and the counterfactual has to *run* the suite. The
+harness must drive `makeChangeSandbox` / `captureBaseline` / the compile and suite steps itself,
+compute its own `compile_ok'` that demotes test-file type errors, and run the suite only where that
+holds. Budget **a harness first, then the suite** — not an hour of replay.
+
 Two constraints that are the whole point of the measurement, not ceremony:
 
 - **`changeSurvives` is not modified.** The production gate stays what ADR-0046 and ADR-0048 made it.
