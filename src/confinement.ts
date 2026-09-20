@@ -171,6 +171,15 @@ export function checkConfinement(task: ChangeTask, candidate: ChangeCandidate): 
         : `the worker returned ${candidate.edits.length} file(s) byte-identical to the original`);
   }
 
+  // ADR-0054, accepted 20 Sep 2026. The eighth cheap way past the gate, and the only behaviour that
+  // separated the local tier from a frontier control in all of Phase 11. A comment is neither a type
+  // nor a test, so the other three clauses answer "yes" to a candidate that silently deleted the
+  // docblock explaining why a fix is safe — and the prompt forbidding it in English is worth nothing,
+  // because a worker optimises against the constraint rather than the request (ADR-0006).
+  for (const d of documentationChanges(task, candidate)) {
+    add("documentation_changed", d.file, d.detail);
+  }
+
   for (const edit of changed) {
     const before = sources.get(edit.path);
 
@@ -271,14 +280,25 @@ const blankLines = (text: string): number => text.split("\n").filter((raw) => ra
  * comments explaining it, and flagging that on every such task would make the signal worthless on the
  * one shape where the deletion was the point.
  */
-export function observe(task: ChangeTask, candidate: ChangeCandidate): ChangeObservation[] {
+/**
+ * Documentation this candidate changed without being asked to — ADR-0054, the owner's decision of
+ * 20 Sep 2026.
+ *
+ * > *"The gate must care about the reason behind doing a work even if it's not documented on the
+ * > disc."*
+ *
+ * Shared by `checkConfinement`, which **refuses** on it, and by `observe`, which reports the one kind
+ * that does not refuse. One comparison with two readers, because two implementations of "did the
+ * comments change" would be a bug rather than a safeguard.
+ */
+export function documentationChanges(task: ChangeTask, candidate: ChangeCandidate): ChangeObservation[] {
   const out: ChangeObservation[] = [];
   const sources = new Map(task.files.map((f) => [f.path, f.source]));
+  if (task.shape === "dead_code") return out;
   for (const edit of candidate.edits) {
     const before = sources.get(edit.path);
     if (before === undefined || before === edit.contents) continue;
-
-    if (task.shape !== "dead_code") {
+    {
       const lost = commentLines(before) - commentLines(edit.contents);
       if (lost > 0) {
         out.push({
@@ -309,7 +329,23 @@ export function observe(task: ChangeTask, candidate: ChangeCandidate): ChangeObs
         }
       }
     }
+  }
+  return out;
+}
 
+/**
+ * What the change did that the ask did not call for **and the gate does not refuse** — ADR-0057.
+ *
+ * Since ADR-0054 was accepted the documentation half of this is a **confinement breach**, so what is
+ * left here is whitespace: real, worth recording, and not something to kill a correct change over.
+ * `changeSurvives` does not read this and a test asserts it.
+ */
+export function observe(task: ChangeTask, candidate: ChangeCandidate): ChangeObservation[] {
+  const out: ChangeObservation[] = [];
+  const sources = new Map(task.files.map((f) => [f.path, f.source]));
+  for (const edit of candidate.edits) {
+    const before = sources.get(edit.path);
+    if (before === undefined || before === edit.contents) continue;
     const churn = Math.abs(blankLines(edit.contents) - blankLines(before));
     if (churn > 0) {
       out.push({

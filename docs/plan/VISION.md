@@ -7,6 +7,33 @@ either moves towards this or is a detour that has to justify itself.
 > the same quality Opus itself would produce**. From inside, it is not just Opus — it is Opus with its
 > local model employees.
 
+## The philosophy, in the owner's words (20 Sep 2026)
+
+> We want to be able to do **anything with the code that Opus does** — the difference is the **way**
+> we do it. Opus does the smart thingies, our local models do the heavy lifting. The local model can
+> scan the code, go through several files looking for something, report back to Opus; Opus says okay,
+> let's do this, and so on.
+
+Three things this settles, and the third is the one that changes what gets built next:
+
+1. **The ambition is not narrowed by the mechanism.** The target is everything Opus can do to a
+   codebase. What differs is who spends the effort, not what is attempted — which is why "more
+   workloads" is never the measure and *one honest gate per workload* is.
+2. **"Smart" and "heavy" is the split, not "hard" and "easy".** Deciding is smart work and it is
+   small. Reading forty files to find six that matter is heavy work and it is large. The local model
+   is not being asked to be clever; it is being asked to be *tireless*, which is what it is.
+3. **Retrieval is the shape of the product, not an optimisation of it.** *"Scan the code, go through
+   several files, report back"* is `BACKLOG.md` § *The edge ideas* item 1, and as of 20 Sep 2026 it
+   has a measured target rather than a premise: planning costs **233,500 fixed tokens** on a real
+   project — **68 % of the total even at 41 tasks** — and that fixed term is overwhelmingly Opus
+   *reading*: 15.5M cache reads against 89k of output. It is the one part of the cost curve that does
+   not amortise by itself, and it is exactly what this paragraph describes attacking.
+
+The honest caveat, from the same measurements: a local model that returns ten *confirmed* locations
+Opus did not need has passed its gate and saved nothing. Existence is checkable by machine;
+relevance is not. That is why item 1 needs its own ADR before it is built, and it is a different
+Goodhart shape from the rest of this design.
+
 ## The shape
 
 1. The user asks Claude for something real: a feature, a refactor, a bug fix, *fix every TypeScript error

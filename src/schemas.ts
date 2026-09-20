@@ -445,6 +445,20 @@ export const ConfinementRule = z.enum([
   "deletion_without_replacement",
   /** A candidate that changed nothing: the suite is already green, so do nothing. */
   "no_edit_at_all",
+  /**
+   * Documentation the ask did not call for — removed, or reworded at constant volume (ADR-0054).
+   *
+   * **The eighth cheap way past the gate, and the last one measured rather than imagined.** A comment
+   * is neither a type nor a test, so `confined ∧ compile_ok ∧ tests_ok` answers "yes" to a candidate
+   * that silently deleted the docblock explaining why a fix is safe. Phase 11 measured it on both
+   * inputs where the worker could be watched, and it was the **only** behaviour separating the local
+   * tier from a frontier control in the entire phase.
+   *
+   * Exempt on a `dead_code` ask: removing code that nothing reaches removes the comments explaining
+   * it, and a "remove the stale comments" ask is already that shape — so the legitimate case needs no
+   * budget field of its own.
+   */
+  "documentation_changed",
 ]);
 export type ConfinementRule = z.infer<typeof ConfinementRule>;
 

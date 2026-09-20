@@ -180,7 +180,7 @@ describe("checkConfinement", () => {
   });
 });
 
-describe("observe — true of the candidate, and nothing gates on it (ADR-0057)", () => {
+describe("documentation the ask did not call for — a breach since ADR-0054, 20 Sep 2026", () => {
   const withComment = "// why this is safe\n// second line\nexport const a = 1;\n";
 
   it("sees the deleted docblock the gate admitted, which is what ADR-0054 measured", () => {
@@ -188,23 +188,34 @@ describe("observe — true of the candidate, and nothing gates on it (ADR-0057)"
     // one-line fix, and every clause of the gate passed. `max_deleted_lines: 0` did not catch it
     // because `codeLines` skips comments — deliberately, and its docstring used to claim the opposite.
     const t = ChangeTask.parse({ ...task(["src/rates.ts"]), files: [{ path: "src/rates.ts", source: withComment, source_sha: "sha", errors: 1 }] });
-    const stripped = observe(t, candidate([{ path: "src/rates.ts", contents: "export const a = 2;\n" }]));
-    expect(stripped.map((o) => o.kind)).toContain("comment_lines_removed");
-    expect(stripped[0]!.detail).toContain("2 comment line(s)");
+    const c = candidate([{ path: "src/rates.ts", contents: "export const a = 2;\n" }]);
+    // The owner's call, 20 Sep 2026: "the gate must care about the reason behind doing a work even if
+    // it's not documented on the disc." So this now REFUSES rather than merely recording.
+    const breaches = checkConfinement(t, c);
+    expect(breaches.map((b) => b.rule)).toContain("documentation_changed");
+    expect(breaches.find((b) => b.rule === "documentation_changed")!.detail).toContain("2 comment line(s)");
+    // ...and it is not double-reported as an observation, which would count one edit twice in any rate.
+    expect(observe(t, c).map((o) => o.kind)).not.toContain("comment_lines_removed");
   });
 
   it("says nothing when the change kept the prose", () => {
     const t = ChangeTask.parse({ ...task(["src/rates.ts"]), files: [{ path: "src/rates.ts", source: withComment, source_sha: "sha", errors: 1 }] });
     const kept = withComment.replace("export const a = 1;", "export const a = 2;");
-    expect(observe(t, candidate([{ path: "src/rates.ts", contents: kept }]))).toEqual([]);
+    const c = candidate([{ path: "src/rates.ts", contents: kept }]);
+    expect(observe(t, c)).toEqual([]);
+    expect(checkConfinement(t, c).map((b) => b.rule)).not.toContain("documentation_changed");
   });
 
   it("catches the stray blank line project-b's rejected diff added, whose twin was accepted", () => {
     // The control made the identical import removal without the extra line; the blind reviewer
     // accepted one and rejected the other without knowing which was which.
     const t = ChangeTask.parse({ ...task(["src/rates.ts"]), files: [{ path: "src/rates.ts", source: "export const a = 1;\n", source_sha: "sha", errors: 1 }] });
-    const churned = observe(t, candidate([{ path: "src/rates.ts", contents: "export const a = 2;\n\n" }]));
+    const c = candidate([{ path: "src/rates.ts", contents: "export const a = 2;\n\n" }]);
+    const churned = observe(t, c);
     expect(churned.map((o) => o.kind)).toEqual(["whitespace_churn"]);
+    // Whitespace is still recorded and still does NOT gate. ADR-0054 is about documentation, and
+    // killing a correct change over a blank line is the false-positive risk that option C warned of.
+    expect(checkConfinement(t, c).map((b) => b.rule)).not.toContain("documentation_changed");
   });
 
   it("sees a rewording at constant volume — the case it was blind to (ADR-0068)", () => {
@@ -215,8 +226,8 @@ describe("observe — true of the candidate, and nothing gates on it (ADR-0057)"
     const before = "// Normalises the code\nexport const a = 1;\n";
     const t = ChangeTask.parse({ ...task(["src/rates.ts"]), files: [{ path: "src/rates.ts", source: before, source_sha: "sha", errors: 1 }] });
     const reworded = "// Canonicalises the code\nexport const a = 2;\n";
-    const seen = observe(t, candidate([{ path: "src/rates.ts", contents: reworded }]));
-    expect(seen.map((o) => o.kind)).toEqual(["comment_text_changed"]);
+    const seen = checkConfinement(t, candidate([{ path: "src/rates.ts", contents: reworded }]));
+    expect(seen.map((b) => b.rule)).toEqual(["documentation_changed"]);
     expect(seen[0]!.detail).toContain("Canonicalises");
   });
 
@@ -225,8 +236,8 @@ describe("observe — true of the candidate, and nothing gates on it (ADR-0057)"
     const t = ChangeTask.parse({ ...task(["src/rates.ts"]), files: [{ path: "src/rates.ts", source: before, source_sha: "sha", errors: 1 }] });
     // A line goes, and the survivor is reworded. `comment_lines_removed` is the more specific finding.
     const both = "// ONE\nexport const a = 2;\n";
-    expect(observe(t, candidate([{ path: "src/rates.ts", contents: both }])).map((o) => o.kind))
-      .toEqual(["comment_lines_removed"]);
+    expect(checkConfinement(t, candidate([{ path: "src/rates.ts", contents: both }])).map((b) => b.rule))
+      .toEqual(["documentation_changed"]);
   });
 
   it("does not call a moved comment a change, because it compares a multiset", () => {

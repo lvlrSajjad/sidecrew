@@ -3043,10 +3043,11 @@ wrong and leaves every case it got right.
   discovered on the first real encounter with one.
 - Three tests in `test/change.test.ts` cover it, including the real `Date.now()` shape.
 
-## ADR-0054 — Documentation is not behaviour, and the 2a gate cannot see it (PROPOSED)
+## ADR-0054 — Documentation is not behaviour, and the 2a gate cannot see it
 
-**Status:** proposed · 18 Sep 2026 · Phase 11 · an eighth cheap pass, absent from ADR-0048's seven ·
-**not applied during the run** (§6), with the count attached
+**Status:** **accepted — the gate refuses it** · owner's decision, 20 Sep 2026 · proposed 18 Sep from
+Phase 11 · an eighth cheap pass, absent from ADR-0048's seven · implemented the same day, addendum at
+the end of this file
 
 ### Context
 ADR-0048 enumerates seven cheap ways past the 2a gate and blocks each by name. Phase 11 measured an
@@ -4951,3 +4952,46 @@ found in eight days** — the 1 MB `run` cap that truncated `tsc --listFiles`, A
 being written, so the evidence for the six known cases is gone. What changes is that **the next
 occurrence is diagnosable.** Catching one is now a matter of running the gate until it disagrees with
 itself again — which, at `D ≈ 0.105`, is about ten candidates.
+
+## ADR-0054 addendum — accepted and implemented, 20 Sep 2026: the gate judges intent, not only behaviour
+
+The owner's decision, in their words:
+
+> **"The gate must care about the reason behind doing a work even if it's not documented on the
+> disc."**
+
+That is option A, extended by what ADR-0068 had already built. `documentation_changed` is now the
+**eighth confinement rule**: documentation removed, or reworded at constant volume, that the ask did
+not call for. A `dead_code` ask is exempt — removing code that nothing reaches removes the comments
+explaining it, and a *"remove the stale comments"* ask is already that shape, so option A's feared
+"needs its own budget field" turned out not to be needed.
+
+**Whitespace stays an observation and still does not gate.** The decision is about documentation.
+Killing a correct change over a blank line is exactly the false-positive cost option C warned of, and
+nothing measured argues for it.
+
+### What this changes about the gate, stated plainly because it is a non-negotiable
+
+CLAUDE.md #2 makes the gate an iff, and that iff now has one more clause in it: `confined` requires
+no unrequested documentation change, so `changeSurvives` does too.
+
+> **A survival rate taken before 20 Sep 2026 and one taken after are not comparable.**
+
+Phase 11's, 11b's and 12's numbers were measured on the seven-rule gate. They stay valid for what
+they measured and they are not re-runnable against the current one. Any future rate says which gate
+it was taken on. This is the cost of the decision and it is the owner's to pay — the alternative was
+a headline claim of *"the same quality Opus would produce"* while the only measured quality gap
+between a 7B and a frontier model went unblocked.
+
+### What it is worth, and the honest size of the evidence
+
+The behaviour behind it is **3 of 13 sampled survivors across two inputs, against 0 of 13 for the
+control** — and it was the *only* thing separating the local tier from a frontier model in all of
+Phase 11. That is a small denominator to add a gate rule on, which the original ADR said and which
+stays true. What tipped it is not the count: it is that a prompt forbidding it in English is worth
+nothing, because a worker optimises against the constraint rather than the request (ADR-0006), and
+the thing being deleted on the fixture was the comment documenting the trap the task was about.
+
+**What it still cannot see**, unchanged from the original: a comment rewrapped across different line
+boundaries with identical words, and whether a reword was *right*. The second is a judgement for a
+reviewer and explicitly not for the gate.

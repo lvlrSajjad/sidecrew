@@ -1,4 +1,27 @@
 # Changelog
+## Unreleased — the gate judges intent, and the vision gets the owner's own words (2026-09-20)
+- **ADR-0054 accepted: `documentation_changed` is the eighth confinement rule.** The owner's call —
+  *"the gate must care about the reason behind doing a work even if it's not documented on the
+  disc."* Documentation removed, or reworded at constant volume, that the ask did not call for now
+  **refuses** rather than being merely recorded. A `dead_code` ask is exempt, and a "remove the stale
+  comments" ask is already that shape, so the budget field option A feared turned out unnecessary.
+- **Whitespace stays an observation and still does not gate.** Killing a correct change over a blank
+  line is the false-positive cost option C warned of, and nothing measured argues for it.
+- **Rates before and after today are not comparable**, and every future one must say which gate it
+  was taken on. `confined` gained a clause, so `changeSurvives` did. Phase 11's, 11b's and 12's
+  numbers stay valid for what they measured on the seven-rule gate and are not re-runnable against
+  the eight-rule one. That is the price of closing the only measured quality gap between a 7B and a
+  frontier model, and it is the owner's to pay.
+- A control fixture ships with the rule, as the coverage test requires: the correct one-line fix, with
+  the docblock explaining the trap deleted alongside it.
+- **`VISION.md` gains the owner's statement of the philosophy** — *anything Opus can do to the code,
+  with Opus doing the smart thingies and local models the heavy lifting; the local model scans, reads
+  across files and reports back.* It settles that the ambition is not narrowed by the mechanism, that
+  the split is smart/heavy rather than hard/easy, and that **retrieval is the shape of the product
+  rather than an optimisation of it** — now with a measured target: 233,500 fixed planning tokens,
+  68 % of the cost even at 41 tasks, overwhelmingly Opus reading.
+- 710 fast tests green.
+
 ## Unreleased — three ADRs decided and implemented, and the O8 diagnostic finds a missing field (2026-09-20)
 - **ADR-0070 (option C)** — `isToolConfig` asks *where* a file lives, not just what it is called. A
   tool config is one at the project root or one whose stem names a known tool, so

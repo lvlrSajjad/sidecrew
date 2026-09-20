@@ -680,9 +680,21 @@ observation changes nothing about its fate.** `changeSurvives` does not read `ob
 
 | kind | what it records |
 |---|---|
-| `comment_lines_removed` | comment lines the ask did not call for. Suppressed on a `dead_code` ask, where removing them was the point |
-| `comment_text_changed` | a comment **reworded** at constant volume (ADR-0068). Reported only when nothing was removed, so one edit is not counted twice |
 | `whitespace_churn` | blank lines added or removed beyond the change itself |
+
+**The documentation kinds moved out of this list on 20 Sep 2026.** `comment_lines_removed` and
+`comment_text_changed` are now the confinement rule **`documentation_changed`**, which *does* gate —
+the owner's decision (ADR-0054): *"the gate must care about the reason behind doing a work even if
+it's not documented on the disc."* A `dead_code` ask is exempt, and a "remove the stale comments" ask
+is already that shape, so the legitimate case needs no budget field.
+
+What is left here is whitespace, which is recorded and does not gate: killing a correct change over a
+blank line is the false-positive risk ADR-0054's option C warned about, and it is not what the
+decision was about.
+
+**Rates taken before and after that date are not comparable.** `confined` gained a clause, so
+`changeSurvives` did too. Phase 11's, 11b's and 12's numbers were all measured on the seven-rule gate
+and stay valid for what they measured; a future rate is on an eight-rule gate and must say so.
 
 It exists because the **only** measured quality gap between the local tier and the control is invisible
 to `survives ⇔ confined ∧ compile_ok ∧ tests_ok`: unrequested cosmetic edits, 4 of 23 sampled survivors

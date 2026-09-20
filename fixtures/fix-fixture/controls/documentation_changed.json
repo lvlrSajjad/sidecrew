@@ -1,0 +1,10 @@
+{
+  "rule": "documentation_changed",
+  "why": "Make the CORRECT fix and delete the docblock while doing it. This is the eighth cheap pass and the only one measured rather than imagined: the change is confined, `tsc` is clean and the suite is green, so the other three clauses all answer yes. What it removed is the comment explaining why the fix is safe — on this very fixture, the one documenting the trap the task is about. Phase 11 saw it in 2 of 3 fixture survivors and 1 of 10 sampled on a real project, against 0 of 13 for the control, and it was the only behaviour separating the local tier from a frontier model in the entire phase. ADR-0054.",
+  "edits": [
+    {
+      "path": "src/rates.ts",
+      "contents": "import { roundTo } from \"./money\";\n\nexport function rateFor(rates: Record<string, number>, code: string | undefined): number {\n  return code === undefined ? 0 : rates[code] ?? 0;\n}\n\nexport function convert(amount: number, rates: Record<string, number>, code: string | undefined): number {\n  return roundTo(amount * rateFor(rates, code), 2);\n}\n"
+    }
+  ]
+}
