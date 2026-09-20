@@ -1,6 +1,6 @@
 ---
 name: sidecrew
-description: Farm narrow, verifiable work out to local MLX worker models behind a gate a machine can run, so Claude plans and reviews survivors instead of doing the work. Two workloads — unit tests for an existing Swift/TypeScript module (compile→run→mutation), and behaviour-preserving code changes such as type errors, renames, null guards, API migrations and dead code (the project's own suite plus tsc). Use whenever the user asks to add tests, raise coverage, fix every type error, rename something everywhere, migrate off an API, remove dead code, or mentions sidecrew, mutation testing, Muter or Stryker — even if they don't say "sidecrew". Do NOT hand-write the bulk of it yourself in this repo; that is what the workers are for.
+description: Farm narrow, verifiable work out to local MLX worker models behind a gate a machine can run, so Claude plans and reviews survivors instead of doing the work. The main workload is behaviour-preserving code changes to a project that already exists — type errors, renames, null guards, API migrations, dead code — gated by the project's own suite plus tsc (`/sidecrew fix`). It also writes unit tests for a Swift/TypeScript module, gated by compile→run→mutation (`/sidecrew run`). Use whenever the user asks to fix every type error, rename something everywhere, add null checks, migrate off an API, remove dead code, add tests, raise coverage, or mentions sidecrew, mutation testing, Muter or Stryker — even if they don't say "sidecrew". Do NOT hand-write the bulk of it yourself in this repo; that is what the workers are for.
 ---
 
 # sidecrew
@@ -8,9 +8,27 @@ description: Farm narrow, verifiable work out to local MLX worker models behind 
 Orchestrator–workers. You are the orchestrator. Local models are the workers. **A gate a machine can
 run, not you, decides what is good enough — and you see only what survived it.**
 
-Two workloads, and they differ in what the gate is made of: **#1 writes unit tests** (gate: compile →
-run → kill a mutant) and **#2a changes existing code** (gate: the project's own suite plus `tsc`).
-Everything down to "Workload #2a" is #1.
+## Start here: the user wants something changed
+
+The shape of the job, end to end. `/sidecrew fix` is below and has the detail.
+
+```
+user: "rename `fetchAll` to `listAll` everywhere"
+
+  you        → change-planner agent → plans/rename/change_plan.json, grouped and ordered
+             → sidecrew_fix_plan_validate until valid; READ WHAT IT REFUSED
+             → sidecrew_fix { dry_run: true }   baseline captured, no tokens spent
+             → sidecrew_fix                     hours, not minutes — the suite runs per candidate
+  workers    → one whole-file rewrite per task, on your Mac, zero Claude tokens
+  the gate   → confined ∧ tsc clean ∧ every test that passed before still passes
+  you        → survivors with their diffs and their `observations`, for the user to approve
+             → escalations: what the workers could not do, with both attempts' errors
+```
+
+**Two workloads, and they differ in what the gate is made of.** **#2a changes existing code** — the
+one above, gate: the project's own suite plus `tsc`. **#1 writes new unit tests** — gate: compile →
+run → kill a mutant. Everything from `/sidecrew plan` down to "Workload #2a" is #1; the #2a commands
+are in their own section further down.
 
 ## Why it's shaped this way (read once)
 - Small local models are weak generators but a compile/run/mutation-kill gate converts "generation quality" into pass/fail — after the gate, model size matters much less (research §B). So your job is to make the gate strong and give workers one perfect exemplar per test shape.

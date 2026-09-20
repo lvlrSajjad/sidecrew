@@ -946,6 +946,27 @@ and it is recorded as one; the estimate is here so it is a decision rather than 
 there is anything to save — §2.1 needs a fresh session and is owed anyway.
 
 ## 14 — Publish
+
+**Status, 20 Sep 2026: the code and the release machinery are done; the release itself waits on the
+owner.** Everything the DoD asks for is on `main` — the three hardening items, `v0.1.0` in all four
+places, `release.yml`, the `docs/` site, and every published rate restated as an interval with `D`
+beside it. **Three things are deliberately not done here and all three are the owner's:** tagging
+`v0.1.0` and pushing the tag, adding `NPM_TOKEN` to the repository, and turning GitHub Pages on
+(Settings → Pages → `main` / `docs`). **`release.yml` has never run**, because nothing has been
+tagged; its npm and registry jobs are unverified against the live services and the gate job's steps
+are each verified locally instead. The exit check below starts its two-week window at the tag, not at
+this commit.
+
+What landed, with what it was worth:
+
+| | |
+|---|---|
+| `deriveLineRange` on the AST (ADR-0076) | the scanner missed **152 of 436** declarations in our own `src` and got **5** wrong, all by cutting a body short |
+| `doctor`'s pre-flight rows | five, including the fourth found this week — `jest ok` on a suite collecting zero tests |
+| ADR-0042 | option 1 implemented; no verdict, survival or score changes |
+| every rate → interval + `D` | the frozen rule's UNACCEPTABLE clause, satisfied rather than amended |
+| `npm pack` | 87 files, 317.8 kB, allowlist clean, `doctor` verified out of the installed tarball |
+
 `npm publish` dry-run, `server.json` validated against the registry schema, release workflow green on a
 `v0.1.0` tag, docs site (`docs/` → GitHub Pages like simframe), README numbers replaced with measured ones
 — from Phases 11/11b/12 on the supported tier, not from Phase 6.

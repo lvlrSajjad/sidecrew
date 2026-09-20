@@ -1,10 +1,30 @@
 # sidecrew
 
-**Local workers for Claude Code, behind a verifier.**
+**You ask for a change to your source code, and you get it — made on your Mac, by models that cost you
+no Claude tokens, and only after a machine has checked it.**
 
-Claude Opus plans, writes one exemplar per kind of task, and reviews. Small models running **on your Mac**
-(MLX, no network) do the narrow work in parallel. A mechanical gate — compile → run → mutation-kill — decides
-what Claude ever sees. **Workers cost zero Claude tokens.**
+Claude Opus plans the work and reviews what came back. Small models running **locally** (MLX, no
+network) do the narrow parts. Between them sits a gate a machine can run — for a code change: the diff
+stayed where it was asked to, `tsc` is clean, and every test that passed before still passes. **Claude
+never sees anything that did not survive it.**
+
+```console
+$ sidecrew fix change_plan.json
+fix 2026-09-20T09-14-02Z-rename: 1 step, 12 tasks, 13.0 GB free ÷ 6.5 GB per slot = 2; 1 worker up
+step 1/1 "rename the helper": capturing the baseline
+rename-01: survived (src/util/asset.util.ts)
+rename-02: survived (src/util/asset.util.ts, src/util/asset.util.spec.ts)
+…
+multi-06: failed at compile · escalating — renamed the symbol 7 times over, 5 compile errors
+11/12 survived · 0 → 0 tsc errors · .sidecrew/runs/2026-09-20T09-14-02Z-rename/result.json
+```
+
+*Illustrative shape, not a captured transcript* — it is the real output format with the counts from the
+React measurement below, and no client's file names. **11 of 12 with a
+95 % interval of `[0.615, 0.998]`** is the number; the line above is what it looks like while it runs.
+
+**Unit tests are workload #1** — the same shape with a mutation-kill gate instead — and the numbers for
+both are below, each with its interval.
 
 **sidecrew needs 24 GB of installed RAM.** Below that a 7B cannot sit beside a normal working set
 (measured), so sidecrew **refuses to run and tells you why** rather than quietly becoming a different
@@ -15,18 +35,52 @@ tool (ADR-0073). `sidecrew doctor` answers this before you plan anything.
 on how many tasks are in the plan — see *What this costs to run* below. A page that says "the work is
 free" without saying that is telling you half of it.
 
-First workload: **unit tests for an existing Swift or TypeScript project**, and the benchmark numbers
-below are about that one.
+### Before any number below: how tightly to read it
 
-A second workload — **behaviour-preserving changes** to TypeScript that already exists, gated by the
-project's own test suite plus `tsc` (`sidecrew fix`) — is built **and measured**, against a decision
-rule frozen before the tool had produced a single verdict:
+Every rate on this page is **an interval, never a point**, and the reason is measured. Replaying a
+frontier model's own diffs — which the gate finds no defect in — through the gate a second time, **it
+disagreed with itself on 2 of 19 candidates**: `D = 0.105`, 95 % interval `[0.013, 0.331]`
+(`experiments/gate-error-rate/`, against a rule frozen before the first replay). That rule's own
+verdict at `D > 0.10` is **UNACCEPTABLE**, and its consequence is this paragraph: no survival rate here
+is published as a bare fraction, `D` travels beside each of them, and no two of our rates are compared
+without asking whether their difference survives it.
 
-| input | survived (local 7B) | survived (Haiku control) | blind approval (7B) | blind approval (control) |
+**What that does and does not damage.** `D` counts the gate **refusing changes that were fine**.
+Nothing in it is evidence of the gate *admitting* something bad. So:
+
+> *The gate admits nothing that fails* — **stands.**
+> *The gate refuses only things that fail* — **measured false, at roughly one evaluation in ten, and
+> unproven at any tighter bound.**
+
+Two of the three known causes are now recorded on every verdict — memory pressure (ADR-0066) and a
+baseline captured on a different calendar day (ADR-0069). The third is undiagnosed, and both measured
+disagreements happened on a quiet machine, so it is neither of the first two. `D` was measured on
+workload #2a's gate; it says nothing about workload #1's mutation gate, which is a different oracle
+(§4.4 of the rule).
+
+### Workload #2a — behaviour-preserving changes, measured
+
+Against a decision rule frozen before the tool had produced a single verdict
+(`experiments/go-no-go-2a/results/REPORT.md`). `S` is survival, `A` is a blind reviewer's approval of
+the diff. Every cell is `k/n` with its exact 95 % interval; `D = 0.105 [0.013, 0.331]` applies to
+every `S`.
+
+| input | `S`, local 7B | `S`, Haiku control | `A`, local 7B | `A`, control |
 |---|---|---|---|---|
-| fixture | 3/3 | 3/3 | **1/3** | 3/3 |
-| a commercial Nest/jest codebase | **12/12** | 12/12 | **9/10** | 10/10 |
-| a commercial React/jest codebase | **11/12** | 12/12 | **9/10** | 10/10 |
+| fixture | 3/3 `[0.292, 1.000]` | 3/3 `[0.292, 1.000]` | **1/3 `[0.008, 0.906]`** | 3/3 `[0.292, 1.000]` |
+| a commercial Nest/jest codebase | 12/12 `[0.735, 1.000]` | 12/12 `[0.735, 1.000]` | 9/10 `[0.555, 0.997]` | 10/10 `[0.692, 1.000]` |
+| a commercial React/jest codebase | 11/12 `[0.615, 0.998]` | 12/12 `[0.735, 1.000]` | 9/10 `[0.555, 0.997]` | 10/10 `[0.692, 1.000]` |
+
+Read the intervals, not the fractions: at these sample sizes `12/12` and `11/12` are **not
+distinguishable**, and neither is the 7B from the control on `A`. Both real projects passed the frozen
+rule by a margin of exactly zero, on a sample of ten. **The survival rate decided nothing** — five of
+six measurable cells sit at or above 0.917, so the rule's ratio clauses were inert, and the only thing
+that separated a local 7B from a network model was the approval rate.
+
+What that approval rate is about, measured: the local model makes **unrequested cosmetic edits** — a
+deleted docblock, a reworded comment, a stray blank line — in **4 of 23 `[0.050, 0.388]`** sampled
+survivors, against the control's **0 of 23 `[0.000, 0.148]`**. `confined ∧ compiles ∧ tests pass`
+cannot see any of it, which is the point.
 
 ### What you gain over just asking Opus
 
@@ -39,12 +93,15 @@ codebases, four arms.
 | tokens, 19 tasks, Nest codebase | 80,131 | 88,820 | **0** |
 | tokens, 19 tasks, React codebase | 95,335 | 88,680 | **0** |
 | output vs Opus, Nest codebase | — | identical 19/19 | **identical on 18 of 19** |
-| changes delivered and verified, Nest | 19 (unverified) | 19 (unverified) | **19/19 survived the gate** |
-| changes delivered and verified, React | 19 (unverified) | 19 (unverified) | **15/19 survived; 4 escalated** |
+| changes delivered and verified, Nest | 19 (unverified) | 19 (unverified) | **19/19 `[0.824, 1.000]` survived** |
+| changes delivered and verified, React | 19 (unverified) | 19 (unverified) | **15/19 `[0.544, 0.939]` survived; 4 escalated** |
+
+The token columns are counts and are exact. The survival rows are rates, so they carry their
+intervals, and `D = 0.105 [0.013, 0.331]` applies to both of them.
 
 A fourth arm ran the **same gate over Opus's own diffs**, to separate the gate's contribution from the
-worker's: **19/19** on the Nest codebase and **18/19** on the React one. Two things follow, and the
-second is the more useful.
+worker's: **19/19 `[0.824, 1.000]`** on the Nest codebase and **18/19 `[0.740, 0.999]`** on the React
+one. Two things follow, and the second is the more useful.
 
 **The gate found nothing wrong with a frontier model's work.** Its single rejection there is a
 `tsc` fragility it rejects from *both* arms — so on these tasks the gate adds no safety on top of
@@ -54,8 +111,9 @@ expensive one.
 **And it is what separates a worker defect from a project defect.** Of the four React failures, three
 vanish when Opus writes the diff — genuine worker defects — and one reproduces exactly, because the
 7B's output for that task was *byte-identical* to Opus's. Worker-attributable survival is therefore
-**15/18**, not 15/19. Without that control the small model would have been blamed for a third more
-failures than it caused.
+**15/18 `[0.586, 0.964]`**, not 15/19. Without that control the small model would have been blamed for
+a third more failures than it caused — and note that the two intervals overlap almost entirely, so the
+correction changes the *attribution* rather than the number.
 
 **Three things that buys you, and one it costs.**
 
@@ -123,39 +181,20 @@ renamed seven times over, one renamed a file it was given, one touched a type de
 worker was never shown, and one was byte-identical to what Opus produced. The first two are the
 model; the third wants retrieval, not RAM.
 
-**Read every survival number on this page as a lower bound, and here is how loose.** Replaying a
-frontier model's own diffs — which the gate finds no defect in — through the gate a second time, **it
-disagreed with itself on 2 of 19 candidates** (`experiments/gate-error-rate/`, against a rule frozen
-before the first replay). Three things follow and they belong together:
-
-- **`2/19` is an order of magnitude, not a point.** One disagreement either way spans 0.053 to 0.158.
-  Never quote it bare, and do not compare two of our rates without asking whether their difference
-  survives it.
-- **The safety property is untouched.** That number counts the gate **refusing changes that were
-  fine**. Nothing here is evidence of it *admitting* something bad. *The gate admits nothing that
-  fails* still stands; *it refuses only things that fail* is measured false at roughly one in ten.
-- **Two of the three causes are now understood and recorded on every verdict** — memory pressure
-  (ADR-0066) and a baseline captured on a different calendar day (ADR-0069). The third is
-  undiagnosed, and both measured disagreements were on a quiet machine, so it is not the first two.
+**How loosely to read every survival number here** is the top of this page — `D = 0.105
+[0.013, 0.331]`, the gate disagreeing with itself. It is repeated there rather than here because it
+governs every rate below it, not just this table.
 
 Two further defects changed the gate itself (ADR-0067, ADR-0068), so the Phase 11 table above was
 measured on a gate that has since been fixed in two ways.
 
 ---
 
-Unmodified projects, neither of them ours, at **zero worker tokens — on the local tier**, which is what
-these arms ran on. The `api` tier's own survival, approval and dollar-per-survivor figures are Phase 13
-§5's and **have not been measured**; nothing here is them. Both real projects pass the
-frozen rule — each by a margin of exactly zero, on a sample of ten, so read them with their intervals
-(`[0.555, 0.997]` on the approval rate). `experiments/go-no-go-2a/results/REPORT.md` has the funnel,
-the rule, and the six defects it cost to get a number.
-
-**The survival rate decided nothing**, and that is the phase's most useful result. Five of six
-measurable cells sit at or above 0.917, so the rule's ratio clauses were inert; the only thing that
-separated a 7B from a network model was a blind approval rate on a sample of diffs — the local model
-makes unrequested cosmetic edits (a deleted docblock, a reworded comment, a stray blank line) in
-**4 of 23** sampled survivors against the control's **0 of 23**, and `confined ∧ compiles ∧ tests
-pass` cannot see any of it.
+Both real projects are **unmodified and neither of them ours**, and every arm above ran on the
+**local tier** at zero worker tokens. The `api` tier has no survival, approval or dollar figure of its
+own — Phase 13 §5 was never run, and nothing on this page describes it.
+`experiments/go-no-go-2a/results/REPORT.md` has the funnel, the frozen rule, and the six defects it
+cost to get a number at all.
 
 Not a test framework. Vitest, Jest and XCTest run the tests; StrykerJS/Muter mutate the code. sidecrew
 orchestrates. The runner is a seam: same plan, same seed, Vitest and Jest return **identical verdicts**
@@ -188,14 +227,17 @@ demands two.
 apart.
 
 **The correction round is off, and that is measured too.** Giving a failing worker one Opus-written
-note — after the free retry that already carries the compiler's own words — rescued **0 of 29** tasks,
+note — after the free retry that already carries the compiler's own words — rescued **0 of 29
+`[0.000, 0.119]`** tasks,
 and 27 of 29 landed at exactly the same gate stage as the free retry had
 (`experiments/correction-round/`). On the tasks where the worker simply returned the file unchanged,
 **16 of 17 did it again** after being told specifically that returning it unchanged was the failure.
+On the shape that work belongs to — adding a null guard — the local 7B attempted it at all in
+**1 of 30 `[0.001, 0.172]`** tasks. That is a capability ceiling, not a prompting problem.
 That is a fact about small models, not about the wording of notes, and it is why `sidecrew fix` ships
 with the round switched off.
 
-## Why
+## Why, on workload #1 (tests)
 
 | | Claude writes every test | sidecrew |
 |---|---|---|
@@ -245,16 +287,31 @@ sidecrew doctor
 `doctor` checks each capability separately:
 
 ```
-ok       node       v20.20.0
-ok       mlx_lm     python3 -m mlx_lm server available
-MISSING  worker     nothing on http://localhost:8000/v1 — start one with: sidecrew serve
-DEGRADED memory     32.0 GB total · 12.9 GB free — room for one qwen2.5-coder-7b-4bit, not two workers or a 14B
-ok       tsc        Version 5.9.3
-ok       vitest     vitest/2.1.9 darwin-arm64 node-v20.20.0
-MISSING  stryker    not in this project's node_modules — npm i -D @stryker-mutator/core
-ok       swift      Apple Swift version 6.3.3
-MISSING  muter      not installed — brew install muter-mutation-testing/formulae/muter
+ok       platform         darwin/arm64
+ok       node             v20.20.0
+ok       tier             32.0 GB installed → local tier · qwen2.5-coder-7b-4bit
+ok       mlx_lm           python3 -m mlx_lm server available
+MISSING  worker           nothing on http://localhost:8000/v1 — start one with: sidecrew serve
+ok       memory           32.0 GB total · 12.5 GB free
+ok       tsc              Version 5.9.3
+ok       vitest           vitest/2.1.9 darwin-arm64 node-v20.20.0
+MISSING  stryker          @stryker-mutator/core is not resolvable from this project — npm i -D @stryker-mutator/core
+ok       swift            Apple Swift version 6.3.3
+MISSING  muter            not installed — brew install muter-mutation-testing/formulae/muter
+ok       line-ranges      from the TypeScript compiler's own tree (ADR-0076)
+DEGRADED tsconfig-include sidecrew writes candidates to test/, and no file there is in the program
+                          tsconfig.json builds — every candidate would be compiled by a stage that
+                          never opens it (ADR-0037)
+ok       ts-jest          ts-jest does not resolve here — the shim is not needed
+ok       tsc-heap         this project's own scripts ask for no extra heap
+ok       jest-tests       jest does not resolve here — not this project's runner
 ```
+
+**The bottom five rows are the ones worth reading**, and each was a run that failed — or worse, one
+that quietly succeeded. "Is it installed" answers yes for all of them; the defect is one layer down,
+in how a particular project is laid out. `tsconfig-include` is the worst of the six real-world
+blockers and the only one that ever failed *open*: a compile stage that type-checked the project
+without ever opening the candidate, and said `compile ok` about a file with three type errors in it.
 
 ### Claude Code
 
@@ -331,8 +388,10 @@ Claude (Opus)          sidecrew                       local worker (mlx_lm.serve
   args.seed is None`, so sending one serialises the request by construction (ADR-0003).
 - **Workers are a separate process, not a Claude Code subagent.** Subagents can only pick haiku/sonnet/opus on the session endpoint, so local routing has to go through MCP. See `docs/research/`.
 - **Memory-aware, in two different senses.** *Installed* RAM picks the tier — 24 GB and up host a local
-  worker. **16 GB machines cannot**, and the API fallback ADR-0009 designed for them is documented and
-  **not implemented**, so on those machines `sidecrew run` does not run. *Free* RAM decides whether one may start right
+  worker. **Below 24 GB sidecrew refuses**, naming your RAM, the floor and the reason (ADR-0073). The
+  `api` tier ADR-0009 designed for those machines was built in Phase 13 and then taken off the
+  supported path, because no survival, approval or price figure for it exists; it survives only as
+  `SIDECREW_TIER=api`, labelled unsupported by `doctor`. *Free* RAM decides whether one may start right
   now: `serve` refuses below the model's footprint + 2 GB, because a worker that starts into swap does not
   merely run slowly, it poisons every number measured afterwards. It also asks the kernel's own
   memory-pressure level, because under pressure macOS compresses and the free count rises while the
@@ -392,18 +451,37 @@ sidecrew bench --determinism   # 5× the same prompt: byte-identical, or non-zer
 
 ## Status
 
-Phase 7. The pipeline runs end to end — plan, generate on a local worker, verify, retry once, escalate —
-and the go/no-go has been run. **Read `experiments/go-no-go/results/REPORT.md` before believing anything
-here.** Its verdict is split: TypeScript is a **conditional go** at 0.85 of Haiku for zero worker tokens
-and half the latency (ADR-0020), and Swift is a **no-go** at 0.64 of Haiku even after the prompt fix that
-more than doubled it (ADR-0021).
+**Phase 14 — the first public release.** The pipeline runs end to end for both workloads: plan,
+generate on a local worker, verify, retry once, escalate; and `sidecrew fix` does the same for
+behaviour-preserving code changes. Five measurements have been taken against rules frozen before any
+number existed, and the honest summary is that **three of them said no**:
 
-> **That 0.85 is a fixture number and it overstates.** Measured afterwards on unmodified real
-> projects, workload #1's survival came in nearer **0.40** — the fixture is more than 2× optimistic,
-> because its functions are small, self-contained and free of the imports, shared types and framework
-> scaffolding that real code is mostly made of. The ratio against Haiku is still the comparison
-> ADR-0020 drew; the absolute rate is not a number to plan against. The 14B is never the right trade on this evidence — it matched the 7B on
-TypeScript, lost on Swift, and cost 2.2× the generation time.
+| | verdict | where |
+|---|---|---|
+| workload #1, TypeScript | **conditional go** — 0.85 of Haiku on the fixture, at zero worker tokens and half the latency (ADR-0020) | `experiments/go-no-go/` |
+| workload #1, Swift | **no-go** — 0.64 of Haiku even after the prompt fix that more than doubled it (ADR-0021) | `experiments/go-no-go/` |
+| workload #2a | **go on both real projects, by a margin of exactly zero**, and WITHHELD on the task mix (every task was a rename) | `experiments/go-no-go-2a/`, `experiments/status-quo/` |
+| planning cost `R` | **fail at both plan sizes** — 2.84 at 12 tasks, 1.07 at 41 | `experiments/planner-cost/` |
+| the gate's own error rate `D` | **UNACCEPTABLE** — 0.105 `[0.013, 0.331]` | `experiments/gate-error-rate/` |
+
+> **That 0.85 is a fixture number and it overstates by more than 2×.** Measured afterwards on
+> unmodified real projects, workload #1's survival was **3/8 `[0.085, 0.755]`** and **4/8
+> `[0.157, 0.843]`** on a Nest codebase and **4/10 `[0.122, 0.738]`** on a React one. Those
+> intervals overlap each other and the fixture's, so *nothing* here is ranked by them; what they
+> rule out is planning against 0.85. The fixture's functions are small, self-contained and free of
+> the imports, shared types and framework scaffolding that real code is mostly made of.
+> `D` was measured on workload #2a's gate and does not apply to these — mutation testing is a
+> different oracle with different failure modes.
+
+The 14B is never the right trade on this evidence — it matched the 7B on TypeScript, lost on Swift,
+and cost 2.2× the generation time.
+
+**What v0.1.0 does not have.** Half a real codebase is out of reach: 3.3 % of a project's files are
+48.1 % of its bytes, and every file over 1,000 lines is refused, because a worker returns a whole file
+and a whole file has to fit (ADR-0075 — symbol-scoped return is the proposed fix and it is not in this
+release). Of the five behaviour-preserving shapes, **one** works at a usable rate; `null_guard` is
+1/30 `[0.001, 0.172]`, and two more are unmeasured. `docs/plan/PHASES.md` is the road from here and
+names what each step buys.
 
 **One measurement worth reading before believing the pitch above.** The design says exemplars are what
 make a small model usable (research §B). Our own ablation says otherwise: bare scores 4/20, and *every*
@@ -439,22 +517,32 @@ Phase 7's hardening, each with the ADR that argued it:
 
 ### Where this is going
 
-**Workload #2: local models making the code changes, not just the tests.** Opus plans and breaks the work
-down, local workers make small changes, Opus approves. The contract was built for it — `docs/specs/pipeline.md`
-has said "test generation is workload #1" since the first commit, and the `WorkerTask → Candidate → Verdict`
-triple is deliberately generic.
+**The bar, in the owner's words: *"be able to achieve what Opus does, our way — even 90 % is a win."***
+That decomposes into four numbers, all re-measured at the end of every phase so the bar is a
+scorecard rather than a feeling:
 
-It is **proposed, not decided**: [ADR-0031](docs/DECISIONS.md) has four options and the argument for each.
-The distinction it turns on is that *behaviour-preserving* changes (a rename, a null guard, an API
-migration) already have a free oracle — the project's own test suite — while *behaviour-changing* ones need
-Opus to write a specification, which inverts the token economics and flips ADR-0006's Goodhart problem the
-wrong way: a bad test gets discarded by the gate, but a bad implementation that passes the tests it was
-shown ships.
+| | what it measures | today | at the bar |
+|---|---|---|---|
+| **Reach** | share of a real codebase **by bytes** a task may touch | **51.9 %** | ≥ 90 % |
+| **Shapes** | behaviour-preserving shapes surviving at a usable rate | **1 of 5** | ≥ 4 of 5 |
+| **Cost** | `R` — Opus tokens to plan ÷ paying a model per task | **2.84** at 12 tasks, **1.07** at 41 | ≤ 1.0 at 12 |
+| **Trust** | `D` — how often the gate disagrees with itself | **0.105** `[0.013, 0.331]` | ≤ 0.02, or diagnosed |
 
-What is not here: the `api` tier now **runs** (Phase 13), but it has no measurement of its own — no
-survival rate, no approval rate, no price. The thermal guard has still never *fired* — the soak above says the machine
-gave it no reason to, which is not the same as saying a back-off would land correctly. `docs/plan/PHASES.md` is
-the roadmap; `docs/research/` is why it looks like this.
+Only Cost improves on its own as jobs get bigger. Reach is ADR-0075's symbol-scoped return; Shapes is
+a measurement nobody has taken; Trust needs a diagnosis, not a threshold. `docs/plan/PHASES.md` has
+the phase for each, and **every one of them ends with a rule written before the phase runs** — a fork
+chosen after seeing a result is a description of how somebody felt about the result.
+
+**Workload #2b — behaviour-*changing* work — is deliberately last**, and
+[ADR-0031](docs/DECISIONS.md) says why: behaviour-preserving changes already have a free oracle, the
+project's own suite, while behaviour-changing ones need Opus to write a specification. That inverts
+the token economics and flips ADR-0006's Goodhart problem the wrong way — a bad test gets discarded
+by the gate, but a bad implementation that passes the tests it was shown ships.
+
+What is not here: the `api` tier **runs** (Phase 13) and is unsupported (ADR-0073) because it has no
+measurement of its own — no survival rate, no approval rate, no price. The thermal guard has still
+never *fired*; the soak says the machine gave it no reason to, which is not the same as saying a
+back-off would land correctly. `docs/research/` is why the design looks like this.
 
 ## Working on sidecrew itself
 

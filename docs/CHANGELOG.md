@@ -1,4 +1,73 @@
 # Changelog
+## v0.1.0 — the first public release (2026-09-20)
+
+**Phase 14.** The three hardening items it owed, the publish mechanics, and the numbers re-stated the
+only way a frozen rule allows.
+
+### `deriveLineRange` asks the compiler — ADR-0076
+- The scanner had been patched four times and *"no mutants at all"* had been wrong every time anybody
+  checked. **Measured, on this repository's own 34 source files**: of 436 function declarations the
+  scanner **could not see 152 — 34.9 %** — and returned a **wrong range for 5**, always by cutting a
+  body short. 279 agreed.
+- Reducing one of the five gave the diagnosis the four previous patches never had: a concise arrow has
+  no closing brace to match, so the scanner ends it at the first `;` or blank line — and `mask` blanks
+  a comment to spaces, which that search cannot tell from a blank line. **Every commented concise
+  arrow in the corpus ended at its first comment.** No fifth pattern would have found that.
+- `typescript` is loaded **out of the project being verified**, the way `mlx_lm`, `stryker` and `tsc`
+  already are. It does not become a dependency. `lineRangeOf` reports `via: "ast" | "scanner"`, and
+  the scanner stays as the fallback with its shapes asserted against it **by name** rather than
+  against whichever engine happens to be reachable.
+- It also refuses a declaration with **no body** — an overload signature or a `declare function` — so
+  a range covering two signature lines and no statements is no longer possible.
+
+### `doctor` learns the pre-flight questions
+Five rows that ask "will it do the thing", not "is it installed". Each was a run that failed, or worse,
+one that quietly succeeded: the tsconfig's `include` covering the directory candidates go in
+(ADR-0037, the only blocker that ever failed *open*), the ts-jest shim on this layout (ADR-0038), the
+heap `tsc` needs read out of the project's own scripts (ADR-0032), which engine finds line ranges
+(ADR-0076), and **a fourth found this week — `jest ok` on a project whose suite collects zero tests**.
+The jest row distinguishes its three silences, because calling all of them "no tests" is the
+confidently wrong answer it exists to prevent.
+
+### ADR-0042, option 1 — a candidate wrong on its own terms
+- A file asserting two different results for the same written-out call is named as such in the retry
+  prompt and the escalation, instead of a pasted jest failure. **No verdict, survival or score
+  changes**, which is what option 1 means and what keeps every number so far comparable.
+- Eight negative cases are pinned against five positive ones. It fires only when every argument is
+  written out (`f(1, "a")`, never `f(x)` — `x` may have been reassigned), the matcher is the same,
+  the assertion is not negated, and the expected value is a literal too.
+
+### Published
+- `package.json`, `server.json` and `claude/.claude-plugin/plugin.json` at **0.1.0**, descriptions
+  rewritten to lead with the code-change workload rather than with unit tests (ADR-0043 #3).
+- **`.github/workflows/release.yml`** — tag → gate → npm → registry, in that order. The gate proves
+  the tag agrees with all three files, validates `server.json` against the registry's own schema,
+  runs lint and the suite, asserts the tarball is **`dist`, `claude`, README and LICENSE and nothing
+  else** against an allowlist, and installs the packed tarball into a temp project and runs `doctor`
+  out of it. npm publishes with `--provenance`; the registry publishes after npm, never beside it.
+- **`docs/` is a GitHub Pages site** — `index.md` and `_config.yml`. Turning it on is a repository
+  setting and is not in the repository.
+- `npm pack`: **87 files, 317.8 kB**, nothing outside the allowlist. Verified by installing the
+  tarball into a clean temp project and running `doctor` from it — including the ADR-0076 fallback
+  path, which correctly reported the scanner on a project with no `typescript`.
+
+### Every rate is now an interval, and `D` travels with it
+`D = 2/19 = 0.105` `[0.013, 0.331]` triggered the frozen rule's **UNACCEPTABLE** clause: no survival
+rate may be published as a point estimate until the cause is diagnosed. The README and the site
+therefore publish **`k/n` with its exact Clopper–Pearson interval** everywhere, with `D` beside every
+`#2a` rate and an explicit note that `D` was measured on #2a's gate and says nothing about #1's.
+The withdrawal is stated in the rule's own words rather than softened: *the gate admits nothing that
+fails* stands; *the gate refuses only things that fail* is measured false.
+
+### One thing this cost, because it was silent
+`doctor` reaching into `plan.ts` closed an import cycle — `concurrency → serve → doctor → plan →
+verifier/ts → concurrency`. Under ESM that does not throw. It made `DEFAULT_STRYKER_CONCURRENCY`
+**`undefined`**, and the only thing that noticed was one assertion in `test/concurrency.test.ts`
+written for an entirely different reason. `testDirFor` and `jestConfigEntry` moved down to
+`verifier/shared.ts`, which imports nothing of ours.
+
+**710 → 769 tests passing**, 1 skipped.
+
 ## Unreleased — a standing handoff, and a rule that it stays current (2026-09-20)
 - **`docs/plan/HANDOFF.md`** is the first file a session reads: where we are, what the four
   measurements were worth, what to do next, which decisions wait on the owner, and the standing

@@ -414,11 +414,16 @@ export const tsconfigIncludeCheck = (cwd: string | undefined): Check => {
   const testDir = testDirFor(root);
   const files = tsconfigProgramFiles(join(root, TSCONFIG), root);
   if (files === null) {
+    // Two causes, and saying the wrong one sends a reader to edit a file that is fine. Only the
+    // compiler can answer this question, so its absence is the first thing to rule out.
+    const why = typeScriptAvailable(root)
+      ? `the compiler would not parse ${TSCONFIG}`
+      : "typescript does not resolve from this project, and only the compiler can answer this — see the line-ranges row";
     return {
       name,
       status: "degraded",
-      detail: `${TSCONFIG} could not be parsed by the compiler, so whether it covers ${testDir}/ is unknown — ` +
-        "a candidate written outside every include glob is type-checked by a stage that never opens it (ADR-0037)",
+      detail: `whether ${TSCONFIG} covers ${testDir}/ is unknown: ${why}. A candidate written outside ` +
+        "every include glob is type-checked by a stage that never opens it (ADR-0037).",
     };
   }
 

@@ -37,14 +37,20 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - name: package.json, server.json and plugin.json versions agree
+      - name: package.json, server.json, plugin.json and the MCP server agree
         run: |
           pkg=$(node -p "require('./package.json').version")
           srv=$(node -p "require('./server.json').version")
+          srvpkg=$(node -p "require('./server.json').packages[0].version")
           plg=$(node -p "require('./claude/.claude-plugin/plugin.json').version")
-          echo "package.json=$pkg server.json=$srv plugin.json=$plg"
-          [ "$pkg" = "$srv" ] && [ "$pkg" = "$plg" ] \
-            || { echo "::error::versions disagree — they move together (CLAUDE.md)"; exit 1; }
+          # The fourth place, and the one nothing points at: the MCP server announces a version to
+          # every client that connects. Only `test/mcp.test.ts` was holding it, and it caught a
+          # release where the other three had moved and this had not.
+          mcp=$(grep -oE 'SERVER_VERSION = "[^"]+"' src/mcp.ts | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "package.json=$pkg server.json=$srv server.json/packages[0]=$srvpkg plugin.json=$plg mcp=$mcp"
+          for v in "$srv" "$srvpkg" "$plg" "$mcp"; do
+            [ "$v" = "$pkg" ] || { echo "::error::$v != $pkg — they move together (CLAUDE.md)"; exit 1; }
+          done
       - name: server.json validates against the schema it pins
         # Against the registry's own schema, fetched from the URL server.json names, rather than against
         # a hand-written idea of it. Phase 7 found the file invalid in two independent ways — a 145-char

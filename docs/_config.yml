@@ -1,0 +1,24 @@
+# GitHub Pages, served from `docs/` on `main`. The switch itself is a repository setting
+# (Settings → Pages → Source: main / docs) and is not in this file — adding this file does not turn
+# the site on.
+#
+# `docs/` is also where this project's own documentation lives, so the site and the working tree are
+# the same tree. `index.md` is the landing page; DECISIONS, plan/, research/ and specs/ render at
+# their own paths and are linked from it. Nothing is hidden, because nothing in here is private —
+# CLAUDE.md #7 keeps the client out of the repository, not out of the website.
+title: sidecrew
+description: >-
+  Ask for a change to your source and get it — made by local MLX models on your Mac, checked by a
+  gate a machine can run before Claude sees it.
+theme: jekyll-theme-primer
+show_downloads: false
+
+exclude:
+  # Session-local plans and prompts. They point at absolute paths on one machine, they are written for
+  # whoever picks the work up next, and neither is a page a reader of the site wants.
+  - plan/prompts/
+  - plan/HANDOFF.md
+
+defaults:
+  - scope: { path: "" }
+    values: { layout: default }

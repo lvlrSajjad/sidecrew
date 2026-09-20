@@ -1,0 +1,146 @@
+# Publish a tagged version to npm and to the MCP Registry.
+#
+# Triggered by a `v*` tag and by nothing else. The first job is a gate rather than a step: every check
+# in it is something that, if wrong, produces a published artefact that cannot be unpublished — npm
+# forbids re-using a version number, and the registry resolves `io.github.lvlrSajjad/sidecrew` to
+# whatever npm has. So the version agreement, the schema, the suite and the pack contents are all
+# proved **before** anything leaves this machine.
+#
+# `ci.yml` already checks the three versions agree and validates `server.json`. It is repeated here on
+# purpose: `ci.yml` runs on `main`, and a tag can point at a commit that never went through it.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  # npm provenance and the MCP Registry both authenticate with a short-lived OIDC token rather than a
+  # stored secret. The registry needs no secret at all; npm still needs NPM_TOKEN for the publish
+  # itself, and mints provenance from this.
+  id-token: write
+
+jobs:
+  gate:
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: the tag is the version, in all four places
+        id: version
+        # A tag that disagrees with package.json publishes the wrong number under the right name, and
+        # there is no way back from that. Checked first because it is the one failure that cannot be
+        # fixed by a second release.
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          srv=$(node -p "require('./server.json').version")
+          srvpkg=$(node -p "require('./server.json').packages[0].version")
+          plg=$(node -p "require('./claude/.claude-plugin/plugin.json').version")
+          # The fourth place, and the one nothing points at: the MCP server announces a version to
+          # every client that connects, and a client reads it to decide what it is talking to. Only
+          # `test/mcp.test.ts` was holding this one, and it caught it.
+          mcp=$(grep -oE 'SERVER_VERSION = "[^"]+"' src/mcp.ts | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "tag=$tag package.json=$pkg server.json=$srv server.json/packages[0]=$srvpkg plugin.json=$plg mcp=$mcp"
+          for v in "$pkg" "$srv" "$srvpkg" "$plg" "$mcp"; do
+            [ "$v" = "$tag" ] || { echo "::error::$v != $tag — the tag and all four move together (CLAUDE.md)"; exit 1; }
+          done
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: server.json validates against the schema it pins
+        # The registry's own schema, fetched from the URL server.json names. Phase 7 found this file
+        # invalid in two independent ways, either of which would have failed the publish.
+        run: |
+          url=$(node -p "require('./server.json').\$schema")
+          curl -sS --fail -m 30 "$url" -o /tmp/mcp-server.schema.json
+          npx -y ajv-cli@5 validate --spec=draft7 --strict=false -s /tmp/mcp-server.schema.json -d server.json
+
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      - name: the tarball is dist, claude, README and LICENSE — and nothing else
+        # `files` in package.json is the allowlist, and this is the assertion that it still is one.
+        # A denylist that misses a blob has failed completely while appearing to work (ROADMAP
+        # Priority 4), and a package published with a stray experiments/ directory in it has
+        # distributed whatever was in that directory.
+        run: |
+          npm pack --dry-run --json > /tmp/pack.json
+          node -e '
+            const files = require("/tmp/pack.json")[0].files.map((f) => f.path);
+            const allowed = /^(dist\/|claude\/|README\.md$|LICENSE$|package\.json$)/;
+            const stray = files.filter((f) => !allowed.test(f));
+            if (stray.length) {
+              for (const f of stray) console.error(`::error::${f} would be published and is not on the allowlist`);
+              process.exit(1);
+            }
+            console.log(`${files.length} files, all on the allowlist`);
+          '
+
+      - name: doctor runs from the packed tarball, not from this checkout
+        # `npm pack` proves what is in the tarball; this proves the tarball is a working install. The
+        # two are different questions and only the second catches a missing runtime asset — the
+        # prompt templates are copied into `dist` by a script, not by `tsc`.
+        run: |
+          tgz=$(npm pack --silent)
+          tmp=$(mktemp -d)
+          mv "$tgz" "$tmp/"
+          cd "$tmp"
+          npm init -y > /dev/null
+          npm i --silent "./$tgz"
+          ./node_modules/.bin/sidecrew doctor
+
+  npm:
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+      - name: publish to npm, with provenance
+        # `--provenance` signs the package with this workflow's OIDC identity, so anybody can check
+        # which commit and which workflow built what they installed. It is the cheapest thing this
+        # repository can do about supply chain, and it costs a flag.
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  registry:
+    # After npm, never beside it: the registry entry points at an npm version, and publishing the
+    # pointer first makes it resolve to nothing for as long as npm takes.
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: publish to the MCP Registry
+        # `login github-oidc` exchanges this job's OIDC token for a registry credential, so there is
+        # no secret to store or rotate. The namespace `io.github.lvlrSajjad/…` is what it proves the
+        # right to publish under — it has to match `name` in server.json or the publish is rejected.
+        run: |
+          curl -sSL --fail \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+          chmod +x mcp-publisher
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
