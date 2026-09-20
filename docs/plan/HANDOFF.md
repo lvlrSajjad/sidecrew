@@ -4,8 +4,8 @@
 disagrees with anything else, it is the thing that was updated last and the other file is the bug
 (CLAUDE.md § *Conventions*).
 
-**Last updated: 20 Sep 2026**, end of the session that built Phase 14 — the three hardening items, the
-release machinery, and every published rate restated as an interval.
+**Last updated: 20 Sep 2026**, end of the session that ran **Phase 14b**, pushed `main` for the first
+time, and tagged **`v0.1.0-rc.1`**.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -19,15 +19,17 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
-| version | **0.1.0** in `package.json`, `server.json` (twice), `plugin.json` **and `src/mcp.ts`** — four places, all checked by CI now |
-| pushed | **no — `main` is well ahead of `origin/main`** (`git log --oneline origin/main..HEAD | wc -l`), including all of Phase 14 |
+| version | **0.1.0-rc.1** in `package.json`, `server.json` (twice), `plugin.json`, `src/mcp.ts` **and `package-lock.json`** — the lockfile was a stale fifth place reading `0.0.1`; it is aligned now. The gate compares the tag against the first five |
+| pushed | **yes — `main` is pushed** (20 Sep), after a blob-contents scan that **found a client name and blocked the push**, §5. **`v0.1.0-rc.1` is tagged and pushed** |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach.** Blocked on **ADR-0075**. 14b is done. Three owner actions still precede the release, §3 |
-| ADRs | run to **0077**; start new ones at 0078. **0064, 0075 and 0077 are PROPOSED and need the owner** |
-| running | **nothing.** Both 14b probes finished 20 Sep; worker stopped, sandboxes swept, the checkout byte-identical before and after |
+| next phase | **14c — the reach**, blocked on **ADR-0075**. 14b is done. The nearest *work* is ADR-0077's counterfactual, §3.2 — one hour, no worker |
+| ADRs | run to **0077**; start new ones at 0078. **0064 and 0075 are PROPOSED and need the owner.** 0077's **option D is accepted**; A/B/C wait on D's number |
+| running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
+| CI | **RED, and has been since at least 18 Sep** — `ci.yml` fails on `main` on every push. Two causes, both diagnosed, §3.0. **The release gate runs `npm test`, so this blocks the release outright** |
+| `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
 
-## 2. Phase 14 is built. The release is not cut.
+## 2. Phase 14 is built. The rc is cut; the release is not.
 
 **Everything in the DoD is on `main`:**
 
@@ -41,58 +43,115 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 **What is deliberately not done, because it is the owner's:**
 
-1. **Tag `v0.1.0` and push it.** Nothing publishes until a tag exists.
-2. **Add `NPM_TOKEN`** to the repository's secrets. The registry needs no secret (OIDC); npm does.
-3. **Turn GitHub Pages on** — Settings → Pages → `main` / `docs`. Adding the files does not turn it on.
+1. **Add `NPM_TOKEN`** to the repository's secrets. The registry needs no secret (OIDC); npm does.
+   Until it exists the `npm` job stops at the publish, which is what the rc was for.
+2. **Turn GitHub Pages on** — Settings → Pages → `main` / `docs`. Adding the files does not turn it on.
+3. **Tag `v0.1.0` for real**, after moving the five version places back off `0.1.0-rc.1`.
 
-**`release.yml` has never run.** Every step of its `gate` job was verified by hand locally — the
-version agreement, the pack allowlist, `doctor` out of the tarball. Its **`npm` and `registry` jobs
-are unverified** against the live services; the MCP publisher's asset URL and the `login github-oidc`
-flow in particular are written from documentation, not from a green run. Expect to iterate on the
-first tag, and tag a throwaway `v0.1.0-rc.1` first if that matters.
+**`release.yml` ran for the first time on 20 Sep**, twice, and **both runs failed** — which is the
+whole reason to have tagged a release candidate rather than `v0.1.0`.
+
+| tag | got as far as | what it found |
+|---|---|---|
+| `v0.1.0-rc.1` | died at step 1 of `gate` | **a false pass in the version check**, below |
+| `v0.1.0-rc.2` | `gate`: version ✓ schema ✓ lint ✓ · **`npm test` ✗** | **CI has been red since 18 Sep**, §3.0 |
+
+Nothing was published by either. npm and the MCP Registry have never been touched, the `registry`
+job's `login github-oidc` flow is **still unverified**, and `0.1.0` is still unclaimed.
+
+**The version check had a false pass, and it is the one the workflow's own comment calls the failure
+a second release cannot fix.** It extracted `src/mcp.ts`'s version with
+`grep -oE '[0-9]+\.[0-9]+\.[0-9]+'`, which silently drops a prerelease suffix **from one side of the
+comparison**: tagging `v0.1.0` against an `mcp.ts` still reading `0.1.0-rc.1` extracts `0.1.0`, the
+comparison succeeds, and npm gets a release whose MCP server announces itself to every client as a
+release candidate. Fixed — it takes the string literal whole, and both shapes are verified.
+
+**Reading the workflow before tagging found two more, both of which only bite on a prerelease, both
+now fixed, and neither of which the gate would ever have caught:**
+
+- `npm publish` had **no `--tag`**, and npm writes `latest` when none is given — *including for a
+  prerelease*. `v0.1.0-rc.1` would have made `npm i sidecrew` serve a release candidate to everyone.
+  The dist-tag is now derived from the version's shape: anything with a hyphen goes to `next`.
+- The **`registry` job would have published the rc as the entry MCP clients resolve** the server name
+  to. It carries no dist-tag and there is no way to mark an entry provisional, so it is releases-only
+  now.
 
 ## 3. What to do next
 
 **In this order.**
 
-0. **Push `main`.** Nothing — tag, npm, Pages — can happen until it is. The pre-push scan CLAUDE.md
-   #7 demands **was run on 20 Sep and was clean**: 0 hits over the *contents* of every object in
-   `origin/main..HEAD`, not merely over the diffs, which is the distinction ADR-0051 was written
-   about. **Re-run it for anything committed after that**, with the names from this project's memory
-   directory:
+**0. Fix CI. Nothing else can ship until it is green.** `ci.yml` has failed on `main` on **every push
+since at least 18 Sep**, and it went unnoticed because nobody looked: the local suite is green (769
+passing) and the release workflow had never run. **`release.yml`'s gate runs `npm test`, so the
+release cannot be cut at all until this is fixed.**
 
-   ```
-   git rev-list origin/main..HEAD --objects | awk '{print $1}' \
-     | while read o; do [ "$(git cat-file -t $o)" = blob ] && git cat-file -p $o; done \
-     | grep -icE '<names>'
-   ```
-1. **The three owner actions above**, which cut the release.
-2. **Phase 14's exit check runs for two weeks from the tag**, not from today. `F` = distinct
-   *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → 14b. `F ≥ 3` → insert
-   `14a′`. **Any failure producing a *wrong verdict* rather than a refusal → STOP and fix**, whatever
-   `F` is.
-3. **Phase 14b is DONE, 20 Sep.** `S₁₄ = 2/30 = 0.067`, 95 % `[0.008, 0.221]`, both probes below
-   0.10 → **PROCEED to 14c**. No code changed, no version cut. `experiments/editing-ceiling/`.
+Two independent causes, both read off the rc.2 run (`gh run view <id> --log-failed`):
 
-   **The question had a third answer, and it is the thing to carry forward.** Not the model, not the
-   task size — both probes moved what they targeted (declines 17 → 3 on the 14B, 17 → 10 on the
-   narrowed ask). It is the **gate's scope**. Every extra target a worker fixes correctly becomes an
-   *unsatisfiable* task, one for one: +6 correct → +6 unsatisfiable on probe 2, +9 → +9 on probe 1.
-   The sinking error is in a **test file in 21 of 21** cases and in non-test source in **0** — a
-   narrowed type propagates into fixtures, and tests may not be edited because tests *are* the gate.
-   **It gets worse as the worker gets better** (unsatisfiable 12 → 18 → 21), so buying more worker
-   capability on this shape buys nothing measurable.
+- **The 24 GB floor refuses the runner.** `assertSupportedMachine` (ADR-0073, `src/models.ts`) throws
+  `UnsupportedMachineError` below 24 GB, and a GitHub macOS runner has **7 GB**. Five `runBatch`
+  tests die on it. **Note what they are: `--dry-run` tests.** A dry run stops before the first token
+  and picks no worker, so arguably the floor should not fire on it at all — which is a *product*
+  question (does `sidecrew run --dry-run` work on a 16 GB laptop?) and is **not decided**. The
+  alternatives are passing an explicit `workerKind` in those tests, which the docstring already
+  blesses as the harness bypass, or a test-only override. **Do not reach for `SIDECREW_TIER=api`**:
+  that opts CI into a tier ADR-0073 descoped and whose numbers were never measured.
+- **One test asserts on ambient state.** `test/serve.test.ts` → *"finds the nearest .sidecrew at or
+  above the directory it is asked about"* expects `sidecrewDir(process.cwd(), {})` to be
+  `<cwd>/.sidecrew`. That only holds **if a `.sidecrew/` directory exists in the repo** — it does on
+  a machine that has run sidecrew, and never on a fresh clone or a runner. It should build its own
+  fixture directory instead of reading whatever is lying around. A commit on 19 Sep
+  (*"a fresh clone of the published repo failed `npm test`"*) was the same class of bug and did not
+  catch this one.
 
-   **This needs the owner: ADR-0077 (proposed)**, four options, recommending option D first — one
-   short run of the counterfactual, because 15 tasks had a clean target and only test-file errors and
-   would have *reached* the suite under a differently scoped gate. Whether they survive it is the
-   number every other option is betting on, and nobody has it.
+**Both were found by tagging the rc, which is what the rc was for.**
 
-   **It has a trap that would void it, and the prompt opens with it:** the 30 declared `null_guard`
-   tasks live in `experiments/correction-round/plans/project-a-2026-09-20/change_plan.json`, which is
-   **gitignored** (it carries an absolute path to the client's checkout) and therefore exists on the
-   owner's machine and nowhere else. Comparability with the 1/30 baseline requires *those* 30 tasks.
-   A regenerated set is a different experiment. If the file is gone, ask — do not rebuild it.
+**1. The three owner actions.** `NPM_TOKEN` in repository secrets, GitHub Pages on (Settings → Pages
+→ `main` / `docs`), and then the real tag. **For the real release the five version places must go
+back to `0.1.0`** — they sit at **`0.1.0-rc.2`** now, because the gate compares the tag against them.
+`v0.1.0-rc.1` and `v0.1.0-rc.2` are both pushed and both failed; neither published anything, so npm
+and the registry are still untouched and the name is unclaimed.
+
+**2. ADR-0077's counterfactual — the nearest piece of actual work, and it is short.** Option D is
+**accepted**; A, B and C are deliberately still open and wait on this number.
+
+Re-gate probe 1's **15 clean-target tasks** — target file compiled clean, only test files gained
+errors — with test-file *type* errors demoted to observations, and count how many survive the suite.
+**The candidates are already on disk from probe 1, so there is no worker and no generation**: it is a
+replayed verify, and its cost is the suite, about an hour. `scripts/gate-replay.ts` is the nearest
+existing thing.
+
+Two constraints that are the whole point of the measurement, not ceremony:
+
+- **`changeSurvives` is not modified.** The production gate stays what ADR-0046 and ADR-0048 made it.
+  A harness applies its own rule to a replayed verify; editing the gate to get a better number is the
+  thing this project exists to be the opposite of.
+- **Report it as a counterfactual over 15, stated beside the 30.** It is a conditional number about a
+  subset chosen after seeing failures, which is exactly the adjustment §4.0 precondition 4 forbids
+  doing quietly.
+
+**3. Phase 14's exit check runs for two weeks from the real tag**, not from the rc and not from today.
+`F` = distinct *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → fine.
+`F ≥ 3` → insert `14a′`. **Any failure producing a *wrong verdict* rather than a refusal → STOP and
+fix**, whatever `F` is.
+
+**Phase 14b is DONE, 20 Sep.** `S₁₄ = 2/30 = 0.067`, 95 % `[0.008, 0.221]`, both probes below 0.10 →
+**PROCEED to 14c**. No product code changed. `experiments/editing-ceiling/`.
+
+**The question had a third answer, and it is the thing to carry forward.** Not the model, not the task
+size — both probes moved what they targeted (declines 17 → 3 on the 14B, 17 → 10 on the narrowed ask).
+It is the **gate's scope**. Every extra target a worker fixes correctly becomes an *unsatisfiable*
+task, one for one: +6 correct → +6 unsatisfiable on probe 2, +9 → +9 on probe 1. The sinking error is
+in a **test file in 21 of 21** cases and in non-test source in **0** — a narrowed type propagates into
+fixtures, and tests may not be edited because tests *are* the gate. **It gets worse as the worker gets
+better** (unsatisfiable 12 → 18 → 21), so buying more worker capability on this shape buys nothing
+measurable, and `14b′` would have been the wrong insert even had the threshold been met.
+
+**The 30 declared tasks are gitignored and exist on one machine** —
+`experiments/correction-round/plans/project-a-2026-09-20/change_plan.json`. Comparability with the
+1/30 baseline requires *those* 30. A regenerated set is a different experiment. **If the file is gone,
+ask — do not rebuild it.** The decomposed variant probe 2 used is beside it under
+`experiments/editing-ceiling/plans/`, also gitignored, and is reproducible with
+`scripts/editing-ceiling-decompose.ts`.
 
 `14c` needs **ADR-0075** decided first and cannot start without it.
 
@@ -113,6 +172,20 @@ first tag, and tag a throwaway `v0.1.0-rc.1` first if that matters.
 ## 5. Standing hazards — all learned expensively
 
 - **Stage explicit paths. Never `git add -A` or `git commit -a`.** Peer sessions share this worktree.
+- **The pre-push scan stopped a real leak on 20 Sep, and the leak was in a *safety check*.** An
+  intermediate commit of `scripts/results-14b.py` spelled the client's names out in a denylist — the
+  check meant to prevent exactly that. A later commit fixed the file, **which does not help**: the
+  blob is still in the history a push would send (ADR-0051). It was scrubbed by `git filter-branch`
+  over the 9 unpushed commits, replacing the literal names with an environment read, and
+  `prepush-backup-14b` still points at the pre-rewrite HEAD if anything looks wrong.
+  **Two lessons.** Scan **blob contents over `origin/main..HEAD`**, never the diffs — a diff-only
+  scan would have missed this, because the names arrive and leave inside the range. And when the
+  aggregate scan and a per-blob loop disagree, **believe the one that found something** and keep
+  looking: `git grep -i <names> $(git rev-list origin/main..HEAD)` is what located the commit.
+- **`gh` is authenticated per tree, not globally** (several orgs). `~/Coding/ME/*` and `OSS/*` →
+  `~/.config/gh-personal`; `Coding/ET/*` → `gh-et`; `RZT/*` → `gh-rzt`; anything else → an empty
+  `gh-none` that fails loudly. A zsh `chpwd` hook exports `GH_CONFIG_DIR`, so **a bash shell has to
+  set it explicitly** or `gh` reports "not authenticated".
 - **Scan every diff for the client's names before committing**, including context lines. The names to
   scan for are in this project's memory directory, never in a tracked file.
 - **An import cycle here is a wrong number, not a crash.** `doctor` reaching into `plan.ts` closed
