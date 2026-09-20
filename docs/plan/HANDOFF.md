@@ -4,8 +4,9 @@
 disagrees with anything else, it is the thing that was updated last and the other file is the bug
 (CLAUDE.md § *Conventions*).
 
-**Last updated: 20 Sep 2026**, end of the session that ran **Phase 14b**, pushed `main` for the first
-time, and tagged **`v0.1.0-rc.1`**.
+**Last updated: 20 Sep 2026**, end of the session that **fixed CI and got `main` green** for the
+first time since 18 Sep. The session before it ran **Phase 14b**, pushed `main` for the first time,
+and tagged **`v0.1.0-rc.1`**.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -23,10 +24,10 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | pushed | **yes — `main` is pushed** (20 Sep), after a blob-contents scan that **found a client name and blocked the push**, §5. **`v0.1.0-rc.1` is tagged and pushed** |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach**, blocked on **ADR-0075**. 14b is done. The nearest *work* is ADR-0077's counterfactual, §3.2 — one hour, no worker |
+| next phase | **14c — the reach**, blocked on **ADR-0075**. 14b is done. The nearest *work* is ADR-0077's counterfactual, §3.2 — one hour, no worker. **CI no longer blocks anything** |
 | ADRs | run to **0077**; start new ones at 0078. **0064 and 0075 are PROPOSED and need the owner.** 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
-| CI | **RED, and has been since at least 18 Sep** — `ci.yml` fails on `main` on every push. Two causes, both diagnosed, §3.0. **The release gate runs `npm test`, so this blocks the release outright** |
+| CI | **GREEN** on `d71edbe` — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
 
 ## 2. Phase 14 is built. The rc is cut; the release is not.
@@ -99,30 +100,41 @@ now fixed, and neither of which the gate would ever have caught:**
 
 **In this order.**
 
-**0. Fix CI. Nothing else can ship until it is green.** `ci.yml` has failed on `main` on **every push
-since at least 18 Sep**, and it went unnoticed because nobody looked: the local suite is green (769
-passing) and the release workflow had never run. **`release.yml`'s gate runs `npm test`, so the
-release cannot be cut at all until this is fixed.**
+**0. Fix CI — DONE, 20 Sep.** `main` is green on `d71edbe`: `test (20)`, `test (22)` and
+`contracts` all pass. It had been red on every push since at least 18 Sep and went unnoticed because
+nobody looked — the local suite was green at 769 passing and `release.yml` had never run. No product
+code changed; the whole fix is two test files and one workflow.
 
-Two independent causes, both read off the rc.2 run (`gh run view <id> --log-failed`):
+**There were three causes, not the two that had been diagnosed**, and the third had been missed
+because the diagnosis read only the `test` job's log and never the `contracts` job's:
 
-- **The 24 GB floor refuses the runner.** `assertSupportedMachine` (ADR-0073, `src/models.ts`) throws
-  `UnsupportedMachineError` below 24 GB, and a GitHub macOS runner has **7 GB**. Five `runBatch`
-  tests die on it. **Note what they are: `--dry-run` tests.** A dry run stops before the first token
-  and picks no worker, so arguably the floor should not fire on it at all — which is a *product*
-  question (does `sidecrew run --dry-run` work on a 16 GB laptop?) and is **not decided**. The
-  alternatives are passing an explicit `workerKind` in those tests, which the docstring already
-  blesses as the harness bypass, or a test-only override. **Do not reach for `SIDECREW_TIER=api`**:
-  that opts CI into a tier ADR-0073 descoped and whose numbers were never measured.
-- **One test asserts on ambient state.** `test/serve.test.ts` → *"finds the nearest .sidecrew at or
-  above the directory it is asked about"* expects `sidecrewDir(process.cwd(), {})` to be
-  `<cwd>/.sidecrew`. That only holds **if a `.sidecrew/` directory exists in the repo** — it does on
-  a machine that has run sidecrew, and never on a fresh clone or a runner. It should build its own
-  fixture directory instead of reading whatever is lying around. A commit on 19 Sep
-  (*"a fresh clone of the published repo failed `npm test`"*) was the same class of bug and did not
-  catch this one.
+- **The 24 GB floor refused the runner.** `assertSupportedMachine` (ADR-0073) throws below 24 GB and a
+  GitHub macOS runner has 7.0. Five `runBatch` tests died on it. They now pass `workerKind: "local"`,
+  the bypass that function's own docstring blesses for a harness — the tests move off the floor and
+  the floor does not move. **Whether `--dry-run` should be subject to the floor at all is a product
+  question, it is still open, and a test fix was the wrong place to answer it.** It is written up in
+  `BACKLOG.md`, with the note that `SIDECREW_TIER=api` is not the answer.
+- **One test asserted on ambient state.** `test/serve.test.ts`'s *"finds the nearest .sidecrew…"*
+  expected `sidecrewDir(process.cwd(), {})` to end in `.sidecrew`, which holds only once somebody has
+  run sidecrew in this tree. It builds its own tree now.
+- **`ci.yml`'s version check had the truncating grep `release.yml` had just been fixed for.** It
+  extracted `src/mcp.ts` with `grep -oE '[0-9]+\.[0-9]+\.[0-9]+'`, dropping the prerelease suffix,
+  and compared `0.1.0` against a `package.json` correctly reading `0.1.0-rc.2`. Nothing was out of
+  step. **The fix landed in `release.yml` in `4ac0f8c` and was not carried across**, which is the
+  lesson worth keeping: the two workflows duplicate this check and a fix to one is not a fix to both.
 
-**Both were found by tagging the rc, which is what the rc was for.**
+**The first two were found by tagging the rc, which is what the rc was for. The third was found by
+pushing the fix for the first two and reading the job that had never been read.**
+
+**Two things this left behind, neither of them blocking:**
+
+- **`package-lock.json` is a fifth version place that neither workflow gates.** `release.yml` compares
+  the tag against five values and `ci.yml` compares four; the lockfile is in neither, and it is the
+  one that was found reading `0.0.1` while the others had moved.
+- **The verification that matters here is against the runner's conditions, not the developer's** —
+  that is the whole class of bug. Both were checked that way before pushing: the floor bypass
+  exercised directly at `total_gb: 7.0`, and both test files run green in a tracked-files-only copy of
+  the tree with no `.sidecrew` in it.
 
 **1. The three owner actions.** npm **Trusted Publishing** configured on npmjs.com (a one-time entry
 against this repo and `release.yml` — *no repository secret*, npm is ending token publishing),
@@ -212,8 +224,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   `concurrency → serve → doctor → plan → verifier/ts → concurrency`, which under ESM made
   `DEFAULT_STRYKER_CONCURRENCY` **`undefined`**. One assertion written for a different reason caught
   it. `verifier/shared.ts` imports nothing of ours and is where a shared helper belongs.
-- **The version lives in four places**, and the fourth (`src/mcp.ts`) was held only by one test. Both
-  workflows check all four now.
+- **The version lives in five places**, and `src/mcp.ts` was once held only by one test. `release.yml`
+  checks five and `ci.yml` four; **`package-lock.json` is gated by neither**, and it is the one found
+  reading `0.0.1` while the rest had moved. **The two workflows duplicate this check, and a fix to one
+  is not a fix to both** — the truncating-grep fix landed in `release.yml` on 20 Sep and sat broken in
+  `ci.yml` until the next push, where it failed `contracts` in the opposite direction.
 - **`safeName` rewrites `snc-02#1` as `snc-02.1.json`.** A harness that re-derives a filename instead
   of using the writer's function reported `n₂ = 0` with a *plausible* reason and a confident, wrong
   INCONCLUSIVE.
