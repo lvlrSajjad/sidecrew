@@ -770,7 +770,11 @@ it caught before. Those four candidates are a better regression suite than anyth
 them as fixtures and assert the gate rejects each **for the right reason and at the right stage**.
 Cheap, and it protects the one component every other number depends on.
 
-## Noticed while fixing CI (20 Sep 2026) — an undecided product question, deliberately left undecided
+## Noticed while fixing CI (20 Sep 2026) — DECIDED the same day, see ADR-0078
+
+**DECIDED 20 Sep 2026 by the owner: the floor applies to every run, `--dry-run` included (ADR-0078).**
+No code changed — it confirms existing behaviour. The rest of this entry is the question as it was
+put, kept because the reasoning is the useful part.
 
 **Should the 24 GB floor (ADR-0073) fire on a run that never starts a worker?**
 

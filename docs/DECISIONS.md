@@ -5016,9 +5016,9 @@ the thing being deleted on the fixture was the comment documenting the trap the 
 boundaries with identical words, and whether a reword was *right*. The second is a judgement for a
 reviewer and explicitly not for the gate.
 
-## ADR-0075 — The whole-file return format, not the model, caps the addressable surface at about half a codebase (PROPOSED)
+## ADR-0075 — The whole-file return format, not the model, caps the addressable surface at about half a codebase
 
-**Status:** proposed · 20 Sep 2026 · owner's question, measured the same day · needs the owner
+**Status:** **accepted — option C**, 20 Sep 2026, by the owner · measured the same day it was asked · unblocks Phase 14c
 **Bears on:** the *"anything Opus does"* goal, ADR-0047 §2, and Phase 14's AST item
 
 ### The question
@@ -5078,6 +5078,10 @@ before model quality is even reached.
 - **D — a larger-context local model.** Moves the ceiling without removing it, costs memory the gate
   needs (CLAUDE.md #5), and Phase 6 measured the 14B matching the 7B on TypeScript while costing 2.2×
   the generation time.
+
+**Decision: C**, taken by the owner on 20 Sep 2026 on the recommendation below. **Phase 14c is
+unblocked.** A, B and D are rejected for the reasons given above; B's rejection also carries ADR-0047
+§2's, which is independent and still holds.
 
 **Recommendation: C.** It is the only option that changes the *shape* of the limit rather than its
 size, and it makes an item already owed load-bearing: **C needs `deriveLineRange` to read the
@@ -5258,3 +5262,58 @@ it is the number nobody has, and every argument for B assumes it.
 Phase 14b still reports `PROCEED to 14c` and 14c is unaffected — its subject is *reach*, and reach is
 ADR-0075's. What lapses is the Shapes row: it would record `null_guard` as "the worker can do it, the
 gate cannot credit it", which is accurate and is not a state to leave a scorecard in indefinitely.
+
+---
+
+## ADR-0078 — The 24 GB floor applies to every run, including one that never starts a worker
+
+**Status:** **accepted**, 20 Sep 2026, by the owner · confirms existing behaviour · no product code changed
+
+### Context
+
+Raised while fixing CI on 20 Sep. `runBatch` and `fix` call `assertSupportedMachine` (ADR-0073) before
+they know whether the run will generate anything, so `sidecrew run --dry-run` is refused on a machine
+below 24 GB. A dry run stops before the first token and picks no worker: it renders tasks and prompts
+and counts estimated tokens, none of which needs RAM the machine does not have.
+
+It surfaced as a CI failure — a GitHub macOS runner has 7 GB, and three of the five `runBatch` tests
+that died on the floor were `--dry-run` tests. **Those tests were fixed by passing `workerKind`
+explicitly**, the bypass `assertSupportedMachine`'s own docstring blesses for a harness, which moved
+the tests off the floor without moving the floor. That deliberately left the product question open
+rather than answering it with a test fix.
+
+### The question
+
+Should `--dry-run` be exempt from the floor?
+
+- **A — exempt it.** *"What would this cost me?"* is exactly the question somebody on an unsupported
+  machine wants answered before buying a supported one, and refusing it is a worse first experience
+  than answering it. The dry run genuinely cannot fail for want of RAM.
+- **B — the floor applies to every run.** One rule that holds everywhere, with no case analysis at the
+  call site and nothing for a later change to get wrong.
+
+### Decision
+
+**B.** The floor applies to every run, `--dry-run` included.
+
+**Why, in the owner's terms:** a floor with an exception is two rules, and the exception is the kind
+that grows — the next candidate is `--help`-shaped, then a validate-only path, and each one is
+individually reasonable. The cost of B is one confusing refusal on a machine sidecrew does not support
+anyway; the cost of A is a second code path through the tier decision, which is the decision ADR-0045
+§4 made deliberately unconditional so that nothing selects a tier by looking at anything but installed
+RAM.
+
+**`SIDECREW_TIER=api` is not the escape hatch for this**, and the refusal text should not be read as
+recommending it: it opts into a tier ADR-0073 descoped and whose survival and cost figures were never
+measured.
+
+### Consequences
+
+- **No code changed.** This confirms what `src/models.ts` already does; the value of the ADR is that
+  the behaviour is now intended rather than incidental, and a future reader finds the reasoning
+  instead of re-deriving it.
+- **The harness bypass stays**, and stays for harnesses. `workerKind` set explicitly means *this run is
+  not choosing a tier by looking at RAM* — an experiment, a replay, or a test. It is not a user-facing
+  way around the floor.
+- **What this does not settle:** whether the refusal *message* should say what a dry run would have
+  cost, which is a wording question and cheap to revisit.

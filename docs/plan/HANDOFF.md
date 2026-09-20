@@ -24,8 +24,8 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | pushed | **yes — `main` is pushed** (20 Sep), after a blob-contents scan that **found a client name and blocked the push**, §5. **`v0.1.0-rc.1` is tagged and pushed** |
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach**, blocked on **ADR-0075**. 14b is done. The nearest *work* is ADR-0077's counterfactual, §3.2 — one hour, no worker. **CI no longer blocks anything** |
-| ADRs | run to **0077**; start new ones at 0078. **0064 and 0075 are PROPOSED and need the owner.** 0077's **option D is accepted**; A/B/C wait on D's number |
+| next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — one hour, no worker |
+| ADRs | run to **0078**; start new ones at 0079. **0064 is the only one left needing the owner** — philosophical, blocks nothing. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN** on `d71edbe` — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -189,9 +189,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **ADR-0075** — symbol-scoped return. **The one that unlocks the other half of the codebase**, and
-  14c cannot start without it. Recommendation: option C. **ADR-0076 landed its prerequisite** — the
-  AST range finder — so the cost of option C is lower than when it was written.
+- **ADR-0075 — DECIDED 20 Sep: option C, symbol-scoped return.** The worker returns one
+  declaration's new text and sidecrew splices it back by AST range, so the bound becomes the *symbol*
+  rather than the file and a 60-line method inside a 4,000-line service comes into reach. **ADR-0076
+  had already landed its prerequisite**, the AST range finder, so 14c can start on it directly.
+  Nothing further is owed here; it is listed only so the next session does not re-open it.
 - **ADR-0064** — what #2a can address is a property of a project's *configuration*, not its code.
   Philosophical, blocks nothing, and the owner asked to discuss it.
 - **A client symbol name is in the tracked tree, and on public `main`.**

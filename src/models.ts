@@ -112,6 +112,11 @@ export class UnsupportedMachineError extends Error {
  * Thrown from the run paths as well as reported by `doctor`, because the two are asked at different
  * moments and a user who never runs `doctor` must still be told. `workerKind` set explicitly (an
  * experiment harness, a replay) bypasses this: those runs are not choosing a tier by looking at RAM.
+ *
+ * **ADR-0078: this applies to every run, including `--dry-run`**, which stops before the first token
+ * and picks no worker. Exempting it was considered and rejected: a floor with an exception is two
+ * rules, and the exception is the kind that grows. Do not add a `dryRun` escape here — the harness
+ * bypass above is for harnesses, not a user-facing way around the floor.
  */
 export const assertSupportedMachine = (
   mem: { total_gb: number } | null,
