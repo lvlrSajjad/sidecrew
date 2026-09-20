@@ -4795,3 +4795,65 @@ ADR-0047 §3's claim was that the verdict is designed for a reader two phases la
 untested for two phases. **On its first test, one of its four evidence fields was unusable and the
 reader said so without being asked.** Worth recording plainly: the design was right in shape and wrong
 in one detail, and the detail only shows up at a scale nothing else in this repository had reached.
+
+## ADR-0073 — sidecrew is a 24 GB+ tool; the `api` tier stops being a tier
+
+**Status:** **accepted** · owner's decision, 20 Sep 2026 · **narrows ADR-0009 and ADR-0045**, and puts
+ADR-0059 – ADR-0061 behind an opt-in · ADR-0062's fix is untouched
+
+### The decision, in the owner's terms
+
+> We don't want the api tier. We support 24 GB+ RAM laptops.
+
+So: **installed RAM below 24 GB is refused, with a reason.** Nothing selects a network worker by
+looking at a machine's size any more.
+
+### What changes
+
+1. **`doctor` fails the `tier` row below 24 GB**, and the run paths refuse before spending anything —
+   `assertSupportedMachine`, thrown as its own `UnsupportedMachineError` so a caller can tell an
+   unsupported machine from a broken toolchain. The message carries ADR-0032's three parts: how much
+   RAM this machine has, what the floor is, and why the floor exists.
+2. **A key is no longer the question on a small machine.** Previously a 16 GB laptop with an
+   `ANTHROPIC_API_KEY` set was quietly handed a tier whose survival, approval and dollar-per-task
+   figures have never been measured. It is now refused *whether or not* it has one, which is the
+   substance of the change rather than a detail of it.
+3. **`SIDECREW_TIER=api` remains, as an unsupported escape hatch.** It works, it is tested, it bills
+   the user's key, and `doctor` labels it *"api tier (unsupported, opted in)"*. It is never reached by
+   default.
+4. **Phase 13 §5 is cancelled** and Phase 13 leaves the publish path. The tier ships buildable,
+   opt-in, and unpriced — which was already true, and is now said out loud instead of being a debt.
+
+### What does **not** change, and this is the part worth reading
+
+**`WorkerKind` keeps `"api"`.** The enum value does not mean "the Haiku tier"; it means *a model
+reached over the network wrote this candidate*. Phase 11's C3 control and Phase 11b's arm D both
+record it — **including the 19-candidate corpus the gate's own error rate was measured on three days
+ago.** Removing the value would stop that corpus parsing and would retroactively invalidate `D`.
+
+So the tier leaves the supported surface; the word stays in the contract. `tierFor` still describes
+both rules for the same reason — recorded results must keep resolving.
+
+The schema refinement that refuses *"an `api` run that produced outcomes and reports `workers: 0`"*
+also stays. It is the other half of the local-tier zero-token guarantee, and it guards the escape
+hatch and the experiment harnesses alike.
+
+### Why refuse rather than warn
+
+ADR-0009 measured that a 7B cannot sit beside a normal working set under 24 GB. The failure mode of
+trying anyway is **swapping**, and ADR-0066 measured what swapping does to this gate: it manufactures
+false negatives that are indistinguishable in the artefact from real defects. A warning would hand
+that failure to precisely the users least equipped to recognise it.
+
+### What it costs, stated plainly
+
+**A 16 GB laptop can no longer run sidecrew**, and `VISION.md` previously called that disqualifying —
+*"a tool that cannot run on half the laptops is not one people can use"*. That sentence is now wrong
+about this tool and has been removed rather than quietly softened. The honest replacement is a
+**stated hardware requirement**, which is an ordinary thing for a tool that hosts a 7B to have, and a
+far better position than an unmeasured second product hiding behind a RAM check.
+
+The alternative considered and rejected was **measuring** the tier instead (Phase 13 §5, ~$0.25 of
+credits). It was rejected on scope rather than cost: a second tier is a second set of numbers, a
+second worker to keep pinned, and a second thing every future measurement has to be reported per. One
+supported configuration is a smaller and more defensible product.

@@ -33,7 +33,7 @@ import { appendEscalation } from "./escalate.js";
 import { run } from "./exec.js";
 import { planApiConcurrency, planConcurrency, type ConcurrencyPlan } from "./concurrency.js";
 import { baseUrlFor, DEFAULT_PORT, probeWorker, readMemory, type Memory } from "./doctor.js";
-import { apiModel, defaultKey, entry, modelForMachine, tierFor, type ModelEntry } from "./models.js";
+import { assertSupportedMachine, apiModel, defaultKey, entry, modelForMachine, tierFor, type ModelEntry } from "./models.js";
 import { assertMeasuredUsage, completeApi, resolveApiTier, type ApiTierContext } from "./api-worker.js";
 import { buildPrompt, estimateTokens, promptText } from "./prompt.js";
 import {
@@ -476,6 +476,7 @@ export async function runBatch(planPath: string, opts: RunBatchOpts = {}): Promi
   // That distinction is the whole safety property: free RAM moves when somebody opens Xcode, and a
   // 32 GB machine that happens to be busy must not quietly start billing. Installed RAM does not move
   // during a workday.
+  assertSupportedMachine(mem, opts.workerKind);
   const tier = opts.workerKind ?? tierFor(mem?.total_gb ?? 0).tier;
 
   // A local worker is looked for only on the tier that has one. Probing localhost on the api tier

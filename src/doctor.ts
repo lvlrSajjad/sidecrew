@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { run, ok as exited0, firstLine, pythonBin, MLX_SERVER_MODULE } from "./exec.js";
 import { isResolvable, STRYKER_PLUGIN } from "./verifier/shared.js";
 import { CapabilityStatus, type MachineSample, type StatusReport } from "./schemas.js";
-import { apiModel, defaultKey, entry, tierFor, type Tier } from "./models.js";
+import { apiModel, apiTierOptIn, defaultKey, entry, SUPPORTED_MIN_RAM_GB, tierFor, type Tier } from "./models.js";
 import { apiKeyFrom, MISSING_KEY_HINT } from "./api-worker.js";
 
 export interface Check {
@@ -131,8 +131,26 @@ export const tierCheck = (mem: Memory | null, env: NodeJS.ProcessEnv = process.e
     return { name: "tier", status: "ok", detail: `${installed} → local tier · ${rule.model} — ${rule.why}` };
   }
 
+  // ADR-0073: below the floor sidecrew refuses, and says which of the three things is true — how much
+  // RAM this machine has, what the floor is, and why the floor exists. ADR-0032's shape: the cause,
+  // whose fault it is, and the exact fix. A silent fallback to a tier nobody has measured is what this
+  // replaced.
+  if (!apiTierOptIn(env)) {
+    return {
+      name: "tier",
+      status: "missing",
+      detail:
+        `${installed}, and sidecrew needs ${SUPPORTED_MIN_RAM_GB} GB. A 7B worker cannot sit beside a ` +
+        "normal working set below that (ADR-0009, measured), and sidecrew will not quietly run as a " +
+        "different product instead.\n" +
+        "  There is an unsupported escape hatch: SIDECREW_TIER=api runs the worker as Haiku over the " +
+        "Anthropic API, billed to your key. Its survival and cost figures have never been measured " +
+        "(ADR-0073), so it is not what this tool's numbers describe.",
+    };
+  }
+
   const a = apiModel();
-  const why = `${installed} → api tier · ${a.model} — ${rule.why}`;
+  const why = `${installed} → api tier (unsupported, opted in) · ${a.model} — ${rule.why}`;
   if (apiKeyFrom(env) === null) {
     return {
       name: "tier",

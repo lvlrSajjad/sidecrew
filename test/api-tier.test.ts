@@ -132,17 +132,31 @@ describe("doctor names the tier and why — ADR-0032's shape", () => {
     expect(c.detail).toMatch(/32\.0 GB installed/);
   });
 
-  it("says api, names the model, and says it is billed", () => {
-    const c = tierCheck({ total_gb: 16, free_gb: 4 }, { ANTHROPIC_API_KEY: "k" });
+  it("refuses a machine under the floor, whatever credentials it has — ADR-0073", () => {
+    // The owner narrowed the supported surface on 20 Sep 2026: sidecrew is a 24 GB+ tool. A key is
+    // no longer the question on a small machine, so a machine WITH one is still refused. That is the
+    // point — the old behaviour handed an unmeasured tier to whoever happened to have a key set.
+    for (const env of [{}, { ANTHROPIC_API_KEY: "k" }]) {
+      const c = tierCheck({ total_gb: 16, free_gb: 4 }, env);
+      expect(c.status).toBe("missing");
+      expect(c.detail).toMatch(/16\.0 GB/);
+      expect(c.detail).toMatch(/24 GB/);
+      expect(c.detail).toMatch(/SIDECREW_TIER=api/);
+      expect(c.detail).toMatch(/never been measured/);
+    }
+  });
+
+  it("says api, names the model, and says it is billed — only when opted into", () => {
+    const c = tierCheck({ total_gb: 16, free_gb: 4 }, { ANTHROPIC_API_KEY: "k", SIDECREW_TIER: "api" });
     expect(c.status).toBe("ok");
-    expect(c.detail).toMatch(/api tier · claude-haiku-4-5/);
+    expect(c.detail).toMatch(/api tier \(unsupported, opted in\) · claude-haiku-4-5/);
     expect(c.detail).toMatch(/billed/);
     // The headline is labelled where a user reads it, not only in an ADR.
     expect(c.detail).toMatch(/local-tier guarantee/);
   });
 
-  it("is fatal on an api machine with no key — there is no local fallback to degrade to", () => {
-    const c = tierCheck({ total_gb: 16, free_gb: 4 }, {});
+  it("is fatal on an opted-in machine with no key — there is no local fallback to degrade to", () => {
+    const c = tierCheck({ total_gb: 16, free_gb: 4 }, { SIDECREW_TIER: "api" });
     expect(c.status).toBe("missing");
     expect(c.detail).toMatch(/ANTHROPIC_API_KEY/);
   });

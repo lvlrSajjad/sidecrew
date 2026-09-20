@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtemp, mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
+import { assertSupportedMachine, apiTierOptIn, SUPPORTED_MIN_RAM_GB, UnsupportedMachineError,
   entries, entry, defaultKey, tierFor, modelForMachine, hubCacheDir, repoDirName,
   resolveSnapshot, resolveForServe, pinRevision, writePin, rows, short, isCheckout, MODELS_JSON_PATH,
 } from "../src/models.js";
@@ -249,5 +249,48 @@ describe("short", () => {
   it("shortens a sha and marks the absence of one", () => {
     expect(short(SHA)).toBe("a".repeat(12));
     expect(short("")).toBe("—");
+  });
+});
+
+describe("sidecrew is a 24 GB+ tool — ADR-0073", () => {
+  it("refuses a machine under the floor, and names the floor and the reason", () => {
+    // The point is not that it throws — it is what the user is told. A silent fallback to a tier
+    // nobody has measured is what this replaced, and the message has to carry ADR-0032's three parts:
+    // the cause, whose fault it is, and the exact fix.
+    expect(() => assertSupportedMachine({ total_gb: 16 }, undefined, {})).toThrow(UnsupportedMachineError);
+    try {
+      assertSupportedMachine({ total_gb: 16 }, undefined, {});
+    } catch (e) {
+      const m = (e as Error).message;
+      expect(m).toContain("16.0 GB");
+      expect(m).toContain(`${SUPPORTED_MIN_RAM_GB} GB`);
+      expect(m).toContain("SIDECREW_TIER=api");
+      expect(m).toContain("never been measured");
+    }
+  });
+
+  it("allows the supported floor, including the half-gigabyte slack the tier rules already use", () => {
+    expect(() => assertSupportedMachine({ total_gb: 24 }, undefined, {})).not.toThrow();
+    expect(() => assertSupportedMachine({ total_gb: 32 }, undefined, {})).not.toThrow();
+    // 23.6 GB is a 24 GB machine as far as `hw.memsize` reports it; `tierFor` already grants this.
+    expect(() => assertSupportedMachine({ total_gb: 23.6 }, undefined, {})).not.toThrow();
+  });
+
+  it("never selects the api tier from RAM — only from an explicit opt-in", () => {
+    // The whole of ADR-0073. `tierFor` still *describes* both tiers so recorded results keep
+    // resolving, and nothing reaches the api path by looking at a machine's size.
+    expect(apiTierOptIn({})).toBe(false);
+    expect(apiTierOptIn({ SIDECREW_TIER: "local" })).toBe(false);
+    expect(apiTierOptIn({ SIDECREW_TIER: "api" })).toBe(true);
+    expect(() => assertSupportedMachine({ total_gb: 16 }, undefined, { SIDECREW_TIER: "api" })).not.toThrow();
+  });
+
+  it("does not second-guess a caller that named the worker kind", () => {
+    // An experiment harness or a replay is not choosing a tier by looking at RAM, and Phase 11b's
+    // arm D runs `workerKind: "api"` on purpose with no API call in sight.
+    expect(() => assertSupportedMachine({ total_gb: 8 }, "api", {})).not.toThrow();
+    expect(() => assertSupportedMachine({ total_gb: 8 }, "local", {})).not.toThrow();
+    // Memory it could not read is not a machine it can refuse.
+    expect(() => assertSupportedMachine(null, undefined, {})).not.toThrow();
   });
 });

@@ -32,7 +32,7 @@ import { billedWorkerTokens, discoverWorkers, portsFromEnv, PoolRss, runId, RUN_
 import { planApiConcurrency, planConcurrency } from "./concurrency.js";
 import { baseUrlFor, readMemory, type Memory } from "./doctor.js";
 import { diffOf } from "./diff.js";
-import { apiModel, defaultKey, entry, modelForMachine, tierFor, type ModelEntry } from "./models.js";
+import { apiModel, assertSupportedMachine, defaultKey, entry, modelForMachine, tierFor, type ModelEntry } from "./models.js";
 import { assertMeasuredUsage, completeApi, resolveApiTier, type ApiTierContext } from "./api-worker.js";
 import { changePromptText, buildChangePrompt, estimateTokens } from "./prompt.js";
 import { brief, renderBrief, shouldCorrect, type CorrectionBrief } from "./correction.js";
@@ -676,6 +676,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
   // Installed RAM, never free RAM (ADR-0045 §4) — see `runBatch` for why that distinction is the
   // safety property rather than a detail. An injected `generate` keeps whatever kind it declares,
   // because the go/no-go harness owns that arm.
+  assertSupportedMachine(mem, opts.workerKind ?? opts.generate);
   const tier = opts.workerKind ?? (opts.generate !== undefined ? "local" : tierFor(mem?.total_gb ?? 0).tier);
   const api = tier === "api" && opts.generate === undefined && !opts.dryRun
     ? (opts.api ?? resolveApiTier(apiModel().model))

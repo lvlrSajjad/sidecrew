@@ -81,7 +81,60 @@ export const defaultKey = (): string => models.default;
  * and fall back to the Anthropic API. The rules live in models.json rather than here so that changing
  * the answer is a data change with a licence and a footprint next to it, not a patch to a conditional.
  */
+/**
+ * The installed RAM sidecrew supports, and the owner's scope decision of 20 Sep 2026 (ADR-0073).
+ *
+ * **sidecrew is a 24 GB+ tool.** Below this, a 7B cannot sit beside a normal working set (ADR-0009,
+ * measured), and the honest answer is to say so rather than to quietly become a different product.
+ */
+export const SUPPORTED_MIN_RAM_GB = 24;
+
+/**
+ * Is the `api` tier allowed to run here?
+ *
+ * **Never by RAM alone** — that is the whole of ADR-0073. The tier's code is kept and works, and its
+ * survival, approval and dollar-per-task figures have never been measured (Phase 13 §5, cancelled),
+ * so a machine must ask for it explicitly and is told what it is asking for. A silent fallback would
+ * ship an unmeasured runtime path to exactly the users least able to notice.
+ */
+export const apiTierOptIn = (env: NodeJS.ProcessEnv = process.env): boolean =>
+  env.SIDECREW_TIER === "api";
+
+/** A machine sidecrew does not support. Its own class so a caller can tell it from a toolchain fault. */
+export class UnsupportedMachineError extends Error {
+  constructor(message: string) { super(message); this.name = "UnsupportedMachineError"; }
+}
+
+/**
+ * ADR-0073: sidecrew is a {@link SUPPORTED_MIN_RAM_GB} GB+ tool, and a machine below the floor is
+ * refused rather than silently given a different worker.
+ *
+ * Thrown from the run paths as well as reported by `doctor`, because the two are asked at different
+ * moments and a user who never runs `doctor` must still be told. `workerKind` set explicitly (an
+ * experiment harness, a replay) bypasses this: those runs are not choosing a tier by looking at RAM.
+ */
+export const assertSupportedMachine = (
+  mem: { total_gb: number } | null,
+  explicitKind: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+): void => {
+  if (explicitKind !== undefined || mem === null) return;
+  if (mem.total_gb + 0.5 >= SUPPORTED_MIN_RAM_GB || apiTierOptIn(env)) return;
+  throw new UnsupportedMachineError(
+    `sidecrew needs ${SUPPORTED_MIN_RAM_GB} GB of installed RAM and this machine has ` +
+    `${mem.total_gb.toFixed(1)} GB.\n` +
+    "  A 7B worker cannot sit beside a normal working set below that (ADR-0009, measured).\n" +
+    "  Unsupported escape hatch: SIDECREW_TIER=api runs the worker as Haiku over the Anthropic API, " +
+    "billed to your key. Its survival and cost figures have never been measured (ADR-0073).",
+  );
+};
+
 export const tierFor = (totalGb: number): TierRule => {
+  // The data still describes both tiers, and deliberately: `WorkerKind: "api"` labels *a model reached
+  // over the network*, which is what Phase 11's C3 control and Phase 11b's arm D recorded — including
+  // the corpus the gate's own error rate was measured on. ADR-0073 removes the tier from the supported
+  // surface, not the word from the contract. What changed is `apiTierOptIn`: nothing selects `api` by
+  // looking at RAM any more.
   const rules = [...(models.tiers as TierRule[])].sort((a, b) => b.min_ram_gb - a.min_ram_gb);
   const rule = rules.find((r) => totalGb + 0.5 >= r.min_ram_gb);
   // The last rule is the floor and matches any machine; a models.json without one is a bug in the data.
