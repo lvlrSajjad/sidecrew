@@ -30,12 +30,15 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | 13 | ~~The `api` tier~~ — **off the publish path, 20 Sep 2026 (ADR-0073)** | ⬛ **descoped by the owner** | The owner narrowed the supported surface: *24 GB+ laptops*. **§5 is cancelled** — the tier is no longer something publication waits on. The client stays, tested, behind `SIDECREW_TIER=api`, unsupported and unpriced; below 24 GB sidecrew now **refuses with a reason** rather than falling back. `WorkerKind` keeps `"api"` — Phase 11's C3 and 11b's arm D record it, including the corpus `D` was measured on |
 | **13b** | **The edge ideas that gate publication** — unattended mode ✅, memoisation ✅, local retrieval | 🔶 **two of three built** · owner's decision 18 Sep 2026 | `BACKLOG.md` § *The edge ideas* items 4, 3, 1 · all three were Phase 12's and were not built. **Item 6 (two-model agreement) was considered and dropped** — its own precondition is untested |
 | **12m** | **Phase 12's two measurements, and the two defects that would invalidate them** | 🔶 **19–20 Sep** — ADR-0066 ✅ (C) · ADR-0069 ✅ (A) · instrument ✅ · **§2.1: `R = 2.84` at `N = 12` and `1.07` at `N = 41`, FAIL at both** · **gate error rate: `D = 2/19 = 0.105`, UNACCEPTABLE** · **§2.2: `S_c = 0/29`, OFF BY DEFAULT** · ✅ **all four measured** | `prompts/phase-12-measurements.md` · the instrument was wrong **three** ways, not one — blind to subagents, double-counting every message (median 1.89×), and ENOENT on any path with an underscore. Two were in `BACKLOG.md` unacted on |
-| 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ | `prompts/phase-8-publish.md` |
-| 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · not on the publish path | ADR-0031 options B/C |
+| 14 | **Publish**: npm + MCP Registry, docs site — includes the workload #1 hardening items below | ⬜ **next** · **cut `v0.1.0`** | `prompts/phase-8-publish.md` · no overnight run · gates: `deriveLineRange` on the AST, `doctor`'s pre-flight questions, ADR-0042, and the owner's sentence on publishing rates as intervals |
+| **14b** | **The editing ceiling: is it the model or the task?** — two probes on §2.2's declared task set | ⬜ | **one evening · needs the machine** · no build, no version. Decides whether "any shape of change" is reachable at all |
+| **14c** | **The reach: symbol-scoped return** (ADR-0075 option C) — half a codebase is currently unaddressable | ⬜ · **cut `v0.2.0`** | 2–3 sessions · **one overnight run** · needs ADR-0075 decided, and the AST work from 14 |
+| **14d** | **Retrieval: local models read the codebase** — the other half of the vision | ⬜ · **cut `v1.0.0`** | 3–4 sessions · **one overnight run** · needs its own ADR first: a machine confirms a symbol *exists*, not that it is *relevant* |
+| 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · **post-1.0** | ADR-0031 options B/C · the remaining slice of the 90 %, and the one nothing measured so far says anything about |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
 | 17 | The edge ideas: fine-tune on survivors, worker pooling, two-model agreement | 🔷 proposed | `BACKLOG.md` § *The edge ideas* |
 
-**The path to publish is 10 → 11 → 11b → 12 → 14**, in that order, and numbers are the order ("don't start
+**The path to publish is 10 → 11 → 11b → 12 → 14**, and **the path to the 90 % bar is 14 → 14b → 14c → 14d**, in that order, and numbers are the order ("don't start
 N+1 until N's DoD is met"). Workload #2b is behind publish on purpose: the owner's bar is the worked
 example in `VISION.md`, which is #2a with the management loop on the supported tier. 2b is in the vision and is
 not in the bar.
@@ -963,15 +966,124 @@ AST, `doctor`'s three pre-flight questions, rendering what a body's meaning depe
 each is a way a stranger's project fails today. The README and the Claude skill are rewritten to lead
 with the worked example, not with unit tests.
 
-## 15 — Workload #2b: behaviour-changing changes (proposed, not on the publish path)
+## The road to the 90 % bar — 14 → 14b → 14c → 14d, decided 20 Sep 2026
+
+**The owner's goal, in their words:** *"be able to achieve what Opus does, our way — even 90 % is a
+win."* Phases 14b–14d are that road. They are numbered with letters for the same reason 11b and 13b
+were: numbers are the order, and these sit between publish and everything already numbered after it.
+
+### What "90 % of what Opus does" decomposes into, and where each part stands
+
+| what Opus can do to a codebase | sidecrew today | fixed by |
+|---|---|---|
+| edit a file **of any size** | **~52 % of a codebase by bytes**; every 1000+ line file is refused | **14c** |
+| do **any shape** of behaviour-preserving change | renames and dead imports well; null guards **1/30** | **14b** measures whether this is a ceiling; **17** if it is not |
+| **read** the codebase to decide what to do | Opus does it, and it is **68 % of planning cost** | **14d** |
+| behaviour-**changing** work | not attempted, deliberately | **15**, and it is post-1.0 |
+
+The first three are the 90 %. The fourth is the rest, and ADR-0031 says why it is last.
+
+---
+
+## 14b — The editing ceiling: is it the model, or the task?
+
+**One evening. Needs the machine. No build. Cuts no version.**
+
+The 7B returns files **unchanged** on `null_guard` work — 1/30, and 16 of 17 did it again after a note
+saying that returning it unchanged *was* the failure (§2.2). Whether that is a capability ceiling or a
+fixable gap decides whether the second row of the table above is reachable at all, and it is worth one
+evening of measurement rather than a campaign of tuning.
+
+Two probes, on the **same 30 declared tasks** so they are comparable with §2.2:
+
+1. **The 14B on the same set.** Settles model size in one run. The machine hosts one 14B *or* two 7Bs
+   (CLAUDE.md #5), so it is a clean swap, and Phase 6 measured the 14B matching the 7B on TypeScript
+   at 2.2× the generation time — this asks whether that holds on a shape the 7B cannot do at all.
+2. **One task decomposed to a single function** rather than a whole file. Settles whether the failure
+   is task *size* rather than task *kind*.
+
+**A third probe is already answered and is recorded here so nobody runs it:** *"is it the whole-file
+format?"* — **no.** Every one of those 30 files was **under** the rewrite ceiling, the largest at
+18.9 KB, with 0 truncated and 0 unparsed. The format caps what can be **reached** (14c); it is not why
+the reachable ones failed.
+
+**Freeze the rule first**, as every measurement here does: what result would mean *ceiling*, what
+would mean *gap*, before either number exists.
+
+---
+
+## 14c — The reach: symbol-scoped return · **cut `v0.2.0`**
+
+**2–3 sessions. One overnight run. ADR-0075 must be decided first.**
+
+**Half of a real codebase is unaddressable and it is the half the work is in** — 3.3 % of files are
+48.1 % of the bytes, and every 1000+ line file is refused. That is the *return format*, not the model
+(ADR-0075).
+
+Option C: the task names a declaration, the worker returns **that declaration's new text**, and
+sidecrew splices it back by AST range. The model never writes a line number, so the hunk failure mode
+ADR-0047 §2 rejected does not arise; confinement stays decidable before a byte is written.
+
+**It needs `deriveLineRange` reading the TypeScript AST — which is Phase 14's own DoD item.** Doing
+that for publication and building on it here is the cheapest ordering available, and it is why 14c
+follows 14 rather than replacing part of it.
+
+**Definition of done**
+- ADR-0075 decided; the contract change lands with a spec update in the same commit (CLAUDE.md).
+- Confinement is still decidable **before** anything is written, and a test asserts it.
+- A control fixture per new failure mode, as the coverage test demands.
+- **Measured, against a rule frozen first**: survival on tasks in files that were previously refused.
+  That run is the overnight one — it is a full gated run on a real project.
+- The addressable share of a real codebase is re-measured and published as a number.
+
+**Why cut a version here.** It roughly doubles what the tool can touch, which is the first change
+since publication that a user would feel without reading the changelog.
+
+---
+
+## 14d — Retrieval: the other half of the vision · **cut `v1.0.0`**
+
+**3–4 sessions. One overnight run. Needs its own ADR first.**
+
+> *"The local model can scan the code, go through several files looking for something, report back to
+> Opus; Opus says okay, let's do this."* — the owner, `VISION.md`, 20 Sep 2026
+
+This is the half of the philosophy that is not built, and the measurements point straight at it:
+**68 % of planning cost is fixed and overwhelmingly Opus reading** — 15.5M cache reads against 89k of
+output. It is the one term in the cost curve that does not amortise with plan size, so it is the only
+thing that can move `R` below 1 at the plan sizes people actually start with.
+
+**The ADR comes first, because this gate is weaker in kind than every other one here.** A machine can
+confirm a symbol **exists**; it cannot confirm it is **relevant**. Ten confirmed, real, useless
+locations pass the gate and save nothing — a Goodhart shape the rest of this design does not have,
+where a cheap pass yields a *valid* artefact that fails to help. Decide what makes a retrieval answer
+checkable before building anything.
+
+**Definition of done**
+- The ADR, with the relevance problem answered rather than noted.
+- A retrieval task and result on the contract; the worker prompt; the machine confirmation step; the
+  planner using it.
+- **Measured against a rule frozen first**: planning tokens for the same job with and without
+  retrieval, per `experiments/planner-cost/` §4's method and its 19 Sep amendment. Two planner passes
+  plus the gated runs behind them — that is the overnight.
+- `R` reported at both plan sizes again, so the curve is comparable with 20 Sep's.
+
+**Why cut 1.0 here.** `VISION.md`'s bar for publication was *"when it does the vision"*; the owner
+moved first release earlier, which was right. This is the phase where the worked example actually runs
+end to end — **Opus decides, local models read *and* write, a mechanical gate judges, and the user
+sees only what survived.** That is the product the vision describes, and it is a fair `1.0`.
+
+---
+
+## 15 — Workload #2b: behaviour-changing changes · **post-1.0** · proposed
 ADR-0031 options B and C. Opus writes the specification; the Goodhart direction inverts; held-out tests
 double the expensive half. Not before 2a has a number, and the argument for not doing it at all is in the
 ADR.
 
-## 16 — Python + Kotlin verifiers
+## 16 — Python + Kotlin verifiers · **post-1.0** · each language is its own `v1.x` minor
 After publish. mutmut / cosmic-ray and PIT; BACKLOG has the notes.
 
-## 17 — The edge ideas (proposed)
+## 17 — The edge ideas · **post-1.0, and 14b decides whether the first of them is worth anything** (proposed)
 The owner's measure for all of them: *fewer Opus tokens, faster, more precise, when users use Opus on its
 own.* Fine-tune the 7B on its own survivors (needs Phase 11's baseline, and only post-ADR-0037 survivors
 qualify); pool workers across a team's machines (needs an ADR on trust and cross-machine determinism);

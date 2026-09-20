@@ -1,4 +1,25 @@
 # Changelog
+## Unreleased — the road to the 90 % bar is phased, with version cuts and overnight runs marked (2026-09-20)
+- **`14 → 14b → 14c → 14d`** is the path from publish to the owner's *"even 90 % is a win"* bar, with
+  what that bar decomposes into written down: edit a file of any size, do any shape of change, read
+  the codebase cheaply, and — last, post-1.0 — change behaviour.
+- **14 — publish, `v0.1.0`.** No overnight run. Its gates are named: `deriveLineRange` on the AST,
+  `doctor`'s pre-flight questions, ADR-0042, and one sentence the owner picks about publishing rates
+  as intervals with `D` beside them.
+- **14b — the editing ceiling**, one evening on the machine, no build, no version: the 14B on §2.2's
+  declared task set, and one task decomposed to a single function. A third probe is recorded as
+  **already answered** so nobody runs it — every one of those 30 files was *under* the rewrite
+  ceiling, so the format is not why they failed.
+- **14c — the reach, `v0.2.0`**, one overnight run. Symbol-scoped return (ADR-0075 option C) against
+  the measured fact that 3.3 % of files are 48.1 % of a codebase's bytes. Needs the AST work Phase 14
+  already owes, which is why it follows rather than replaces part of it.
+- **14d — retrieval, `v1.0.0`**, one overnight run, ADR first. The half of the vision that is not
+  built, aimed at the 68 % of planning cost that does not amortise. `1.0` is cut here because this is
+  where the worked example runs end to end: Opus decides, local models read *and* write, the gate
+  judges, the user sees only survivors.
+- 15, 16 and 17 are marked **post-1.0**, and 14b decides whether the first of 17's ideas is worth
+  anything.
+
 ## Unreleased — the gate judges intent, and the vision gets the owner's own words (2026-09-20)
 - **ADR-0054 accepted: `documentation_changed` is the eighth confinement rule.** The owner's call —
   *"the gate must care about the reason behind doing a work even if it's not documented on the
