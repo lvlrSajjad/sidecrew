@@ -5317,3 +5317,119 @@ measured.
   way around the floor.
 - **What this does not settle:** whether the refusal *message* should say what a dry run would have
   cost, which is a wording question and cheap to revisit.
+
+---
+
+## ADR-0079 — Recon before planning: sidecrew should negotiate the bar, then fix, then offer to raise it (PROPOSED)
+
+**Status:** proposed · 20 Sep 2026 · owner's proposal · **needs the owner** · bears on ADR-0063,
+ADR-0064, ADR-0077 and ADR-0044
+
+### The proposal, in the owner's words
+
+> A user says *"fix the TypeScript errors on this project"* or *"how many TypeScript issues are
+> there?"*. sidecrew should say: **your own config reports none, but under this flag you have `n` —
+> do you want to fix those?** Then fix them. Then, when they are fixed, **ask whether to turn the flag
+> on**, so the mistake cannot recur. Opus plans, workers check and report, Opus asks the user and
+> re-plans on the answer, and the loop runs until it is addressed. The same shape should work for
+> tests, a simple bug, a feature, or lint.
+
+### Why this is the right instinct: it makes ADR-0064 mechanical instead of rhetorical
+
+ADR-0064 established that **#2a's addressable surface is a property of the project's configuration,
+not of its code** — project-a carries ~11,000 latent errors and reports zero because
+`strictNullChecks` is off. ADR-0064's open options treat that as something to *say*: a caveat in
+`VISION.md` (B) or a sharper pitch (C).
+
+**This proposal makes it something the tool does.** The user does not have to know the fact; sidecrew
+measures it and puts the number in front of them. That is strictly better than any wording, and it
+retires the hardest part of ADR-0064's C — the worry that *"point sidecrew at the migration you have
+been putting off"* is a claim nobody can act on without already understanding their own tsconfig.
+
+### Three things that bear on it, none of which block the recon step itself
+
+**1. Most of the machinery exists; the missing piece is a surface, not a capability.**
+ADR-0063 accepted compiling stricter than the project, `EXTRA_STRICTNESS` in `src/schemas.ts` already
+carries the flags as a bare boolean switch list, and `ChangePlan` already records which setting
+produced a number. The project-a measurement quoted above was taken this way. What does not exist is
+any **product** path to it: no subcommand reports *"your config says 0, `--strictNullChecks` says
+763 files"* to a user. The loop is likewise not new — **ADR-0044's correction round** is the
+plan → work → report → re-plan cycle, accepted and partly built.
+
+**2. ADR-0063 condition 1 forbids editing the project, and that rule is about experiments, not
+about the product.** Condition 1 — *"No file in the project changes. A compiler flag only"* — exists so
+a measurement cannot be rescued by editing the thing being measured. The proposal's final step is
+precisely to edit `tsconfig.json`, and that is not a violation: **a user who asked for the flag to be
+turned on is not a measurement being rescued.** This must be written down explicitly, because a future
+session reading ADR-0063 alone would conclude the flag-flip is forbidden. The separating rule:
+*an experiment may never change the project; the product may, only on an explicit answer from the
+user, and never as a side effect of a run.*
+
+**3. The honest blocker: on the flagship example, "yes, fix them" currently cannot be delivered.**
+This is the part to decide with eyes open. ADR-0077 measured `null_guard` under `--strictNullChecks`
+at **2/30**, and the cause is not the worker: the fix narrows a type, the narrowed type propagates
+into fixtures and mocks, and the gate forbids editing test files because tests **are** the gate. The
+sinking error was in a test file in **21 of 21** cases and in non-test source in **0** — and it gets
+worse as the worker improves.
+
+So on project-a the proposed flow would today promise 763 files and clear very few. **A recon step that
+quantifies work the tool then cannot do is worse than no recon step**, because it converts a quiet
+limitation into a loud broken promise.
+
+**But the proposal supplies the argument ADR-0077 option B was missing.** B — *let a plan declare the
+test files a change may disturb, gated on those tests still passing rather than still type-checking* —
+was held back because it weakens the strongest thing the gate says. **Under this proposal the user has
+explicitly consented to raising the bar**, and in that context a fixture whose mock now needs `| null`
+is not a regression: it is part of the migration they asked for. Consent does not make B safe on its
+own — it still needs its own proof that it cannot be gamed — but it removes the objection that the
+gate would be weakened *without anyone having asked for it*.
+
+### The generalisation has a hard boundary, and it is CLAUDE.md's central rule
+
+*"One honest gate per workload is the unit of progress — a workload a machine cannot check does not
+belong here at any price."* Against the five shapes named:
+
+| shape | the gate a machine can run | verdict |
+|---|---|---|
+| **type errors** | `tsc`, plus the suite | ✅ exists — workload #2a |
+| **tests** | compile → run → mutation-kill | ✅ exists — workload #1 |
+| **lint issues** | the linter's own exit code, plus the suite | ✅ **the cleanest addition available**, and see below |
+| **a simple bug** | a failing test that now passes, suite still green | ✅ *conditional* — only where a reproducing test exists, and writing that test is workload #1 |
+| **adding a feature** | — | ❌ **no gate.** No machine checks *"is this the feature I wanted"* |
+
+**Lint deserves attention ahead of the others**, and for a reason ADR-0077 makes concrete: a
+`noUnusedLocals` or unused-import fix **deletes a reference**, it does not narrow a type, so it does
+not propagate into fixtures. It is the one raised-bar shape whose fallout the gate can already credit,
+and Phase 11 measured renames and unused-import removals as the shapes that actually survive.
+
+### Options
+
+- **A — recon only.** Build the *"your config says 0, this flag says n — want to see them?"* report and
+  stop there. Cheap, honest, useful on its own, and it makes no promise the gate cannot keep. It also
+  answers the owner's second question (*"how many TypeScript issues are there?"*) completely.
+- **B — recon, then fix, scoped to shapes that survive today.** A on top of a pool filtered to lint and
+  dead-code shapes. Deliverable now, and it is ADR-0077 option C's pre-filter used honestly — as a
+  scoping rule the user is told about, not as a way to make a funnel look better.
+- **C — the full loop, including the flag-flip.** Requires ADR-0077 A/B/C decided first, because
+  `null_guard` is most of the population on a real strictness migration. Highest value and the owner's
+  actual ask.
+- **D — the general agent loop across all five shapes.** Rejected as stated: *adding a feature* has no
+  gate, and admitting one workload without one costs the property every other number in this
+  repository depends on. The other four are in scope on their own merits.
+
+### Recommendation
+
+**A now, B next, C once ADR-0077 is decided; never D as stated.** A is small, is useful the day it
+ships, and is the piece that makes ADR-0064 a behaviour instead of a paragraph — which also means
+ADR-0064's own B/C become much less urgent. Sequencing C behind ADR-0077 is not caution; it is the
+difference between a tool that quantifies work it can do and one that quantifies work it cannot.
+
+**ADR-0077's option D counterfactual is on the critical path to C** and costs about an hour with no
+worker. It should be run before C is decided.
+
+### What is not decided here
+
+Whether recon belongs in `sidecrew run`/`fix` as a pre-flight, in a subcommand of its own, or only over
+MCP where Opus is already in the conversation. The owner's framing — *"Opus receives the task and
+decides to add these checks to the plan before any action"* — points at MCP, and that is the cheapest
+place to try it, but it is not settled.

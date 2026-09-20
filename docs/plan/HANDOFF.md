@@ -25,7 +25,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | published | `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — one hour, no worker |
-| ADRs | run to **0078**; start new ones at 0079. **0064 is the only one left needing the owner** — philosophical, blocks nothing. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
+| ADRs | run to **0079**; start new ones at 0080. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN** on `d71edbe` — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -194,8 +194,18 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   rather than the file and a 60-line method inside a 4,000-line service comes into reach. **ADR-0076
   had already landed its prerequisite**, the AST range finder, so 14c can start on it directly.
   Nothing further is owed here; it is listed only so the next session does not re-open it.
+- **ADR-0079 — recon before planning**, the owner's proposal of 20 Sep: sidecrew reports *"your
+  config says 0 errors, `--strictNullChecks` says 763 files — want to fix them?"*, fixes them, then
+  offers to turn the flag on. Recommendation: **A now** (recon only), **B next** (fix, scoped to
+  shapes that survive today), **C once ADR-0077 is decided**, never D. The blocker on C is honest and
+  specific: on the flagship example the gate currently clears 2/30, so recon-then-fix would quantify
+  work the tool cannot do. **It also supplies the consent argument ADR-0077 option B was missing.**
 - **ADR-0064** — what #2a can address is a property of a project's *configuration*, not its code.
-  Philosophical, blocks nothing, and the owner asked to discuss it.
+  Philosophical, blocks nothing, and the owner asked to discuss it. **Largely retired by ADR-0079**:
+  recon makes the fact a behaviour rather than a caveat, so B and C here matter much less. Discussed
+  20 Sep; the standing recommendation is **B now, C not yet** — `strictNullChecks` migrations are
+  exactly where ADR-0077 says the gate cannot credit the work, though `noUnusedLocals`-style
+  raised-bar work does survive and a narrower C could be defended on it.
 - **A client symbol name is in the tracked tree, and on public `main`.**
   `getSpendVsReplacement` appears in five tracked files — a test comment, `BACKLOG`, `CHANGELOG` and
   `DECISIONS` — as the reduced case that ADR-0035 and ADR-0039 were written about. It is the client's
