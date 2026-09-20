@@ -1,4 +1,29 @@
 # Changelog
+## Unreleased — three ADRs decided and implemented, and the O8 diagnostic finds a missing field (2026-09-20)
+- **ADR-0070 (option C)** — `isToolConfig` asks *where* a file lives, not just what it is called. A
+  tool config is one at the project root or one whose stem names a known tool, so
+  `src/<domain>/<domain>.config.ts` is no longer refused as though it were `vitest.config.ts`. The
+  obvious fix — narrowing by extension — would have admitted the gate's own configuration.
+- **ADR-0071 (option A)** — the validator now **warns** when the `tsc` program contains test files
+  carrying errors, naming the count, the worst offender and the mechanism. It does not refuse: the run
+  that motivated it had one survivor of 30, and a rule predicting the compiler without running it
+  would have refused that one too.
+- **ADR-0072** — the verdict quotes the compiler about the task's own files and the files that gained
+  an error, keeping each diagnostic's continuation lines, instead of the project's alphabetically
+  first 2 KB.
+- **ADR-0074 — the O8 diagnostic found a missing field rather than a cause.** Every verdict recording
+  a regression has all of them in one suite file, which points at a suite-level failure. But
+  `tests.message` is the *whole run's* output cut at 2 KB, and on the two most-studied false negatives
+  — ADR-0066's 155 and the 12 on a quiet machine — **it does not even name the suite the regressions
+  were in.** So O8 was never diagnosable from the run directories. `relevantSuiteOutput` now keeps the
+  blocks for the suites that actually regressed. It cannot fix the six known cases, whose evidence was
+  discarded at write time; it makes the next one diagnosable, which at `D ≈ 0.105` is about ten
+  candidates away.
+- **Four defects of one shape in eight days** — the 1 MB cap that truncated `tsc --listFiles`,
+  ADR-0072, ADR-0074, and ADR-0071's blind spot. Worth treating as a class: *anything this tool
+  truncates for display, it also truncates for diagnosis.*
+- 709 fast tests green.
+
 ## Unreleased — sidecrew is a 24 GB+ tool, and the docs tell both halves of the ledger (2026-09-20)
 - **ADR-0073, the owner's scope call: the `api` tier stops being a tier.** Below 24 GB of installed
   RAM sidecrew **refuses with a reason** — the machine's RAM, the floor, and why the floor exists —

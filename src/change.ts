@@ -512,6 +512,36 @@ export interface VerifyChangeOpts {
  * Falls back to the whole message when nothing matches, because an empty `message` would read as "the
  * compiler said nothing", which is the opposite of what a failing compile stage means.
  */
+/**
+ * The runner's words about the suites that actually regressed — ADR-0074, and ADR-0072's twin.
+ *
+ * `suite.message` is the whole run's output and `truncateError` cuts it at 2 KB. On a project of 352
+ * suites the first 2 KB is the *first* thing the runner printed, which in practice is one suite's
+ * `console.log` noise. Checked on the two most-studied false negatives in this repository — ADR-0066's
+ * 155 regressions and the 12 on a quiet machine — and **neither message so much as names the suite
+ * its regressions were in.** That is why O8 has stayed undiagnosed: the field that would explain a
+ * suite-level failure never reaches it.
+ *
+ * Jest prints a per-suite block starting `FAIL <path>` (or `PASS`), so the blocks for the suites that
+ * regressed are what a reader needs and the rest is noise. Console output *inside* a kept block is
+ * kept — it is often the reason.
+ *
+ * Falls back to the whole message when it can find no block, for `relevantDiagnostics`' reason: an
+ * empty message reads as "the runner said nothing", which is not what a failing suite means.
+ */
+export const relevantSuiteOutput = (message: string, regressed: readonly string[]): string => {
+  const suites = new Set(regressed.map((id) => id.split("::")[0]!));
+  if (suites.size === 0) return message;
+  const kept: string[] = [];
+  let keeping = false;
+  for (const line of message.split("\n")) {
+    const header = /^(?:FAIL|PASS)\s+(\S+)/.exec(line);
+    if (header) keeping = suites.has(header[1]!);
+    if (keeping) kept.push(line);
+  }
+  return kept.length > 0 ? kept.join("\n") : message;
+};
+
 export const relevantDiagnostics = (
   message: string, taskFiles: readonly string[], introduced: Record<string, number>,
 ): string => {
@@ -700,7 +730,8 @@ export async function verifyChange(
             ? (vanished === 0 ? null : truncateError(
                 `${vanished} test(s) that passed in the baseline are absent from this report — generated ` +
                 "test names, not regressions; a candidate cannot delete a test (ADR-0053)"))
-            : truncateError(suite.message),
+            // ADR-0074: the suites that regressed, not the first 2 KB the runner happened to print.
+            : truncateError(relevantSuiteOutput(suite.message, regressed)),
         };
         // ADR-0067: `suite.passed >= baseline.passed` is the clause `regressed` cannot express. A
         // `test.each` block shares one `fullName` across its cases, so breaking one of nine leaves the

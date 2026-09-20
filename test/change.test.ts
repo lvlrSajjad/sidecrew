@@ -9,7 +9,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { relevantDiagnostics,
+import { relevantSuiteOutput, relevantDiagnostics,
   assertInProgram, parseTestReport, parseTscErrors, programFiles, sandboxCacheDir, suiteArgs, typecheck,
   PROJECT_SCOPE,
 } from "../src/change.js";
@@ -367,5 +367,37 @@ describe("the verdict quotes the compiler about the right files — ADR-0072", (
     // compile stage means. Less is better than misleading; nothing is worse than both.
     expect(relevantDiagnostics(MESSAGE, ["src/nowhere.ts"], {})).toBe(MESSAGE);
     expect(relevantDiagnostics(MESSAGE, [], {})).toBe(MESSAGE);
+  });
+});
+
+describe("the verdict says why the suites that regressed regressed — ADR-0074", () => {
+  const RUN = [
+    "PASS test/a.spec.ts",
+    "  console.log  noise nobody needs",
+    "FAIL test/modules/workorder/workorder.service.spec.ts (16.9 s)",
+    "  \u25cf WorkorderService > computes totals",
+    "    expect(received).toEqual(expected)",
+    "FAIL test/other.spec.ts",
+    "  \u25cf a different suite entirely",
+  ].join("\n");
+  const regressed = ["test/modules/workorder/workorder.service.spec.ts::WorkorderService computes totals"];
+
+  it("keeps the failing suite's block, with the assertion, and drops everything else", () => {
+    // The measured problem: on a 352-suite project the first 2 KB of runner output is whatever printed
+    // first — in practice one suite's console noise. ADR-0066's 155-regression verdict and the 12 on a
+    // quiet machine BOTH failed to name the suite their regressions were in, which is why O8 could not
+    // be diagnosed from the artefacts.
+    const out = relevantSuiteOutput(RUN, regressed);
+    expect(out).toContain("workorder.service.spec.ts");
+    expect(out).toContain("toEqual");
+    expect(out).not.toContain("other.spec.ts");
+    expect(out).not.toContain("noise nobody needs");
+  });
+
+  it("returns the whole run rather than nothing when it recognises no block", () => {
+    // An empty message reads as "the runner said nothing", which is not what a failing suite means.
+    expect(relevantSuiteOutput("no per-suite headers here at all", regressed))
+      .toBe("no per-suite headers here at all");
+    expect(relevantSuiteOutput(RUN, [])).toBe(RUN);
   });
 });

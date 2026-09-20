@@ -4900,3 +4900,54 @@ being stored, so the information the filter needs was discarded at write time. �
 compile-shape corrections were written from the degraded field and that remains a stated confound of
 `S_c = 0/29`; it is not retroactively fixable, and re-running §2.2 on the fixed field would be a new
 measurement rather than a correction of that one.
+
+## ADR-0074 — O8 is undiagnosable from the artefacts, because the field that would explain it is 2 KB of console noise
+
+**Status:** **accepted** · 20 Sep 2026 · found while attempting the O8 diagnostic the owner asked for
+· ADR-0072's twin, in the tests field · implemented the same day
+
+### What the diagnostic attempt found
+
+O8 — the undiagnosed third source of #2a false negatives — has one known signature: **every verdict on
+disk that records a regression has all of its regressed tests inside exactly one suite file.** Six for
+six, across two orders of magnitude of count. That points at a *suite-level* failure rather than a
+test-level one, which would be diagnosable from the runner's own output.
+
+It is not, and here is why:
+
+| case | regressions are in | does `tests.message` name that suite? |
+|---|---|---|
+| ADR-0066's 155, under swap | `…/workorder.service.spec.ts` | **no** |
+| 12, on a quiet machine | `…/user.service.spec.ts` | **no** |
+
+Both messages are exactly **2,048 characters** — `truncateError`'s ceiling — and both are dominated by
+one unrelated suite's `console.log` output. `suite.message` is the *whole run's* output, and on a
+352-suite project its first 2 KB is whatever printed first.
+
+> **The verdict cannot say why a suite failed, so nobody can diagnose O8 from the run directories.**
+> Not a hard question, a missing field.
+
+### Decision
+
+`relevantSuiteOutput` keeps the per-suite blocks belonging to the suites that actually regressed, and
+drops the rest. Jest prints `FAIL <path>` / `PASS <path>` headers, so the blocks are recoverable;
+console output *inside* a kept block is kept, because it is often the reason. It falls back to the
+whole message when it recognises no block, for the same reason `relevantDiagnostics` does: an empty
+message reads as *"the runner said nothing"*, which is the opposite of what a failing suite means.
+
+### Why this is the same defect as ADR-0072 and worth saying so
+
+Both are *a field that is fine on a small project and silently useless on a large one*, and both
+degrade precisely as a project becomes a better workload-#2a candidate (ADR-0064). ADR-0072 was found
+by a corrector that said so unprompted; this one was found by going looking for a diagnosis and
+discovering the evidence had been discarded at write time. **Four defects of this shape have now been
+found in eight days** — the 1 MB `run` cap that truncated `tsc --listFiles`, ADR-0072, this, and the
+`compile_ok` blind spot of ADR-0071. It is worth treating as a class rather than as four incidents:
+**anything this tool truncates for display, it also truncates for diagnosis.**
+
+### What it does not do
+
+**It does not diagnose O8**, and it cannot retroactively: the verdicts on disk were truncated before
+being written, so the evidence for the six known cases is gone. What changes is that **the next
+occurrence is diagnosable.** Catching one is now a matter of running the gate until it disagrees with
+itself again — which, at `D ≈ 0.105`, is about ten candidates.
