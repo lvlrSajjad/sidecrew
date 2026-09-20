@@ -23,6 +23,14 @@ is what the release candidate was for. No product code changed.
 - Verified against the runner's conditions rather than assumed: the floor bypass exercised at
   `total_gb: 7.0`, and both test files run green in a tracked-files-only tree with no `.sidecrew` in
   it.
+- **A third cause, which the diagnosis had missed because it only read the `test` job.** The
+  `contracts` job was failing too, on every push since `0.1.0-rc.1`: it extracted `src/mcp.ts`'s
+  version with `grep -oE '[0-9]+\.[0-9]+\.[0-9]+'`, which drops a prerelease suffix, so it compared
+  `0.1.0` against a `package.json` correctly reading `0.1.0-rc.2`. This is the same bug `release.yml`
+  was fixed for on 20 Sep; the fix was not carried to the other workflow. `ci.yml` now takes the
+  string literal whole, as `release.yml` does. The false *failure* is the friendly direction of it —
+  with `package.json` at a release version and `mcp.ts` left at an rc, both sides truncate to the same
+  string and the check passes.
 
 **Phase 14b — the editing ceiling.** Measurement only: no product code, no version. `S₁₄ = 2/30 =
 0.067`, 95 % `[0.008, 0.221]`, best of two probes on §2.2's same 30 declared `null_guard` tasks.

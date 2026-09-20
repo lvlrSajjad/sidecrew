@@ -46,7 +46,13 @@ jobs:
           # The fourth place, and the one nothing points at: the MCP server announces a version to
           # every client that connects. Only `test/mcp.test.ts` was holding it, and it caught a
           # release where the other three had moved and this had not.
-          mcp=$(grep -oE 'SERVER_VERSION = "[^"]+"' src/mcp.ts | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          # Take the string literal whole. A `[0-9]+\.[0-9]+\.[0-9]+` match silently drops a prerelease
+          # suffix, and it drops it on ONE side of the comparison. `release.yml` was fixed for this on
+          # 20 Sep and this copy was left behind, where it failed `contracts` on every push from
+          # 0.1.0-rc.1 onwards by extracting `0.1.0` from an mcp.ts that correctly read `0.1.0-rc.2`.
+          # The false failure is the friendly direction of the same bug: with package.json at a release
+          # version and mcp.ts left at an rc, both sides truncate to the same thing and this **passes**.
+          mcp=$(grep -oE 'SERVER_VERSION = "[^"]+"' src/mcp.ts | sed -E 's/.*"(.*)".*/\1/')
           echo "package.json=$pkg server.json=$srv server.json/packages[0]=$srvpkg plugin.json=$plg mcp=$mcp"
           for v in "$srv" "$srvpkg" "$plg" "$mcp"; do
             [ "$v" = "$pkg" ] || { echo "::error::$v != $pkg — they move together (CLAUDE.md)"; exit 1; }
