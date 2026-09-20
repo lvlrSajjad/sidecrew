@@ -70,3 +70,7 @@ scripts/__pycache__/
 # written deliberately, with the run id stripped, and IS committed.
 experiments/editing-ceiling/results/*.log
 experiments/editing-ceiling/results/*-report.json
+
+# Phase 14b probe 2 plans the same 30 tasks with narrowed asks, so it carries the same absolute path
+# into a client checkout that the correction-round plans do. Same rule, same reason.
+experiments/editing-ceiling/plans/
