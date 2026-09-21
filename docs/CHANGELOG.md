@@ -1,5 +1,5 @@
 # Changelog
-## Unreleased
+## v0.1.1 — the release pipeline, proved against the systems it publishes to (2026-09-21)
 
 **The `v0.1.0` release runs, and the three defects they found.** The tag was moved onto the
 tarball-smoke fix (it had been cut one commit early, so a re-run would have replayed the same
@@ -30,6 +30,11 @@ failure), and the run reached `registry` for the first time. `gate` ✓, `npm` �
   macOS deliberately, because sidecrew shells out to `sysctl`, `vm_stat` and `pmset`. Gating a publish
   on a platform we do not ship to is a gate on the wrong question. The Linux behaviour itself is in
   `BACKLOG.md`, unreproduced.
+- **Why this is `0.1.1` and not a re-tag of `0.1.0`.** `0.1.0` is on npm without a provenance
+  attestation and cannot gain one. Cutting `0.1.1` is the first run that exercises the whole pipeline:
+  Trusted Publishing, which has never authenticated; `--provenance`, which has never been written; and
+  the MCP Registry's `login github-oidc`, which has never executed. A re-tag of `0.1.0` would have
+  skipped the npm job and proved only the last of the three.
 
 **CI is green again.** `ci.yml` had failed on `main` on every push since 18 Sep and nobody looked:
 the local suite was green and `release.yml` had never run. It blocked the release outright, because
