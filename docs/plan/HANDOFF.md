@@ -34,7 +34,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
 | version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
-| published | **`sidecrew@0.1.1` is on npm as `latest`, with a SLSA provenance attestation** — published by the workflow over Trusted Publishing, 21 Sep. `0.1.0` is also there, hand-published and **unsigned; it cannot gain an attestation**. **GitHub Pages is on.** **The MCP Registry entry still does not exist** — `0.1.1`'s publish was refused for a missing `package.json` `mcpName`, which is why `0.1.2` exists (ADR-0080 addendum). `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
+| published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — **inputs verified present 21 Sep**, but it needs a harness written first, not just a replay |
 | ADRs | run to **0080**; start new ones at 0081. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
@@ -165,30 +165,27 @@ pushing the fix for the first two and reading the job that had never been read.*
   exercised directly at `total_gb: 7.0`, and both test files run green in a tracked-files-only copy of
   the tree with no `.sidecrew` in it.
 
-**0′. Finish the release — only the MCP Registry entry is left, and `0.1.2` is cut for it.**
+**0′. The release is DONE — nothing here is owed.** `sidecrew@0.1.2` is on npm as `latest`, signed;
+`io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`. Kept as a section because the
+pipeline cost **four defects in one day, of four different shapes**, and the next release will meet the
+same machinery. ADR-0080 and its addendum are the write-up.
 
-**What `0.1.1` proved, so nobody re-derives it.** All three previously unverified flows work: npm
-**Trusted Publishing** authenticated with no token anywhere; **`--provenance`** wrote a SLSA statement
-to the sigstore transparency log; and the registry's **`login github-oidc`** reported
-`✓ Successfully logged in`. `sidecrew@0.1.1` is on npm as `latest` and signed.
+| what failed | shape | fixed by |
+|---|---|---|
+| `server.json` pinned to a superseded schema | a check reading its expectations **out of the artefact under test** | `2025-12-11` + camelCase; `mcp-publisher validate` moved **into the gate** |
+| `npm publish \| tee` reported failure as success | a shell **pipeline's status is its last command's** | capture the status, branch on it |
+| the suite ran on Linux, where it had never run | a gate on **a platform we do not ship to** | `npm` job on `macos-latest` |
+| `package.json` had no `mcpName` | the registry validates the **published package**, which cannot be asked before publishing | a local copy of its rule, in the gate, knowingly (addendum) |
+| the registry 404'd a version npm had just accepted | **a race between two systems with no shared clock** — fails *sometimes* | the job polls npm before claiming the entry |
 
-**What stopped it, twice.** First the registry's own database was down
-(`dial tcp …:5432 connection refused`) — not ours, and `gh run rerun <id> --failed` re-runs the one
-job against the same tag, which is the closest thing this workflow has to the `workflow_dispatch` it
-does not have. Then, for real: **the registry validates the published npm package, not just
-`server.json`** — it fetches the tarball and refuses unless `package.json` declares
-`"mcpName": "io.github.lvlrSajjad/sidecrew"`. `mcp-publisher validate` does not check it; only
-`publish` does, and by then npm has taken the version and will not take it again. Hence `0.1.2`.
+**Three flows are now proved that never had been:** npm Trusted Publishing, `--provenance` (a SLSA
+statement in the sigstore transparency log) and the registry's `login github-oidc`.
 
-**Both fixes are in and verified locally**: `mcpName` is in `package.json` **and in the packed
-tarball**, and the gate now checks `package.json.mcpName == server.json.name` before anything is
-published. That check is a *local copy of somebody else's rule*, which ADR-0080 otherwise argues
-against; the addendum explains why it is here anyway — there is no pre-flight endpoint, so the
-alternative is one burned version per discovery.
-
-**Next: tag `v0.1.2`.** There is no `workflow_dispatch`; a failed release is re-run by
-`gh run rerun --failed` when one job failed transiently, or by deleting and re-pushing the tag
-otherwise. `v0.1.0` and `v0.1.1` stay where they are — both are real published npm versions.
+**Two things worth keeping for next time.** `release.yml` has **no `workflow_dispatch`** — only
+`on: push: tags` — so `gh workflow run --ref <tag>` does not work; **`gh run rerun <id> --failed`**
+re-runs one job against the same tag and is what got past both transient failures without tag churn.
+And the `npm` job's already-published **skip** arm has still never executed, because every release so
+far published a new version.
 
 **1. The owner actions are all done.** Pages is on, the versions are at `0.1.0`, `0.1.0` is
 hand-published to npm as `latest`, and Trusted Publishing is registered. `v0.1.0-rc.1` and `-rc.2`

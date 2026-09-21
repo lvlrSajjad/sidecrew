@@ -5593,4 +5593,16 @@ finding out after npm every time. A local copy can go stale; that is the cost, a
 one burned version per discovery.
 
 **It cost `0.1.2`.** `0.1.1` is on npm, correct and provenance-signed, and is simply not the version
-the registry will point at.
+the registry points at.
+
+**And `0.1.2` failed once more, on a third thing again: a race.** npm accepted the publish and the
+registry 404'd the version seconds later, because it resolves the npm package as part of `publish` and
+npm's own output says the package *"may take a few minutes to become available"*. `gh run rerun
+--failed` after the version appeared was enough, and the entry went live at 11:02 UTC. The job now
+polls npm for the version before publishing. **This one is worth separating from the other two**: it
+is not a wrong assertion or a stale copy of a rule, it is two systems with no shared clock, and its
+signature is that it fails *sometimes* — which is how it would have gone on being diagnosed as
+something else. Four release defects, four different shapes, in one day.
+
+**Where the release ended up:** `sidecrew@0.1.2` on npm as `latest` with a SLSA provenance
+attestation, and `io.github.lvlrSajjad/sidecrew` active on the MCP Registry at `0.1.2`.

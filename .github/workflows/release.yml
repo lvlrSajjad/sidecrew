@@ -284,6 +284,8 @@ jobs:
         # job holding `id-token: write`, so "whatever they shipped this morning" is a supply-chain
         # exposure as well as a fragility. Bump it deliberately, and `validate` before `publish` so a
         # bad `server.json` fails before anything is claimed.
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
         run: |
           BASE="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
           if ! curl -fsSL "$BASE/mcp-publisher_linux_amd64.tar.gz" | tar -xz mcp-publisher; then
@@ -296,4 +298,32 @@ jobs:
           ./mcp-publisher --version
           ./mcp-publisher validate
           ./mcp-publisher login github-oidc
+
+          # **Wait for npm to serve the version before claiming the entry.** The registry resolves the
+          # npm package as part of `publish` and 404s a version it cannot see yet: npm's own publish
+          # prints "your package is being processed and may take a few minutes to become available",
+          # and `v0.1.2` lost that race by seconds — this job failed with `version '0.1.2' was not
+          # found` while npm had accepted it moments earlier. It is a race, so untreated it fails
+          # intermittently and looks like a different problem every other time.
+          # Read the package name out of `server.json` rather than repeating it here. A hardcoded
+          # name is another place the package is spelled, and this repository has been bitten by a
+          # version living in six places already.
+          NPM_PACKAGE=$(node -p "require('./server.json').packages[0].identifier")
+          code=000
+          for i in $(seq 1 60); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/${NPM_PACKAGE}/${VERSION}" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "npm serves ${NPM_PACKAGE}@${VERSION} after ${i} attempt(s)"
+              break
+            fi
+            echo "attempt ${i}: npm returns ${code} for ${NPM_PACKAGE}@${VERSION} — waiting"
+            sleep 10
+          done
+          if [ "$code" != "200" ]; then
+            echo "::error::npm still does not serve ${NPM_PACKAGE}@${VERSION} after 10 minutes."
+            echo "::error::Nothing is broken and nothing has been claimed on the registry."
+            echo "::error::Re-run this one job once npm catches up: gh run rerun $GITHUB_RUN_ID --failed"
+            exit 1
+          fi
+
           ./mcp-publisher publish

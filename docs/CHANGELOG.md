@@ -17,6 +17,13 @@ own database being down (`dial tcp …:5432 connection refused`, not ours, fixed
   registry's check reads a package that does not exist until after the irreversible step, and there is
   no pre-flight endpoint. It catches the omission, which is the failure that actually happened. The
   limit of ADR-0080's rule, and the addendum says so.
+- **`io.github.lvlrSajjad/sidecrew` is live on the MCP Registry**, `0.1.2`, status active.
+- **The registry job waits for npm to serve the version before claiming the entry.** `0.1.2`'s first
+  attempt lost a race by seconds: npm had accepted the publish — it prints *"your package is being
+  processed and may take a few minutes to become available"* — and the registry, which resolves the
+  npm package as part of `publish`, 404'd the version. It polls for up to ten minutes now and says
+  exactly which one job to re-run if it gives up. Untreated this fails intermittently and looks like a
+  different problem every other time.
 
 ## v0.1.1 — the release pipeline, proved against the systems it publishes to (2026-09-21)
 
