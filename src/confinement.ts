@@ -81,8 +81,15 @@ const isBuildConfig = (path: string): boolean =>
 /** The same pattern the workload-#1 sandbox uses to decide what a test file is. One definition, two gates. */
 const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 
-/** A test file, or anything in the places a runner keeps tests, mocks and recorded answers. */
-const isTestArtefact = (path: string): boolean => {
+/**
+ * A test file, or anything in the places a runner keeps tests, mocks and recorded answers.
+ *
+ * Exported so a measurement can ask the question with the gate's own answer rather than its own copy
+ * of it. ADR-0077's counterfactual demotes type errors *in these files* — the argument only holds if
+ * "these files" means exactly the set a candidate is forbidden from editing, and a harness that
+ * re-derived the predicate would be the `safeName` mistake again.
+ */
+export const isTestArtefact = (path: string): boolean => {
   const parts = path.split("/");
   if (parts.some((p) => p === "__tests__" || p === "__mocks__" || p === "__snapshots__")) return true;
   const name = parts.at(-1) ?? path;
