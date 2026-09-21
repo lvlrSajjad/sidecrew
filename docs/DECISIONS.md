@@ -5489,3 +5489,78 @@ that says which one was built.
 (option A) is the cheapest instance of step 1–2 and needs no relevance oracle at all, because the user
 asked the question the report answers. It is therefore both the smallest useful piece of the framework
 and the one that dodges the unsolved problem — which is a good reason to build it first.
+
+## ADR-0080 — A release gate must ask the systems it publishes to, not its own copy of what they want
+
+**Status:** accepted · 21 Sep 2026 · implemented the same day · bears on ADR-0051's *prove it before
+it leaves the machine* framing
+
+### What happened
+
+`v0.1.0` was re-tagged onto the tarball-smoke fix and the run got further than any before it:
+`gate` ✓, `npm` ✓, `registry` ✗. Reading it properly, **only one of those three marks was true.**
+
+| job | mark | what was actually so |
+|---|---|---|
+| `gate` | ✓ | true |
+| `npm` | ✓ | **false.** `npm publish` failed; the step reported success |
+| `registry` | ✗ | true — 422 `body.packages[0].registryType: expected length >= 1` |
+
+### Three defects, one shape
+
+**1. The schema check validated the file against its own obsolescence.** The gate fetches the schema
+from the URL `server.json` itself names, and `server.json` named `2025-07-09` — the last schema whose
+package keys are snake_case. The registry API reads camelCase (`registryType`, `registryBaseUrl`,
+`packageArguments`, `valueHint`). So the file was, precisely, valid against a schema nobody enforces
+any more. **A check that reads its own expectations out of the artefact under test can catch
+invalidity and can never catch staleness**, and no amount of care fixes that, because the artefact is
+where the staleness is. Measured: against `2025-12-11` the old file fails ajv on `registryType`, so
+bumping the pin restores the check's value as well as fixing the file.
+
+Phase 7 migrated this same file across this same kind of drift once already (`registry_name`/`name`
+→ `registry_type`/`identifier`), and the comment recording it sits directly above the check that
+could not catch the recurrence. That is what makes this a check to add rather than a lesson to
+remember harder.
+
+**2. The registry was asked after the point of no return.** `registry` runs after `npm` by design,
+and the design is right — the entry points at an npm version, so publishing the pointer first makes
+it resolve to nothing. But it meant the **first** contact with the registry happened after npm had
+been written to, and npm forbids re-using a version number. `mcp-publisher validate` costs a download
+and a round-trip and answers the only authority on what the registry accepts. It now runs **in the
+gate**.
+
+**3. `npm publish | tee` reported every failure as a success.** bash takes a pipeline's status from
+its last command, and `tee` always succeeds, so `if npm publish ... | tee log; then echo published`
+took the success branch unconditionally. The "already published is a skip, not a failure" arm below it
+was unreachable dead code from the day it was written. What it hid this time: `prepublishOnly` ran
+`npm test` on **ubuntu**, where `test/cache.test.ts`'s *"does not throw when it cannot write"* timed
+out — the first time the suite had ever run on Linux, because `ci.yml` runs it on macOS deliberately
+and with a good reason.
+
+### The decision
+
+1. `server.json` migrates to `2025-12-11` and camelCase. Verified with `mcp-publisher validate`
+   against the live registry and with the gate's own ajv invocation.
+2. The gate runs `mcp-publisher validate` **before** `npm run lint`/`test`/`build`, on the same pinned
+   binary the `registry` job publishes with — hoisted to one workflow-level `MCP_PUBLISHER_VERSION`,
+   because a gate that validates with a different version than the one that publishes is not a gate.
+3. The publish step captures `npm publish`'s status into a variable and branches on it. `tee` is gone.
+4. The `npm` job moves to `macos-latest`. `prepublishOnly` runs the suite, and **sidecrew is a
+   macOS/Apple-silicon tool** — `doctor` shells out to `sysctl` and `vm_stat`, `bench` to `pmset`.
+   Gating a publish on a platform we do not ship to is a gate on the wrong question. Whether that one
+   test is *also* wrong on Linux is a separate question and is in `BACKLOG.md`.
+
+### What it cost, so the size of it is on the record
+
+`0.1.0` is on npm with **no provenance attestation** — it was hand-published, the workflow's
+`--provenance` publish never ran, and the false pass is why nobody noticed. npm will not accept a
+re-publish of a version, so `0.1.0` cannot gain one. The workflow's own comment calls provenance *the
+cheapest thing this repository can do about supply chain*; it starts at `0.1.1`.
+
+### The rule worth carrying
+
+**Every check in a release gate should be asked of the system that will refuse you, not of a local
+copy of its rules** — and where the answer cannot be had before the irreversible step, that is a
+finding about the pipeline's order, not an acceptable risk. Three of this week's four release defects
+are the same shape from a different angle: an assertion that read the developer's environment when it
+meant to read the artefact, and now one that read the artefact when it meant to read the registry.

@@ -13,11 +13,12 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 21 Sep 2026**, after the session that **got `main` green for the first time since
-18 Sep**, took three owner decisions (**ADR-0075** option C, **ADR-0078**, and the ADR-0064
-discussion), wrote **ADR-0079** from the owner's own framing, and **re-pointed `PHASES.md` and
-`ROADMAP.md` at the framework** so a new session does not plan against an outdated one. The session
-before it ran **Phase 14b**, pushed `main` for the first time, and tagged **`v0.1.0-rc.1`**.
+**Last updated: 21 Sep 2026**, after the session that **re-ran the `v0.1.0` release** and found three
+defects with it (**ADR-0080**): a `server.json` pinned to a superseded registry schema, an `npm` job
+whose publish failure read as success, and a suite running on a platform we do not ship to. All four
+fixes are in; the registry entry is still owed, §3.0′. The session before it got `main` green for the
+first time since 18 Sep, took three owner decisions (**ADR-0075** option C, **ADR-0078**, and the
+ADR-0064 discussion) and wrote **ADR-0079** from the owner's own framing.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -33,10 +34,10 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
 | version | **`0.1.0`** — bumped off `0.1.0-rc.2` on 21 Sep in all six places (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json`) and `dist` rebuilt, so the tarball announces `0.1.0`. **Ready to publish and to tag `v0.1.0`.** `ci.yml` checks four of the six, `release.yml` five; the lockfile is checked by neither |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
-| published | **`sidecrew@0.1.0` IS ON npm** (21 Sep, hand-published, `latest`), and the **Trusted Publisher is registered** — `github` / `lvlrSajjad/sidecrew` / `release.yml`, publish + stage-publish. **GitHub Pages is on.** The `v0.1.0` tag is pushed and **its `release.yml` run failed in `gate`**, so `npm` and `registry` were skipped: **the MCP Registry entry does not exist yet.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
+| published | **`sidecrew@0.1.0` IS ON npm** (21 Sep, hand-published, `latest`, **and with no provenance attestation — it cannot gain one**, §2). Trusted Publisher registered — `github` / `lvlrSajjad/sidecrew` / `release.yml`. **GitHub Pages is on.** **The MCP Registry entry still does not exist** — the 21 Sep re-run reached `registry` and was refused, ADR-0080. `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — **inputs verified present 21 Sep**, but it needs a harness written first, not just a replay |
-| ADRs | run to **0079**; start new ones at 0080. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
+| ADRs | run to **0080**; start new ones at 0081. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -53,7 +54,8 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | every rate → **interval + `D`** | `D = 0.105` triggered UNACCEPTABLE, which forbids point estimates. Publishing `k/n` with exact Clopper–Pearson intervals **satisfies the frozen rule rather than amending it** |
 | `release.yml`, `docs/` Pages site, `npm pack` | 87 files, 317.8 kB, allowlist clean; `doctor` verified out of the installed tarball, including the ADR-0076 fallback |
 
-**What is deliberately not done, because it is the owner's:**
+**The owner's four actions are all DONE as of 21 Sep** — kept below because each one cost a measured
+finding, and a future release will need them again. What is *not* done is the MCP Registry entry, §3.0′.
 
 1. **Publish `0.1.0` to npm by hand — this must come FIRST, and it is not optional.**
    **Trusted Publishing cannot be configured for a package that does not exist.** Measured on
@@ -71,10 +73,13 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
    fails `ENEEDAUTH`, **which looks exactly like a missing token and is not one.**
    `~/Coding/ME/simframe` publishes this way and its `release.yml` is the reference.
 3. ~~**Turn GitHub Pages on**~~ — **DONE, 21 Sep.**
-4. **Tag `v0.1.0`.** The version places are already at `0.1.0`. `release.yml`'s `npm` job treats an
-   already-published version as a **skip, not a failure**, so publishing by hand and then tagging is
-   the designed path — the `registry` job still runs and its `login github-oidc` flow is **still
-   unverified**.
+4. ~~**Tag `v0.1.0`**~~ — **DONE, and moved once.** The tag was first cut at `962d6a3`, one commit
+   *before* the tarball-smoke fix, so it replayed the same `gate` failure; it was deleted and re-cut at
+   `b0f7a85`. **`release.yml` has no `workflow_dispatch` trigger** — only `on: push: tags` — so
+   `gh workflow run release.yml --ref <tag>` does not work, and delete-and-re-push is the only re-run
+   path. An earlier version of this file said otherwise; that was wrong. The `npm` job's
+   already-published **skip** arm turned out to be unreachable dead code (ADR-0080), so the
+   "hand-publish then tag" path was never actually exercised the way it was designed.
 
 **`release.yml` ran for the first time on 20 Sep**, twice, and **both runs failed** — which is the
 whole reason to have tagged a release candidate rather than `v0.1.0`.
@@ -160,33 +165,42 @@ pushing the fix for the first two and reading the job that had never been read.*
   exercised directly at `total_gb: 7.0`, and both test files run green in a tracked-files-only copy of
   the tree with no `.sidecrew` in it.
 
-**0′. Re-run the `v0.1.0` release — this is the first thing tomorrow, and it is small.**
-`0.1.0` is on npm and the trusted publisher is registered, so **the product is published**; what did
-not happen is the **MCP Registry** entry, because `gate` failed and skipped both later jobs.
+**0′. Finish the release — the MCP Registry entry is the only thing left, and the blockers are
+fixed but not yet retried.** `sidecrew@0.1.0` is on npm as `latest`. The registry entry is not.
 
-The failure was **not** the version check and not the suite. It was the *"doctor runs from the packed
-tarball"* step: `doctor` **exits 1 on a machine that cannot host a worker**, and a GitHub runner is
-one — 7 GB against ADR-0073's 24 GB floor. `doctor` was right; the step was asserting the wrong
-thing. It is the **third** instance this week of a check that only passes on a developer's machine.
+**What the 21 Sep re-run found — ADR-0080, and it is worth reading before touching this.** The tag was
+moved onto `b0f7a85` and the run reached `registry` for the first time. `gate` ✓, `npm` ✓,
+`registry` ✗ — **and only two of those three marks were true.**
 
-**Fixed 21 Sep** — the step now asserts what it was always for: `doctor` runs from the installed
-tarball, its exit code is 0 **or 1** (anything higher is a crash, not an unsupported machine), its
-`--json` carries the expected rows, and **the five `dist/prompts/*.md` runtime assets are present** —
-the assets `tsc` does not copy and whose absence nothing else would notice until a run tried to render
-a prompt. Verified locally against a real `npm pack` install.
+- **`server.json` was pinned to a schema nobody enforces any more.** It named `2025-07-09`, the last
+  one with snake_case package keys; the API reads camelCase and refused with a 422 on
+  `packages[0].registryType`. **The gate could not have caught it** — it fetches the schema from the
+  URL `server.json` itself names, so a stale file validates against its own obsolescence. Migrated to
+  `2025-12-11`; against that schema the old file fails ajv outright, so the bump restores the check.
+- **`npm publish ... | tee` reported every failure as success.** bash takes a pipeline's status from
+  its last command and `tee` always succeeds. The `npm` job's ✓ was false: `prepublishOnly` had
+  failed. **So `0.1.0` on npm carries no provenance attestation and cannot gain one** — npm refuses a
+  re-publish of a version. Provenance starts at `0.1.1`.
+- **The suite had never run on Linux.** `prepublishOnly` runs it, the `npm` job was `ubuntu-latest`,
+  and `test/cache.test.ts`'s *"does not throw when it cannot write"* timed out. `ci.yml` is macOS
+  deliberately and for a good reason, so the job moved to `macos-latest`. The Linux behaviour itself is
+  unreproduced and is in `BACKLOG.md`.
 
-**To re-run:** `release.yml` has `workflow_dispatch`, and the `gate` reads the tag from
-`GITHUB_REF_NAME`, so it must be dispatched **on the tag ref** —
-`gh workflow run release.yml --ref v0.1.0` — or the tag deleted and re-pushed. **Dispatch-on-tag is
-untested here**; if the version gate reports a tag of `main`, that is why, and re-pushing the tag is
-the fallback. The `npm` job will **skip** (0.1.0 already published) and `registry` will run for the
-first time — **its `login github-oidc` flow has still never executed.**
+**Fixed 21 Sep, all four, and verified locally**: `server.json` migrated and accepted by
+`mcp-publisher validate` against the live registry; `mcp-publisher validate` added **to the gate**, so
+the registry is asked before npm is written to; the publish step captures `npm publish`'s status
+instead of piping it; the `npm` job on `macos-latest`; one workflow-level `MCP_PUBLISHER_VERSION`
+pin shared by both jobs.
 
-**1. The remaining owner actions — the order is forced, see §2.** Pages is **done**. The versions are
-**already at `0.1.0`** and `dist` is rebuilt. What is left: **hand-publish `0.1.0`** (the package must
-exist before Trusted Publishing can be configured — measured, §2), **then** configure Trusted
-Publishing, **then** tag `v0.1.0`. `v0.1.0-rc.1` and `v0.1.0-rc.2` are both pushed and both failed;
-neither published anything, so npm and the registry are untouched and the name is unclaimed.
+**To retry:** commit and push, then **delete and re-push `v0.1.0`** at the new head. There is no
+`workflow_dispatch`. The `npm` job will now genuinely skip on "already published" (that arm has never
+executed — it was unreachable), and `registry`'s `login github-oidc` **still has never run**: the 21
+Sep attempt died in `validate`, one step earlier. That flow is the remaining unknown.
+
+**1. The owner actions are all done.** Pages is on, the versions are at `0.1.0`, `0.1.0` is
+hand-published to npm as `latest`, and Trusted Publishing is registered. `v0.1.0-rc.1` and `-rc.2`
+both failed and published nothing. What remains of the release is §3.0′, and it is not an owner action
+— it is a commit, a push and a re-cut tag.
 
 **2. ADR-0077's counterfactual — the nearest piece of actual work, and it is short.** Option D is
 **accepted**; A, B and C are deliberately still open and wait on this number.
@@ -331,6 +345,14 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   reading `0.0.1` while the rest had moved. **The two workflows duplicate this check, and a fix to one
   is not a fix to both** — the truncating-grep fix landed in `release.yml` on 20 Sep and sat broken in
   `ci.yml` until the next push, where it failed `contracts` in the opposite direction.
+- **A shell pipeline reports its LAST command's status, so `cmd | tee log` always succeeds.** It hid a
+  failed `npm publish` behind a green step in the one job that publishes irreversibly (ADR-0080), and
+  the error-handling branch below it had been unreachable dead code since it was written. `set -o
+  pipefail` would have caught it; capturing the status into a variable is what the workflow does now,
+  because it also has to read the log either way.
+- **A check that reads its expectations out of the artefact under test can only catch invalidity,
+  never staleness.** The release gate validated `server.json` against the schema `server.json` itself
+  names. Ask the system that will refuse you (ADR-0080).
 - **`safeName` rewrites `snc-02#1` as `snc-02.1.json`.** A harness that re-derives a filename instead
   of using the writer's function reported `n₂ = 0` with a *plausible* reason and a confident, wrong
   INCONCLUSIVE.

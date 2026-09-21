@@ -795,3 +795,20 @@ should decide the product question on its merits and write the ADR, not inherit 
 
 **Do not reach for `SIDECREW_TIER=api` as the answer.** It opts into a tier ADR-0073 descoped and
 whose survival and cost figures were never measured.
+
+## From the `v0.1.0` release runs (21 Sep 2026)
+
+- **`test/cache.test.ts`'s *"does not throw when it cannot write"* times out on Linux.** It builds a
+  `CandidateCache` at `/proc/nonexistent/forbidden` and expects `write` to swallow the failure. On
+  macOS there is no `/proc`, so the `mkdir` fails immediately; on `ubuntu-latest` the test hit
+  vitest's 5 s timeout. `write` has no retry and no backoff — `mkdir`, `writeFile`, `rename`, one
+  `try`/`catch` — so what is slow is the filesystem call itself, and nothing here explains five
+  seconds. **Not reproduced locally: there is no Linux box and no container runtime on this machine.**
+  Sidestepped rather than fixed: the `npm` job moved to `macos-latest` (ADR-0080), which is right for
+  its own reasons, so nothing in CI runs the suite on Linux any more. Worth knowing before anybody
+  proposes supporting another platform — the path is chosen for being unwritable, and it is unwritable
+  in a different way on each OS. An `mkdtemp` directory with its mode cleared would be portable, but
+  it also does not fail as root, which is how a container commonly runs.
+- **`package-lock.json` is still a sixth version place that neither workflow gates.** `release.yml`
+  compares the tag against five values, `ci.yml` against four. It read `0.0.1` once while the others
+  had moved. Cheap to add; nobody has.

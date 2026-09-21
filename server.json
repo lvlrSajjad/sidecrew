@@ -1,5 +1,5 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.lvlrSajjad/sidecrew",
   "description": "Code changes and unit tests by local MLX models, behind a gate a machine can run.",
   "version": "0.1.0",
@@ -9,18 +9,18 @@
   },
   "packages": [
     {
-      "registry_type": "npm",
-      "registry_base_url": "https://registry.npmjs.org",
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "sidecrew",
       "version": "0.1.0",
       "transport": {
         "type": "stdio"
       },
-      "package_arguments": [
+      "packageArguments": [
         {
           "type": "positional",
           "value": "mcp",
-          "value_hint": "mcp"
+          "valueHint": "mcp"
         }
       ]
     }

@@ -1,6 +1,36 @@
 # Changelog
 ## Unreleased
 
+**The `v0.1.0` release runs, and the three defects they found.** The tag was moved onto the
+tarball-smoke fix (it had been cut one commit early, so a re-run would have replayed the same
+failure), and the run reached `registry` for the first time. `gate` ✓, `npm` ✓, `registry` ✗ — and
+**only two of those three marks were true.** ADR-0080. No product code changed.
+
+- **`server.json` was pinned to a schema nobody enforces any more.** It named `2025-07-09`, the last
+  schema with snake_case package keys; the registry API reads camelCase and rejected the publish with
+  a 422 on `packages[0].registryType`. Migrated to `2025-12-11` and camelCase
+  (`registryType`, `registryBaseUrl`, `packageArguments`, `valueHint`), verified with
+  `mcp-publisher validate` against the live registry. **The gate could not have caught this**: it
+  fetches the schema from the URL `server.json` itself names, so a stale file validates against its
+  own obsolescence. Against the current schema the old file fails ajv outright, so the bump restores
+  the check as well as fixing the file.
+- **The gate now asks the registry before npm is written to.** `mcp-publisher validate` runs in
+  `gate`, on the same pinned binary the `registry` job publishes with — hoisted to one workflow-level
+  `MCP_PUBLISHER_VERSION`. `registry` still runs after `npm`, which is correct; the point is that the
+  first *contact* no longer does.
+- **`npm publish | tee` reported every failure as a success.** bash takes a pipeline's status from its
+  last command and `tee` always succeeds, so the `if` took the success branch unconditionally and the
+  "already published is a skip" arm below it had been unreachable dead code since the day it was
+  written. The step captures the status and branches on it now. What it hid: `prepublishOnly` failed,
+  so **`0.1.0` on npm carries no provenance attestation** and cannot gain one — npm refuses a
+  re-publish. Provenance starts at `0.1.1`.
+- **The `npm` job moved to `macos-latest`.** `prepublishOnly` is `npm run build && npm test`, so
+  publishing runs the suite, and on ubuntu that was the first time the suite had ever run on Linux —
+  `test/cache.test.ts`'s *"does not throw when it cannot write"* timed out. `ci.yml` runs the suite on
+  macOS deliberately, because sidecrew shells out to `sysctl`, `vm_stat` and `pmset`. Gating a publish
+  on a platform we do not ship to is a gate on the wrong question. The Linux behaviour itself is in
+  `BACKLOG.md`, unreproduced.
+
 **CI is green again.** `ci.yml` had failed on `main` on every push since 18 Sep and nobody looked:
 the local suite was green and `release.yml` had never run. It blocked the release outright, because
 the release gate runs `npm test`. Two independent causes, both found by tagging `v0.1.0-rc.2`, which

@@ -21,6 +21,13 @@ permissions:
   # configured once on npmjs.com against this repo and this workflow file — see the publish step.
   id-token: write
 
+# One pin, read by the gate's pre-flight validate and by the registry publish. They have to be the
+# same binary: a gate that validates with a different version than the one that publishes is not a
+# gate. Bump it deliberately — `releases/latest` in a job holding `id-token: write` is a supply-chain
+# exposure as well as a fragility.
+env:
+  MCP_PUBLISHER_VERSION: v1.8.1
+
 jobs:
   gate:
     runs-on: macos-latest
@@ -69,6 +76,30 @@ jobs:
           url=$(node -p "require('./server.json').\$schema")
           curl -sS --fail -m 30 "$url" -o /tmp/mcp-server.schema.json
           npx -y ajv-cli@5 validate --spec=draft7 --strict=false -s /tmp/mcp-server.schema.json -d server.json
+
+      - name: the registry itself accepts server.json
+        # The step above validates the file against **the schema the file names**, which can only ever
+        # catch invalidity and never staleness. `v0.1.0` passed it and was then rejected by the registry
+        # with a 422: the file was pinned to the 2025-07-09 schema, whose package keys are snake_case,
+        # while the API reads camelCase. The file validated against its own obsolescence. Phase 7 fixed
+        # this same class of drift once already — the comment in `ci.yml` records it — which is what
+        # makes it a check to add rather than a mistake to be more careful about.
+        #
+        # Worse, the registry job runs **after** npm by design, so the first thing to notice was an npm
+        # version published and no registry entry, with no way back from either.
+        #
+        # `mcp-publisher validate` asks the live registry, which is the only authority on what it will
+        # accept. It runs here so it is proved before anything leaves this machine. macOS/arm64 because
+        # that is what this job runs on.
+        run: |
+          BASE="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          if ! curl -fsSL "$BASE/mcp-publisher_darwin_arm64.tar.gz" | tar -xz mcp-publisher; then
+            echo "::error::mcp-publisher ${MCP_PUBLISHER_VERSION} could not be fetched — see the registry job"
+            exit 1
+          fi
+          chmod +x mcp-publisher
+          ./mcp-publisher --version
+          ./mcp-publisher validate
 
       - run: npm run lint
       - run: npm test
@@ -134,7 +165,12 @@ jobs:
 
   npm:
     needs: gate
-    runs-on: ubuntu-latest
+    # **macOS, not ubuntu, and for the same reason `ci.yml`'s suite is macOS.** `prepublishOnly` is
+    # `npm run build && npm test`, so `npm publish` runs the whole suite — and on `v0.1.0` that was the
+    # first time the suite had ever run on Linux, where `test/cache.test.ts`'s "does not throw when it
+    # cannot write" timed out. sidecrew is a macOS/Apple-silicon tool; a publish gated on a platform we
+    # do not ship to is a gate on the wrong question.
+    runs-on: macos-latest
     permissions:
       contents: read
       id-token: write
@@ -185,7 +221,18 @@ jobs:
             *)   dist=latest ;;
           esac
           echo "publishing ${{ needs.gate.outputs.version }} to dist-tag $dist"
-          if npm publish --provenance --access public --tag "$dist" 2>&1 | tee /tmp/publish.log; then
+          # **`npm publish ... | tee` hid every failure**, and this is how it was found. bash reports a
+          # pipeline's status from its LAST command, and `tee` always succeeds — so the `if` took the
+          # success branch unconditionally, the "already published" arm below was unreachable dead code,
+          # and every other npm error printed "published" and passed the job green. `v0.1.0` left this
+          # step with a ✓ having published nothing: `prepublishOnly` failed. Capture the status, then
+          # branch on it.
+          set +e
+          npm publish --provenance --access public --tag "$dist" > /tmp/publish.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/publish.log
+          if [ "$rc" -eq 0 ]; then
             echo "published"
           elif grep -qiE 'cannot publish over|previously published|E403.*already' /tmp/publish.log; then
             echo "::notice::${{ needs.gate.outputs.version }} is already on npm — skipping, not failing"
@@ -218,8 +265,6 @@ jobs:
         # job holding `id-token: write`, so "whatever they shipped this morning" is a supply-chain
         # exposure as well as a fragility. Bump it deliberately, and `validate` before `publish` so a
         # bad `server.json` fails before anything is claimed.
-        env:
-          MCP_PUBLISHER_VERSION: v1.8.1
         run: |
           BASE="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
           if ! curl -fsSL "$BASE/mcp-publisher_linux_amd64.tar.gz" | tar -xz mcp-publisher; then

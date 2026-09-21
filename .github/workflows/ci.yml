@@ -62,6 +62,13 @@ jobs:
         # a hand-written idea of it. Phase 7 found the file invalid in two independent ways — a 145-char
         # description against a 100 limit, and pre-2025-07 package keys (`registry_name`/`name` for
         # `registry_type`/`identifier`/`transport`) — either of which would have failed the publish.
+        #
+        # **This catches invalidity, never staleness**, because it fetches the schema the file itself
+        # names: a `server.json` pinned to a superseded schema validates against its own obsolescence
+        # and passes. That is exactly what happened to `v0.1.0`, which passed here and was rejected by
+        # the registry with a 422. The check that closes it asks the live registry and lives in
+        # `release.yml`'s gate, not here — it is a network round-trip to a third party, and putting one
+        # on every push to `main` buys a clock rather than a check.
         run: |
           url=$(node -p "require('./server.json').\$schema")
           echo "schema: $url"
