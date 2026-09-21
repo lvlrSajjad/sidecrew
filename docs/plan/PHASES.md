@@ -34,7 +34,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | **14b** | **The editing ceiling: is it the model or the task?** — two probes on §2.2's declared task set | ✅ **`S₁₄ = 2/30`, both probes < 0.10 → PROCEED to 14c.** Neither: the workers do the work, the gate cannot credit it (**ADR-0077**, proposed) | **one evening · needs the machine** · no build, no version. Decides whether "any shape of change" is reachable at all |
 | **14c** | **The reach: symbol-scoped return** (ADR-0075 option C) — half a codebase is currently unaddressable | ⬜ · **cut `v0.2.0`** | 2–3 sessions · **one overnight run** · needs ADR-0075 decided, and the AST work from 14 |
 | **14d** | **Retrieval: local models read the codebase** — the other half of the vision | ⬜ · **cut `v1.0.0`** | 3–4 sessions · **one overnight run** · needs its own ADR first: a machine confirms a symbol *exists*, not that it is *relevant* |
-| 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · **post-1.0** | ADR-0031 options B/C · the remaining slice of the 90 %, and the one nothing measured so far says anything about |
+| 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · **post-1.0** · **ADR-0082 gives it a candidate oracle for the first time** | ADR-0031 options B/C · the remaining slice of the 90 %, and the one nothing measured so far says anything about. **ADR-0082 (proposed, 21 Sep) is the missing instrument**: a test written to the *expected* behaviour, by the worker, before the change. Needs its option D measured first |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
 | 17 | The edge ideas: fine-tune on survivors, worker pooling, two-model agreement | 🔷 proposed | `BACKLOG.md` § *The edge ideas* |
 
@@ -1035,6 +1035,7 @@ below are the order in which its parts become true**, not a list of features:
 | workers act on any part of the codebase | symbol-scoped return, so file size stops deciding | **14c** (ADR-0075, accepted) |
 | a machine decides what Opus sees | built, both workloads | done (ADR-0046, ADR-0048) |
 | the loop terminates when *satisfied* | a machine-checkable definition of satisfied | per workload — see below |
+| the loop works where the **project's own tests do not** | an oracle sidecrew manufactures rather than borrows | **ADR-0082** (proposed) — not a phase yet; option D is one short run |
 
 **Two constraints that come from measurements and bind every phase here.**
 
@@ -1047,6 +1048,11 @@ below are the order in which its parts become true**, not a list of features:
    under the agreed flag*; lint → *clean exit*; tests → *a mutation threshold*; a bug → *the
    reproducing test passes*. **A feature has no termination condition for the same reason it has no
    gate** (CLAUDE.md), which is why Phase 15 is post-1.0 and narrow.
+
+   **ADR-0082 (proposed, 21 Sep 2026) proposes one for a feature, and it is worth reading before
+   anyone treats that sentence as final**: a test written to the *expected* behaviour **is** a
+   termination condition, and it is machine-checkable. What it does not settle is whether the test
+   says what the user meant — which stays human, but lands on a ten-line artefact instead of a diff.
 
 ### Every phase ends with an exit check, and the fork is named before the phase runs
 
@@ -1302,6 +1308,19 @@ override the token number.
 ADR-0031 options B and C. Opus writes the specification; the Goodhart direction inverts; held-out tests
 double the expensive half. Not before 2a has a number, and the argument for not doing it at all is in the
 ADR.
+
+**ADR-0082 (proposed, 21 Sep 2026) moves both of those objections and settles neither**, which is why
+this row now points at two ADRs rather than one. **The worker** writes the specification-as-test, not
+Opus, so the cost argument becomes an open question rather than a closed one — it is sidecrew's own
+premise applied to the spec-writing step. And the tests are **held out by construction and for free**,
+because writing the test and making the change are separate worker invocations and the change worker is
+never shown the test; Goodhart needs the measure to be visible.
+
+**What it does not remove is intent.** *Does the change do what was asked* becomes machine-checkable
+against a test written first; *was that the right thing to ask for* does not, and the user approves a
+ten-line expectation instead of auditing a diff. **Do not plan this phase before ADR-0082 option D is
+measured** — the yield of region-targeted test generation is the number every version of it rests on,
+and workload #1's untargeted yield on real projects is 3/8, 4/8 and 4/10.
 
 ## 16 — Python + Kotlin verifiers · **post-1.0** · each language is its own `v1.x` minor
 After publish. mutmut / cosmic-ray and PIT; BACKLOG has the notes.

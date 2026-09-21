@@ -5769,3 +5769,138 @@ forbids**, and the difference is worth stating rather than assuming:
 - The counterfactual's demotion set is *defined* as the files the gate forbids editing. With the
   predicate wrong, the measurement is wrong in either direction — running it on the old predicate
   would not have been the conservative choice, it would have been the meaningless one.
+
+## ADR-0082 — sidecrew writes the oracle it is judged by, before the change exists (PROPOSED)
+
+**Status:** **proposed · 21 Sep 2026 · the owner's proposal · needs the owner** · bears on ADR-0016,
+ADR-0031, ADR-0046, ADR-0048, ADR-0077 and Phase 15 · **nothing here is built and nothing is agreed**
+
+### The proposal, in the owner's words
+
+> Opus receives a request from the user. Opus uses the worker to gather info from the code, and asks
+> the user if needed. **Opus asks the worker to write its own tests that cover the area the user needs
+> to change, to establish the behaviour is green.** *[If the request also includes a behavioural
+> change, the tests are written to the **expected** behaviour instead.]* Opus plans the change at the
+> same time, and asks the worker to make it.
+
+Every step but the emphasised two is already `VISION.md`'s loop and the framework table in
+`PHASES.md` — step 2 is **14d**, the planning and acting steps are built. **The delta is the oracle**,
+and it is worth stating on its own because it changes what sidecrew *is* rather than how well it does
+what it already does.
+
+### What changes
+
+Today #2a's oracle is the project's suite: **borrowed** — fixed, external, independent, and possibly
+bad. This proposes a **manufactured** one: written per task, before the change, gated by workload #1.
+
+| | today | under this proposal |
+|---|---|---|
+| #2a's oracle | the project's tests | the project's tests **plus** tests written for this change |
+| works on a project with no tests | no | yes |
+| works on a project with *bad* tests | yes, for the reason below | yes, and better |
+| #2b's oracle | **none** | the test, written to the expected behaviour |
+
+**A bad borrowed oracle is not actually #2a's problem, and the distinction matters before anyone
+"fixes" it.** #2a claims behaviour-*preservation*, not correctness. For that claim a tautological or
+wrong test is still a valid instrument: it is not asked to be right, it is asked to be **unchanged and
+re-runnable**. A test that enshrines a bug still fires when the bug changes. What a bad suite costs
+#2a is *reach* — coverage of the region being edited — not validity.
+
+### Why it is not circular, which is the first objection and it is answerable
+
+The gate's central rule is that the thing being judged may not edit its own exam (ADR-0046, ADR-0048).
+A worker writing the tests it will then be measured against looks exactly like that, and is not,
+**because of the ordering**:
+
+1. The test is written against the **unmodified** code, before the change exists.
+2. Workload #1's gate already requires it to **compile, pass on the original code, and kill ≥ 1 mutant
+   of it, non-tautologically** (ADR-0016). A test that passes the original and kills a mutant of it is
+   pinned to the old behaviour.
+3. Only then is the change made, and the frozen test re-run.
+
+Nothing in that sequence lets the change author move the target. **The circularity is defeated by time
+ordering plus an independent gate, not by trust.**
+
+### The hole in it, and a mechanical answer that already half exists
+
+**"Kills a mutant" is not "would notice *this* change."** Mutation proves sensitivity to *some*
+mutation of the function. A change can move behaviour in a dimension the generated test does not
+observe, and the test stays green — a valid artefact that fails to help, which is the Goodhart shape
+`VISION.md` warns about for retrieval.
+
+**Proposed answer: scope the mutation to the change's own lines.** ADR-0013 already scopes mutation to
+a line range. Require the generated tests to kill mutants **inside the range the change will touch**.
+That is machine-checkable sensitivity to the right region, built from parts that exist. It is not
+airtight — sensitivity to mutants is still not sensitivity to all behaviour — but it converts a hope
+into a gate, which is this project's whole standard.
+
+### What it does to the two objections `VISION.md` already records against 2b
+
+`VISION.md` § *Why 2b is genuinely harder* names two, both from ADR-0031. This framing moves both,
+and settles neither.
+
+1. **"The economics invert — Claude writes the specification, and that costs more than writing the
+   implementation."** This proposal has **the worker** write it, not Claude. That is sidecrew's entire
+   premise applied to the spec-writing step, and it makes the objection an *open question* rather than
+   a closed one. **It does not answer it**: workload #1 survives at **3/8, 4/8 and 4/10 on real
+   projects** (measured, README) — call it two in five — so a pinning oracle means *generate several,
+   keep one*, and mutation testing is the most expensive stage in the system. Against a planning cost
+   already measured at `R` = 2.84 (12 tasks) and 1.07 (41), both **FAIL**.
+2. **"Goodhart flips the wrong way — the cheapest way to pass a visible test is `if (x === 3) return
+   7`, and that ships."** The known countermeasure is held-out tests, *"which doubles the expensive
+   half"*. **Here they are held out by construction and for free**: writing the test and making the
+   change are two separate worker invocations with separate prompts, and the change worker is never
+   shown the test. Goodhart needs the measure to be visible. **This is mitigation, not elimination**
+   — for #2b the task description carries the intent, so a worker can still special-case toward what
+   it infers — but it is a materially cheaper countermeasure than the one ADR-0031 assumed.
+
+### For #2b this is the missing instrument, and that is the real prize
+
+`PHASES.md` has #2b as post-1.0 and *"the one nothing measured so far says anything about"*, because
+behaviour-changing work has no oracle **by definition**: the project's tests encode the old behaviour.
+A test written to the *new* behaviour is exactly the instrument that was missing. It splits the
+question in two, and only one half needs a human:
+
+| question | who answers | cost |
+|---|---|---|
+| does the change do what was asked | the machine — the new test passes, the old suite does not regress | the gate |
+| **was that the right thing to ask for** | **the user, once, on the test** | reading ten lines, not auditing a diff |
+
+**The human oracle does not disappear and should not be claimed to.** What moves is *where it sits*:
+a test that states an expectation is far cheaper to review than a change spread across files, and
+everything downstream of that approval is mechanical. That is ADR-0079's *"ask the user"* step landing
+on the cheapest possible artefact.
+
+### Options
+
+**A — Don't.** #2a stays on the project's suite; #2b stays post-1.0 on ADR-0031's terms. **For:**
+today's gate is the strongest sentence this tool says, and every addition here spends some of it.
+**Against:** it leaves sidecrew unable to work on a project whose tests are thin, which is most of
+them, and leaves #2b with no route at all.
+
+**B — #2a only.** Generate a pinning oracle before a change, for regions the project's suite does not
+cover. The claim stays *behaviour-preserving*; nothing is written to a desired behaviour. **For:** it
+is the half with no intent problem, and the prize — reach on under-tested code — is concrete.
+**Against:** it pays workload #1's cost on every #2a task, and that cost is the one `R` already fails.
+
+**C — Both, the full loop including test-as-specification for #2b.** **For:** it is the vision, and
+the human-approves-the-test division is genuinely cheaper than any 2b design written down so far.
+**Against:** Goodhart is mitigated, not removed, and a wrong test ships a wrong implementation with a
+green gate — the one failure mode this project exists to prevent.
+
+**D — Measure first, and the measurement is short and well defined.** Take `n` functions in a real
+project, ask the worker for tests that **kill a mutant inside a named line range**, and report the
+yield and the wall-clock per accepted test. That is the number both B and C rest on, it does not exist,
+and every argument above is a bet on it.
+
+**Recommendation: D, then B, then C.** The same shape as ADR-0077 and for the same reason — two of
+these options are bets on an unmeasured number, and the number is one short run away. **D's rule must
+be frozen before it runs** (`PHASES.md` § exit checks): what yield makes B affordable, stated in
+advance, so the result cannot be read to suit.
+
+### Interaction with ADR-0077
+
+If sidecrew brings its own oracle, **ADR-0077 option B matters less** — the project's test files
+gaining type errors stops being the thing that decides whether work is possible. It does not go away:
+the project's suite still runs, and those errors still appear. **Neither ADR blocks the other**, and
+ADR-0077's `14/15` is the cheaper win and available now.

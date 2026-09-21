@@ -118,6 +118,18 @@ That number decides whether recon-as-report may ever offer to fix what it counts
 economics and its inverted Goodhart direction are both worse, and nothing measured in #1 or #2a says
 anything about it.
 
+**ADR-0082 (proposed, 21 Sep 2026) is the first thing that changes that sentence.** The owner's
+proposal has **the worker** write a test to the *expected* behaviour before the change, which gives
+#2b the oracle it has never had — a machine-checkable *"does the change do what was asked"*, with the
+human approving a ten-line expectation instead of a diff. It moves both of ADR-0031's objections and
+settles neither: the cost argument now turns on a number nobody has, and Goodhart is mitigated by
+holding the test out from the change worker rather than eliminated.
+
+**It does not promote #2b up this list.** What it adds is a **cheap measurement that would**:
+ADR-0082's option D — the yield of asking a worker for tests that kill a mutant inside a named line
+range. Workload #1's *untargeted* yield on real projects is 3/8, 4/8, 4/10, so the targeted number is
+the one every version of this rests on and it is one short run away.
+
 **On the 90 % bar, stated honestly.** Items 1 and 3 are what decide whether that number is reachable
 at all. Today the tool does one shape of work well on half a codebase. Item 1 roughly doubles the
 surface; item 3 says whether the local model can do more than one shape of work on it. Neither is a
@@ -425,6 +437,8 @@ generated tests encoding the client's business rules and remain client IP with t
 ## What is explicitly not next
 
 - **Workload #2b** (behaviour-changing). ADR-0031's economics and Goodhart direction are both worse,
-  and nothing measured in #1 or #2a says anything about it.
+  and nothing measured in #1 or #2a says anything about it. **ADR-0082 (proposed) gives it a candidate
+  oracle and a short measurement that would price it** — that changes what is *knowable* about #2b, not
+  its position here. It stays not-next until option D has a number.
 - **More languages.** Python and Kotlin multiply the surface before the shape is proven.
 - **More agents.** `VISION.md`: a role earns its place by removing Opus tokens. None currently does.

@@ -1,6 +1,30 @@
 # Changelog
 ## Unreleased
 
+**ADR-0082 (proposed) — sidecrew writes the oracle it is judged by, before the change exists.** The
+owner's proposal, 21 Sep. Every step of it but two is already `VISION.md`'s loop; **the delta is that
+the oracle stops being borrowed and starts being manufactured** — the worker writes tests covering the
+region about to change, gated by workload #1, *before* the change exists. Nothing is built and nothing
+is agreed; option D (measure first) is the recommendation.
+
+- **It is not circular, and the reason is the ordering**: the test is written against the *unmodified*
+  code and must pass on it and kill a mutant of it (ADR-0016) before any change exists. Nothing in that
+  sequence lets the change author move the target.
+- **The hole is that "kills a mutant" is not "would notice *this* change."** Proposed answer, built
+  from parts that exist: ADR-0013 already scopes mutation to a line range, so require the generated
+  tests to kill mutants **inside the lines the change will touch**.
+- **For #2b it is the missing instrument.** `PHASES.md` had it as *"the one nothing measured so far
+  says anything about"*, because behaviour-changing work has no oracle by definition. A test written to
+  the *new* behaviour is one — and it splits the question so that only *"was that the right thing to
+  ask for"* stays human, on a ten-line artefact rather than a diff.
+- **Both of ADR-0031's objections move and neither is settled.** The worker writes the spec rather than
+  Claude, which reopens the cost argument without answering it — workload #1 survives at 3/8, 4/8 and
+  4/10 on real projects, so a manufactured oracle means generate-several-keep-one against an `R` that
+  already fails. And held-out tests, which ADR-0031 says *"double the expensive half"*, are **free
+  here**: the change worker is a separate invocation and is never shown the test.
+- `VISION.md`, `PHASES.md` and `ROADMAP.md` now point at it. **`docs/index.md` deliberately does not** —
+  it carries measured claims only, and this is a proposal.
+
 **ADR-0077 option D is measured: 14 of 15.** The counterfactual re-gates probe 1's 15 clean-target
 tasks with test-file *type* errors demoted to observations. **All 15 reached the suite and 14 passed
 it** — `14/15`, 95 % `[0.681, 0.998]`, against `S₁₄ = 2/30`, `[0.008, 0.221]`. **The intervals do not

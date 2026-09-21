@@ -139,8 +139,8 @@ workload**, and a workload with no mechanical gate does not belong in sidecrew a
 | | the work | the oracle | status |
 |---|---|---|---|
 | **#1** | write a unit test for an existing function | mutation testing — ADR-0016 | **built and measured** on real projects |
-| **#2a** | behaviour-preserving change: type errors, lint, renames, null guards, API migrations, dead code | **the project's own test suite + `tsc`** — free, exact, already written by the user | **built, not yet measured** — `sidecrew fix`, Phase 10; the number is Phase 11's, against a rule frozen first |
-| **#2b** | behaviour-changing change: implement this, fix this bug | nothing in the repo knows the answer; Claude has to write the spec | after 2a, and not cheaply — ADR-0031 options B/C |
+| **#2a** | behaviour-preserving change: type errors, lint, renames, null guards, API migrations, dead code | **the project's own test suite + `tsc`** — free, exact, already written by the user. A *bad* suite does not invalidate this: #2a claims behaviour-preservation, so the oracle is asked to be unchanged and re-runnable, never to be right. What a thin suite costs is **reach**, not validity — ADR-0082 | **built and measured** — `sidecrew fix`, Phase 10; Phase 11's number, against a rule frozen first |
+| **#2b** | behaviour-changing change: implement this, fix this bug | nothing in the repo knows the answer; Claude has to write the spec — **or the worker does, ADR-0082 (proposed)** | after 2a, and not cheaply — ADR-0031 options B/C, and **ADR-0082 is the first candidate instrument** |
 
 **The owner's own example — "fix all the TypeScript errors in a large codebase" — is #2a**, and it is the
 best-fitting workload in the entire design. The gate costs nothing because the user already wrote it. The
@@ -162,6 +162,25 @@ owner's own TDD-inversion idea). Two things then go wrong at once, both already 
    countermeasure is held-out tests, which doubles the expensive half.
 
 2b is in the vision. It is not the next thing, and no number from #1 or #2a will say anything about it.
+
+**Both of those objections moved on 21 Sep 2026, and neither was settled — ADR-0082 (proposed).** The
+owner's framing has **the worker** write the tests rather than Claude, which makes objection 1 an open
+question instead of a closed one: it is sidecrew's own premise applied to the spec-writing step. It
+does not answer it, because workload #1 survives at **3/8, 4/8 and 4/10 on real projects** (measured),
+so a manufactured oracle means *generate several, keep one*, and mutation testing is the most expensive
+stage in the system.
+
+Objection 2 moves further. Held-out tests are what ADR-0031 proposes and they *"double the expensive
+half"* — but if the test is written by one worker invocation and the change by another, **the change
+worker is never shown the test, and the tests are held out by construction and for free.** Goodhart
+needs the measure to be visible. That is mitigation rather than elimination: for 2b the task
+description still carries the intent, so a worker can special-case toward what it infers.
+
+**And the part of 2b that no machine closes is now located rather than lamented.** *Does the change do
+what was asked* is machine-checkable against a test written first. *Was that the right thing to ask
+for* is not, and never will be — but a test that states an expectation is a far cheaper thing for the
+user to approve than a diff spread across files. The human oracle does not disappear; it moves to the
+smallest artefact in the loop.
 
 ## What has to be built that does not exist
 

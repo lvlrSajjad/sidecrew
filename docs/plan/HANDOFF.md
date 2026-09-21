@@ -13,7 +13,8 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 21 Sep 2026**, after the session that **published `0.1.2` to npm and the MCP Registry**
+**Last updated: 21 Sep 2026**, after the session that wrote **ADR-0082** from the owner's proposal —
+*sidecrew writes the oracle it is judged by* — **published `0.1.2` to npm and the MCP Registry**
 (ADR-0080), **found and fixed a hole in the gate** — `*.e2e-spec.ts` was not a test file to any of the
 four copies of the rule that says what one is (**ADR-0081**) — and **measured ADR-0077's option D at
 `14/15`**, which retires A and C and puts **B in front of the owner**. Earlier the same day it re-ran
@@ -41,7 +42,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. **ADR-0077's counterfactual is DONE (14/15, 21 Sep)**, so the nearest work is now 14c itself — or ADR-0077 option B, which needs the owner |
-| ADRs | run to **0081**; start new ones at 0082. **ADR-0077 option B needs the owner** — D is measured, 14/15. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
+| ADRs | run to **0082**; start new ones at 0083. **0082 and 0077-B both need the owner** — 0082 is the owner's own proposal (sidecrew writes its own oracle) and its option D is one short run; 0077's D is measured at 14/15. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -259,6 +260,20 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 `14c` needs **ADR-0075** decided first and cannot start without it.
 
 ## 4. Open decisions, waiting on the owner
+
+- **ADR-0082 — sidecrew writes the oracle it is judged by (proposed, 21 Sep, the owner's own
+  proposal).** Every step of the loop but two is already `VISION.md`'s; **the delta is that the oracle
+  stops being borrowed from the project and starts being manufactured** — the worker writes tests
+  covering the region about to change, gated by workload #1, *before* the change exists. It is not
+  circular: the ordering plus ADR-0016's gate pins the test to the old behaviour before there is a
+  change to accommodate. **For #2b it is the first candidate oracle that has ever existed**, which is
+  the part worth the owner's time.
+  **Recommendation: D, then B, then C.** D is one short run — the yield of asking a worker for tests
+  that kill a mutant **inside a named line range** (ADR-0013 already scopes mutation that way).
+  Workload #1's *untargeted* yield on real projects is 3/8, 4/8, 4/10, so the targeted number is what
+  every version of this rests on and nobody has it. **Freeze D's rule before running it.**
+  Does not block, and does not block ADR-0077-B either; that one is the cheaper win and is available
+  now.
 
 - **ADR-0075 — DECIDED 20 Sep: option C, symbol-scoped return.** The worker returns one
   declaration's new text and sidecrew splices it back by AST range, so the bound becomes the *symbol*
