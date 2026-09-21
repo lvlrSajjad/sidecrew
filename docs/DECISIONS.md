@@ -5564,3 +5564,33 @@ copy of its rules** — and where the answer cannot be had before the irreversib
 finding about the pipeline's order, not an acceptable risk. Three of this week's four release defects
 are the same shape from a different angle: an assertion that read the developer's environment when it
 meant to read the artefact, and now one that read the artefact when it meant to read the registry.
+
+### Addendum, 21 Sep 2026 — the rule has a limit, and `v0.1.1` found it
+
+`0.1.1` went out with everything above in place. It **proved the three unproven flows**: npm Trusted
+Publishing authenticated, `--provenance` wrote a SLSA statement to the sigstore transparency log
+(`logIndex 2905544693`), and the registry's `login github-oidc` reported `✓ Successfully logged in`.
+The gate's new `mcp-publisher validate` passed. `publish` then failed twice, for two entirely
+different reasons:
+
+1. **The registry's own database was down** — `dial tcp …:5432 connect: connection refused` on
+   `registry-pg-rw`. Not ours. Re-running the failed job was enough, and it is worth knowing that
+   `gh run rerun <id> --failed` re-runs one job against the same tag — which beats deleting and
+   re-pushing a tag for a transient third-party outage, and is the closest thing this workflow has to
+   the `workflow_dispatch` it does not have.
+2. **`package.json` had no `mcpName`.** The registry validates the **published npm package**, not just
+   `server.json`: it fetches the tarball and refuses unless `package.json` declares
+   `"mcpName": "io.github.lvlrSajjad/sidecrew"`. That is its proof that whoever publishes the entry
+   controls the npm package.
+
+**The second one is the limit of this ADR's rule, and it is worth stating rather than pretending
+otherwise.** *Ask the system that will refuse you* assumes it can be asked **before** the irreversible
+step. Here it cannot: the registry's check reads a package that does not exist until npm has taken the
+version, and npm will not take a version twice. There is no pre-flight endpoint for it. So the gate
+now carries a **local copy of the registry's rule** — `package.json.mcpName == server.json.name` —
+which is exactly what the rule above argues against, adopted knowingly, because the alternative is
+finding out after npm every time. A local copy can go stale; that is the cost, and it is smaller than
+one burned version per discovery.
+
+**It cost `0.1.2`.** `0.1.1` is on npm, correct and provenance-signed, and is simply not the version
+the registry will point at.

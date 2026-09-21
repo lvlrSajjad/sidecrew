@@ -77,6 +77,25 @@ jobs:
           curl -sS --fail -m 30 "$url" -o /tmp/mcp-server.schema.json
           npx -y ajv-cli@5 validate --spec=draft7 --strict=false -s /tmp/mcp-server.schema.json -d server.json
 
+      - name: package.json claims the MCP name server.json publishes under
+        # **The registry validates the published npm package, not just `server.json`.** It fetches the
+        # tarball and refuses the publish unless `package.json` carries `mcpName` equal to the server
+        # name — that is how it proves the person publishing the entry controls the npm package. Found
+        # the hard way on `v0.1.1`: `mcp-publisher validate` passed, `login github-oidc` succeeded, and
+        # `publish` returned 400 with the field named. `0.1.1` was already on npm by then, so the fix
+        # cost a version.
+        #
+        # This one **is** a local copy of somebody else's rule, which ADR-0080 is otherwise against,
+        # and it is here anyway because there is no pre-flight endpoint for it: the registry can only
+        # answer once the package is published, which is after the point of no return. It catches the
+        # omission, which is the failure mode that actually happened.
+        run: |
+          mcp=$(node -p "require('./package.json').mcpName ?? ''")
+          srv=$(node -p "require('./server.json').name")
+          echo "package.json mcpName=$mcp  server.json name=$srv"
+          [ -n "$mcp" ] || { echo "::error::package.json has no mcpName — the registry will refuse the publish AFTER npm has taken the version"; exit 1; }
+          [ "$mcp" = "$srv" ] || { echo "::error::mcpName ($mcp) != server.json name ($srv)"; exit 1; }
+
       - name: the registry itself accepts server.json
         # The step above validates the file against **the schema the file names**, which can only ever
         # catch invalidity and never staleness. `v0.1.0` passed it and was then rejected by the registry

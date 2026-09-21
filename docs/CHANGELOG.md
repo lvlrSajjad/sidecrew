@@ -1,4 +1,23 @@
 # Changelog
+## v0.1.2 — `mcpName`, and the MCP Registry entry (2026-09-21)
+
+**`0.1.1` proved the pipeline and could not claim the registry entry.** It published to npm with a
+SLSA provenance attestation over Trusted Publishing, and the registry's `login github-oidc` succeeded
+— all three previously unproven flows, confirmed. `publish` then failed twice: once on the registry's
+own database being down (`dial tcp …:5432 connection refused`, not ours, fixed by
+`gh run rerun --failed` on the one job), and once for real.
+
+- **The registry validates the published npm package, not just `server.json`.** It fetches the tarball
+  and refuses unless `package.json` declares `"mcpName": "io.github.lvlrSajjad/sidecrew"` — its proof
+  that whoever publishes the entry controls the npm package. `mcp-publisher validate` does not check
+  this; only `publish` does, and by then npm has taken the version. Hence `0.1.2`: `0.1.1` is on npm,
+  correct and signed, and is simply not the version the registry points at.
+- **The gate now checks `package.json.mcpName == server.json.name`.** This is a *local copy* of
+  somebody else's rule, which ADR-0080 otherwise argues against — adopted knowingly, because the
+  registry's check reads a package that does not exist until after the irreversible step, and there is
+  no pre-flight endpoint. It catches the omission, which is the failure that actually happened. The
+  limit of ADR-0080's rule, and the addendum says so.
+
 ## v0.1.1 — the release pipeline, proved against the systems it publishes to (2026-09-21)
 
 **The `v0.1.0` release runs, and the three defects they found.** The tag was moved onto the

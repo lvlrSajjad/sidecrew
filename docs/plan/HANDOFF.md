@@ -32,9 +32,9 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **769 passing**, 1 skipped |
-| version | **`0.1.1`** — bumped 21 Sep in all six places (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2) and `dist` rebuilt, so the tarball announces `0.1.1`. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
+| version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
-| published | **`sidecrew@0.1.0` IS ON npm** (21 Sep, hand-published, `latest`, **and with no provenance attestation — it cannot gain one**, §2). Trusted Publisher registered — `github` / `lvlrSajjad/sidecrew` / `release.yml`. **GitHub Pages is on.** **The MCP Registry entry still does not exist** — the 21 Sep re-run reached `registry` and was refused, ADR-0080. `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
+| published | **`sidecrew@0.1.1` is on npm as `latest`, with a SLSA provenance attestation** — published by the workflow over Trusted Publishing, 21 Sep. `0.1.0` is also there, hand-published and **unsigned; it cannot gain an attestation**. **GitHub Pages is on.** **The MCP Registry entry still does not exist** — `0.1.1`'s publish was refused for a missing `package.json` `mcpName`, which is why `0.1.2` exists (ADR-0080 addendum). `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — **inputs verified present 21 Sep**, but it needs a harness written first, not just a replay |
 | ADRs | run to **0080**; start new ones at 0081. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
@@ -165,43 +165,30 @@ pushing the fix for the first two and reading the job that had never been read.*
   exercised directly at `total_gb: 7.0`, and both test files run green in a tracked-files-only copy of
   the tree with no `.sidecrew` in it.
 
-**0′. Finish the release — the MCP Registry entry is the only thing left, and the blockers are
-fixed but not yet retried.** `sidecrew@0.1.0` is on npm as `latest`. The registry entry is not.
+**0′. Finish the release — only the MCP Registry entry is left, and `0.1.2` is cut for it.**
 
-**What the 21 Sep re-run found — ADR-0080, and it is worth reading before touching this.** The tag was
-moved onto `b0f7a85` and the run reached `registry` for the first time. `gate` ✓, `npm` ✓,
-`registry` ✗ — **and only two of those three marks were true.**
+**What `0.1.1` proved, so nobody re-derives it.** All three previously unverified flows work: npm
+**Trusted Publishing** authenticated with no token anywhere; **`--provenance`** wrote a SLSA statement
+to the sigstore transparency log; and the registry's **`login github-oidc`** reported
+`✓ Successfully logged in`. `sidecrew@0.1.1` is on npm as `latest` and signed.
 
-- **`server.json` was pinned to a schema nobody enforces any more.** It named `2025-07-09`, the last
-  one with snake_case package keys; the API reads camelCase and refused with a 422 on
-  `packages[0].registryType`. **The gate could not have caught it** — it fetches the schema from the
-  URL `server.json` itself names, so a stale file validates against its own obsolescence. Migrated to
-  `2025-12-11`; against that schema the old file fails ajv outright, so the bump restores the check.
-- **`npm publish ... | tee` reported every failure as success.** bash takes a pipeline's status from
-  its last command and `tee` always succeeds. The `npm` job's ✓ was false: `prepublishOnly` had
-  failed. **So `0.1.0` on npm carries no provenance attestation and cannot gain one** — npm refuses a
-  re-publish of a version. Provenance starts at `0.1.1`.
-- **The suite had never run on Linux.** `prepublishOnly` runs it, the `npm` job was `ubuntu-latest`,
-  and `test/cache.test.ts`'s *"does not throw when it cannot write"* timed out. `ci.yml` is macOS
-  deliberately and for a good reason, so the job moved to `macos-latest`. The Linux behaviour itself is
-  unreproduced and is in `BACKLOG.md`.
+**What stopped it, twice.** First the registry's own database was down
+(`dial tcp …:5432 connection refused`) — not ours, and `gh run rerun <id> --failed` re-runs the one
+job against the same tag, which is the closest thing this workflow has to the `workflow_dispatch` it
+does not have. Then, for real: **the registry validates the published npm package, not just
+`server.json`** — it fetches the tarball and refuses unless `package.json` declares
+`"mcpName": "io.github.lvlrSajjad/sidecrew"`. `mcp-publisher validate` does not check it; only
+`publish` does, and by then npm has taken the version and will not take it again. Hence `0.1.2`.
 
-**Fixed 21 Sep, all four, and verified locally**: `server.json` migrated and accepted by
-`mcp-publisher validate` against the live registry; `mcp-publisher validate` added **to the gate**, so
-the registry is asked before npm is written to; the publish step captures `npm publish`'s status
-instead of piping it; the `npm` job on `macos-latest`; one workflow-level `MCP_PUBLISHER_VERSION`
-pin shared by both jobs.
+**Both fixes are in and verified locally**: `mcpName` is in `package.json` **and in the packed
+tarball**, and the gate now checks `package.json.mcpName == server.json.name` before anything is
+published. That check is a *local copy of somebody else's rule*, which ADR-0080 otherwise argues
+against; the addendum explains why it is here anyway — there is no pre-flight endpoint, so the
+alternative is one burned version per discovery.
 
-**The retry is `0.1.1`, not a re-tag of `0.1.0` — owner's call, 21 Sep.** `0.1.0` is on npm without a
-provenance attestation and **cannot gain one**, because npm refuses to re-publish a version. Re-tagging
-`0.1.0` would have skipped the `npm` job entirely and proved only the registry half. `0.1.1` is the
-first run that exercises **all three unproven things at once**: Trusted Publishing, which has never
-authenticated; `--provenance`, which has never been written; and the registry's `login github-oidc`,
-which has never executed — the 21 Sep attempt died in `validate`, one step earlier.
-
-**There is no `workflow_dispatch`** on `release.yml`, only `on: push: tags`, so a failed release is
-re-run by deleting and re-pushing the tag. `v0.1.0` stays where it is, at `b0f7a85`: it is a real
-published npm version and moving it again would say otherwise.
+**Next: tag `v0.1.2`.** There is no `workflow_dispatch`; a failed release is re-run by
+`gh run rerun --failed` when one job failed transiently, or by deleting and re-pushing the tag
+otherwise. `v0.1.0` and `v0.1.1` stay where they are — both are real published npm versions.
 
 **1. The owner actions are all done.** Pages is on, the versions are at `0.1.0`, `0.1.0` is
 hand-published to npm as `latest`, and Trusted Publishing is registered. `v0.1.0-rc.1` and `-rc.2`
