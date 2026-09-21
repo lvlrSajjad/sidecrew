@@ -48,6 +48,10 @@ experiments/correction-round/plans/
 # regressed and quotes the compiler's words about the client's code. The result JSON beside them carries
 # the counts, the hashes and D — which are ours (CLAUDE.md #7, ADR-0051).
 experiments/gate-error-rate/results/*-verdicts/
+# Same rule as every other run log here: a harness prints sandbox paths, and a sandbox is a copy of a
+# client checkout. The measured result JSON beside it is written deliberately, carries counts and no
+# identifiers, and IS committed.
+experiments/gate-error-rate/results/*.log
 # The fixture is our own code, so its handshake is safe and stays in the repo.
 !experiments/go-no-go-2a/c3/fixture/prompts/
 !experiments/go-no-go-2a/c3/fixture/answers/

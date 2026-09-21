@@ -293,7 +293,13 @@ for (const [i, e] of corpus.entries()) {
       regressed = reg.length;
       // ADR-0074's reading: which suites regressed is the only structure anyone has found in these.
       // The count of distinct suites is that structure without the client's file names.
-      regressedSuites = new Set(reg.map((id) => id.split(" ")[0])).size;
+      //
+      // The id is `<file>::<full test name>` — `src/change.ts`'s `passed_ids`. Splitting on a SPACE,
+      // which this line did until it was checked, gives the first word of that whole string and
+      // over-counts suites by roughly the number of tests. It had never produced a non-zero value, so
+      // nothing showed. Re-deriving a format instead of reading the writer's is the same mistake
+      // `safeName` cost a night for, made in the harness written to avoid it.
+      regressedSuites = new Set(reg.map((id) => id.split("::")[0])).size;
       ranAfter = suite.ran;
       passedAfter = suite.passed;
       tests_ok = suite.reported
