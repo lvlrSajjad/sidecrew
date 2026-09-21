@@ -1,0 +1,77 @@
+{
+  "measured": true,
+  "experiment": "editing-ceiling",
+  "what": "ADR-0077 option D — the counterfactual: would the clean-target tasks survive the suite if test-file type errors were observations?",
+  "rule": "ADR-0077, option D, frozen 20 Sep 2026 before any number existed",
+  "gate_modified": false,
+  "note": "changeSurvives and verifyChange are untouched. This harness applies its own compile rule to a replayed verify; the tests_ok clause is the production one, verbatim. The result is a COUNTERFACTUAL, not a survival rate.",
+  "denominator": {
+    "n": 1,
+    "of_declared": 30,
+    "note": "A conditional number about a subset chosen after seeing failures. S14 = 2/30 is the rule's number and is not recomputed here (§4.0 precondition 4)."
+  },
+  "counterfactual": {
+    "reached_the_suite": 1,
+    "survived": 1,
+    "did_not_reach_the_suite": 0
+  },
+  "cross_check": {
+    "every_introduced_error_was_in_a_test_file": true,
+    "note": "ADR-0077 read 21 of 21 off the reference verdicts. This is the same claim re-measured on this subset, from a fresh typecheck rather than from the recorded verdict."
+  },
+  "baseline": {
+    "captured_at": "2026-09-21T12:37:27.827Z",
+    "ran": 6368,
+    "passed": 6159,
+    "tsc_errors": 11412
+  },
+  "compiler_flags": [
+    "--strictNullChecks"
+  ],
+  "runner": "jest",
+  "machine_at_start": {
+    "pressure": "normal",
+    "free_gb": 24.978897094726562,
+    "swap_gb": 0.016298828125,
+    "compressed_gb": 2.3338775634765625
+  },
+  "per_task": [
+    {
+      "task_id": "snc-27",
+      "attempts": 2,
+      "confined": true,
+      "compile_ok_production": false,
+      "compile_ok_counterfactual": true,
+      "remaining_in_target": 0,
+      "introduced_total": 1,
+      "introduced_in_test_files": 1,
+      "introduced_in_non_test_files": 0,
+      "test_file_count": 1,
+      "non_test_file_count": 0,
+      "reached_suite": true,
+      "tests_ok": true,
+      "regressed": 0,
+      "regressed_suites": 0,
+      "ran_before": 6368,
+      "ran_after": 6368,
+      "passed_before": 6159,
+      "passed_after": 6159,
+      "survived_counterfactual": true,
+      "ms": 214773,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 25.914947509765625,
+          "swap_gb": 0.016298828125,
+          "compressed_gb": 2.979888916015625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 25.576461791992188,
+          "swap_gb": 0.016298828125,
+          "compressed_gb": 2.8578948974609375
+        }
+      }
+    }
+  ]
+}

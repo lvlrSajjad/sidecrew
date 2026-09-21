@@ -13,7 +13,11 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 21 Sep 2026**, after the session that **re-ran the `v0.1.0` release** and found three
+**Last updated: 21 Sep 2026**, after the session that **published `0.1.2` to npm and the MCP Registry**
+(ADR-0080), **found and fixed a hole in the gate** — `*.e2e-spec.ts` was not a test file to any of the
+four copies of the rule that says what one is (**ADR-0081**) — and **measured ADR-0077's option D at
+`14/15`**, which retires A and C and puts **B in front of the owner**. Earlier the same day it re-ran
+the `v0.1.0` release and found three
 defects with it (**ADR-0080**): a `server.json` pinned to a superseded registry schema, an `npm` job
 whose publish failure read as success, and a suite running on a platform we do not ship to. All four
 fixes are in; the registry entry is still owed, §3.0′. The session before it got `main` green for the
@@ -36,8 +40,8 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. The nearest *work* is still ADR-0077's counterfactual, §3.2 — **inputs verified present 21 Sep**, but it needs a harness written first, not just a replay |
-| ADRs | run to **0081**; start new ones at 0082. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
+| next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. **ADR-0077's counterfactual is DONE (14/15, 21 Sep)**, so the nearest work is now 14c itself — or ADR-0077 option B, which needs the owner |
+| ADRs | run to **0081**; start new ones at 0082. **ADR-0077 option B needs the owner** — D is measured, 14/15. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -192,43 +196,41 @@ hand-published to npm as `latest`, and Trusted Publishing is registered. `v0.1.0
 both failed and published nothing. What remains of the release is §3.0′, and it is not an owner action
 — it is a commit, a push and a re-cut tag.
 
-**2. ADR-0077's counterfactual — the harness is built and the run is the next thing.** Option D is
-**accepted**; A, B and C are deliberately still open and wait on this number.
+**2. ADR-0077's counterfactual — DONE, 21 Sep. `14/15`, and option B needs the owner.**
 
-**`scripts/adr-0077-counterfactual.ts` + `.sh` exist and are committed.** Re-gate probe 1's **15
-clean-target tasks** — `unsatisfiable_breakdown.target_was_fixed_correctly` in
-`experiments/editing-ceiling/results/probe1-14b-classified.json`, and the ids are on its rows as
-`target_clean` — with test-file *type* errors demoted to observations, and count how many survive the
-suite. It reads the subset from that tracked file **and re-derives it from the verdicts and asserts
-they agree**; it takes the project path from the plan's own `project` field so the client's path is
-typed one fewer place; and it refuses to write a payload containing any segment of it.
+| | k/n | 95 % exact |
+|---|---|---|
+| the counterfactual | **14/15** | **[0.681, 0.998]** |
+| `S₁₄`, unchanged | 2/30 | [0.008, 0.221] |
 
-**It is not a replay of the recorded verdicts, which is what made it a harness rather than an hour.**
-`verifyChange` short-circuits — `src/change.ts`, *"Skipped when the verdict is already settled"* — so
-for all 15 the suite never ran and there is no suite result on disk. It drives apply → compile → suite
-itself, applying its **own** compile rule while `changeSurvives` and `verifyChange` stay untouched;
-the `tests_ok` clause is the production one verbatim.
+**All 15 reached the suite; 14 passed it.** The intervals do not overlap, which is what makes it an
+answer. Every one of the 15 demoted exactly one error and all 15 were in a test file, re-measured from
+a fresh `tsc`. On the same 30 a B-shaped gate scores **16** — the other 14 fail for reasons a
+test-file demotion does not touch. **That is a counterfactual and `S₁₄` stays `2/30`.**
+`experiments/editing-ceiling/results/adr-0077-counterfactual-2026-09-21.json`.
 
-**Cost, measured rather than guessed:** probe 1's baseline was `tsc` 17.8 s + suite 260 s, so one
-baseline plus 15 tasks that reach the suite is **~80 minutes**. No worker, no model, nothing resident
-at 8.2 GB — but it does reach the suite, so **ADR-0066 applies: a swapping machine produces false
-regressions**, and the run records both machine samples.
+**The one failure is the finding to carry.** `snc-27` failed with 82 regressions and **passed a second
+reading of the same bytes with 0** — same baseline to the test, machine `pressure: normal` and swap
+flat on both sides of both verdicts. **A third instance of the gate disagreeing with itself, and the
+first where pressure is excluded rather than suspected** (ADR-0066 addendum, 21 Sep). It is reported
+as 14/15 — the *failing* reading — because taking the better of two is what ADR-0066 forbids, and the
+conclusion holds either way.
 
-**The first attempt was stopped at task 1 of 15, and that is where ADR-0081 came from.** `snc-02` came
-back `demoted=0` — the predicate the harness asks did not think an `*.e2e-spec.ts` file was a test
-file, and 14 of the 15 sinking files are exactly that. The run would have answered *0 or 1 of 15* for
-a reason with nothing to do with ADR-0077's question. **ADR-0081 is fixed and the run has not been
-repeated yet.** That is the next action.
+**Recommendation: B, and the measurement names B's own weak point.** B gates on the tests *still
+passing* rather than still type-checking; `snc-27` is that clause disagreeing with itself inside an
+hour on an idle machine. B moves weight off a deterministic check onto a non-deterministic one, so
+**characterising `D` on a corpus where pressure is excluded is now on the critical path to B** rather
+than a loose end. **A is retired** by the number — it would write off work the gate can be shown to
+credit. **C is retired more firmly**: it would have pre-filtered away all 15, 14 of which pass.
 
-**Two constraints that are the whole point of the measurement, not ceremony:**
+**How to re-run any of it.** `scripts/adr-0077-counterfactual.sh` (~80 min, no worker, no model) and
+`--only <task_id>` for a single-task second opinion (~8 min). Both take the project path from the
+plan's `project` field and refuse to write a payload containing any segment of it.
 
-- **`changeSurvives` is not modified.** Editing the gate to get a better number is the thing this
-  project exists to be the opposite of. ADR-0081 *did* change the gate — it made it **stricter**, moved
-  no published number, and was found by a question asked independently of the answer. ADR-0081's last
-  section states that difference rather than assuming it.
-- **Report it as a counterfactual over 15, stated beside the 30.** A conditional number about a subset
-  chosen after seeing failures, which §4.0 precondition 4 forbids doing quietly. The harness labels it
-  so and does not call it a survival rate.
+**What ADR-0081 cost, and why it was not optional.** The first attempt was stopped at task 1 of 15:
+the gate did not think `*.e2e-spec.ts` was a test file, so nothing was demoted and the run would have
+answered *0 of 15* for a reason unrelated to the question. See §2 of ADR-0081 for why fixing the gate
+first is not what ADR-0077's first constraint forbids.
 
 **3. Phase 14's exit check runs for two weeks from the real tag**, not from the rc and not from today.
 `F` = distinct *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → fine.

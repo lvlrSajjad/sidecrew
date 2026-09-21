@@ -1,6 +1,32 @@
 # Changelog
 ## Unreleased
 
+**ADR-0077 option D is measured: 14 of 15.** The counterfactual re-gates probe 1's 15 clean-target
+tasks with test-file *type* errors demoted to observations. **All 15 reached the suite and 14 passed
+it** — `14/15`, 95 % `[0.681, 0.998]`, against `S₁₄ = 2/30`, `[0.008, 0.221]`. **The intervals do not
+overlap.** `changeSurvives` and `verifyChange` are untouched; the harness applies its own compile rule
+and the production `tests_ok` verbatim, and the result is labelled a counterfactual, not a rate.
+
+- **The gate's scope, not the worker, is what those tasks died on** — ADR-0077's reading, now with a
+  number instead of an inference from the funnel. Every one of the 15 demoted exactly one error, all
+  15 in a test file, re-measured from a fresh `tsc` rather than re-read off the recorded verdicts.
+- **On the same 30 a B-shaped gate scores 16**, because the other 14 fail for reasons a test-file
+  demotion does not touch. `16/30`, `[0.343, 0.717]` — a counterfactual, and `S₁₄` stays `2/30`.
+- **The one failure is the most useful thing in the run.** `snc-27` failed with 82 regressions and
+  **passed a second reading of the same bytes with 0**, on an unloaded machine — `pressure: normal`,
+  swap flat, bracketed per verdict. That is a **third** instance of the gate disagreeing with itself
+  and **the first where memory pressure is excluded rather than suspected** (ADR-0066 addendum). It is
+  reported as 14/15, the failing reading, because taking the better of two readings is exactly what
+  ADR-0066 forbids — and the conclusion holds either way.
+- **The recommendation is B, and the same measurement names B's weak point**: B gates on the tests
+  *still passing* rather than still type-checking, which moves weight off a deterministic check onto
+  the one that just disagreed with itself. Characterising `D` where pressure is excluded is now on the
+  critical path to B rather than a loose end.
+- The harness gained `--only` for a single-task second opinion, per-task machine samples before and
+  after each verdict — the first pass sampled once at the start, which is weaker than what
+  `verifyChange` has done since ADR-0066 — and a count of distinct regressed suites (ADR-0074's
+  structure, without the client's file names).
+
 **`app.e2e-spec.ts` was not a test file to the gate — ADR-0081.** Found by ADR-0077's counterfactual,
 which demotes type errors *in test files* and asks the gate's own predicate which files those are. The
 first task came back with nothing demoted; reading the recorded verdicts, **14 of the 15 sinking files

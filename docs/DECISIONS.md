@@ -4504,6 +4504,21 @@ project's tests happen to encode, and midnight is merely the most common one. Th
 works is **"the baseline and the verdict fall on the same calendar day in the suite's timezone"**,
 with the recorded `captured_at` making any other boundary detectable after the fact.
 
+## ADR-0066 addendum — a third disagreement, and the first with pressure ruled out (21 Sep 2026)
+
+ADR-0077's counterfactual produced one, incidentally and outside the corpus `D` was measured on.
+`snc-27`: **82 regressions on the first reading, 0 on a second reading of the same bytes**, an hour
+apart, against baselines reproducing each other exactly (6159/6368 passing, 11,412 `tsc` errors).
+
+**The machine bracketed both verdicts and was quiet for both** — `pressure: normal`, swap flat at
+0.016 GB, free 25–26 GB, before and after. This ADR's own case was a swapping machine and `D = 2/19`
+was measured where pressure was the assumed explanation. **Here it is excluded.** The mechanism is
+therefore not established, and the honest position is that it is unknown rather than known-and-fixed.
+
+Not folded into `D`: different corpus, different rule. Recorded because it is the first of these three
+with telemetry on both sides, and because ADR-0077's option B would move the gate's weight *onto* the
+clause that did this.
+
 ## ADR-0066 and ADR-0069 addendum — decided together and implemented on `main`, 19 Sep 2026
 
 **Decided in one sitting, on purpose.** The two are the same shape — *record, don't gate* — and taking
@@ -5176,8 +5191,9 @@ caught it was written for a different reason entirely.
 
 ## ADR-0077 — `null_guard` under a strictness flag is unpassable by construction, and gets more so as the worker improves (PROPOSED)
 
-**Status:** **option D accepted by the owner, 20 Sep 2026** · Phase 14b · A, B and C remain open and
-are deliberately not decided — D is the decision to *measure before choosing*, and it is the whole of
+**Status:** **option D accepted 20 Sep 2026 and MEASURED 21 Sep — 14/15, see the section below** ·
+Phase 14b · A is retired by that number, C more firmly; **B is recommended and needs the owner** ·
+originally: A, B and C remain open and are deliberately not decided — D is the decision to *measure before choosing*, and it is the whole of
 what was agreed. Phase 14b's own verdict — `PROCEED to 14c` — does not depend on any of them.
 
 **What D commits to, so a later session does not widen it.** One run: re-gate probe 1's **15
@@ -5262,6 +5278,67 @@ it is the number nobody has, and every argument for B assumes it.
 Phase 14b still reports `PROCEED to 14c` and 14c is unaffected — its subject is *reach*, and reach is
 ADR-0075's. What lapses is the Shapes row: it would record `null_guard` as "the worker can do it, the
 gate cannot credit it", which is accurate and is not a state to leave a scorecard in indefinitely.
+
+---
+
+### Option D, measured — 21 Sep 2026
+
+**14 of 15, and all 15 reached the suite.** `experiments/editing-ceiling/results/adr-0077-counterfactual-2026-09-21.json`.
+
+| | k/n | 95 % exact | |
+|---|---|---|---|
+| this counterfactual | **14/15** | **[0.681, 0.998]** | clean-target tasks, test-file type errors demoted |
+| `S₁₄`, the rule's number | 2/30 | [0.008, 0.221] | unchanged, and not recomputed |
+
+**The intervals do not overlap**, which is what makes this an answer rather than a hint. The gate's
+scope, not the worker, is what those 15 tasks died on — ADR-0077's reading, now with a number behind
+it instead of an inference from the funnel.
+
+**Every one of the 15 demoted exactly one error, and all 15 were in a test file** — re-measured from a
+fresh `tsc` rather than read off the recorded verdicts, so it is an independent confirmation of the
+*21 of 21* above and not a second reading of the same field.
+
+**On the same 30, a B-shaped gate scores 16.** The 2 that survive today plus these 14; the other 14
+tasks fail for reasons a test-file demotion does not touch — 4 left errors in the target, 3 returned
+the file byte-identical, 6 were unsatisfiable *and* failed the target, all by the classifier's own
+fields. `16/30 = 0.533`, 95 % `[0.343, 0.717]`. **This is a counterfactual and it is not `S₁₄`**;
+Phase 14b's rule is applied to `2/30` and stays there.
+
+### The one failure is the most useful thing in the run
+
+`snc-27` failed the first reading with **82 regressions** and **passed a second reading of the same
+bytes with 0**. Both against a baseline reproducing probe 1's exactly — 6159/6368 passing, 11,412 `tsc`
+errors — and, this time, with the machine bracketed per verdict: **`pressure: normal`, swap flat at
+0.016 GB, on both sides of both readings.**
+
+**So this is a third measured instance of the gate disagreeing with itself, and the first where memory
+pressure is ruled out rather than suspected.** `D = 2/19 = 0.105` came from a corpus where the
+explanation was assumed to be pressure; ADR-0066's own case was a swapping machine. This one was not.
+Whatever `D` is, it is not only that. Recorded here rather than folded into `D`, which is a different
+corpus and a different rule.
+
+**The counterfactual is reported as 14/15 — the failing reading — deliberately.** ADR-0066's finding
+is that a verdict is not a pure function of its inputs; taking the better of two readings because it
+is better is precisely the move that ADR forbids. **The conclusion does not depend on it**: 14/15 and
+15/15 are both decisively above `S₁₄`.
+
+### Recommendation on A/B/C — and the result argues both ways at once
+
+**B, and the measurement that supports it also names its weak point.** B gates on the test files
+*still passing* rather than *still type-checking*, and `snc-27` is the clause "still passing"
+disagreeing with itself inside one hour on an unloaded machine. **B moves weight off a deterministic
+check onto a non-deterministic one**, and the size of that non-determinism is the unresolved `D`.
+
+That is not an argument against B — 14/15 against 2/30 is too large to leave on the table, and the
+status quo *also* depends on the suite for every task that gets past `compile`. It is an argument that
+**B's own proof obligation is the one ADR-0077 already wrote down** — *"needs its own proof that it
+cannot be gamed"* — **plus a second one nobody had listed: that a flip like `snc-27`'s is rare enough
+to price in.** Characterising `D` on a corpus where pressure is excluded is now on the critical path
+to B, where before it was a loose end.
+
+**A is retired by this number** — writing `null_guard` off as out of scope would be writing off work
+the gate can be shown to credit. **C is retired more firmly than before**: pre-filtering the pool
+would have removed all 15 of these tasks, 14 of which pass the project's own suite.
 
 ---
 
