@@ -13,17 +13,15 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 21 Sep 2026**, after the session that wrote **ADR-0082** from the owner's proposal —
-*sidecrew writes the oracle it is judged by* — **published `0.1.2` to npm and the MCP Registry**
-(ADR-0080), **found and fixed a hole in the gate** — `*.e2e-spec.ts` was not a test file to any of the
-four copies of the rule that says what one is (**ADR-0081**) — and **measured ADR-0077's option D at
-`14/15`**, which retires A and C and puts **B in front of the owner**. Earlier the same day it re-ran
-the `v0.1.0` release and found three
-defects with it (**ADR-0080**): a `server.json` pinned to a superseded registry schema, an `npm` job
-whose publish failure read as success, and a suite running on a platform we do not ship to. All four
-fixes are in; the registry entry is still owed, §3.0′. The session before it got `main` green for the
-first time since 18 Sep, took three owner decisions (**ADR-0075** option C, **ADR-0078**, and the
-ADR-0064 discussion) and wrote **ADR-0079** from the owner's own framing.
+**Last updated: 21 Sep 2026.** That session, in order: re-ran the `v0.1.0` release and found three
+defects in the pipeline, then two more (**ADR-0080**); **published `0.1.2` to npm and the MCP
+Registry**, which is Phase 14 finished; found and fixed **a hole in the gate** — `*.e2e-spec.ts` was
+not a test file to any of the four copies of the rule that says what one is (**ADR-0081**); **measured
+ADR-0077's option D at `14/15`**, retiring A and C and putting **B in front of the owner**; and wrote
+**ADR-0082** from the owner's proposal, *sidecrew writes the oracle it is judged by*.
+
+The session before it got `main` green for the first time since 18 Sep, took three owner decisions
+(**ADR-0075** option C, **ADR-0078**, the ADR-0064 discussion) and wrote **ADR-0079**.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -38,16 +36,22 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **773 passing**, 1 skipped |
 | version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
-| pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. **`v0.1.0-rc.1` and `-rc.2` are both tagged and pushed; neither published anything** |
+| pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach. UNBLOCKED** — ADR-0075 accepted (option C) 20 Sep. 14b is done, CI is green, nothing blocks it. **ADR-0077's counterfactual is DONE (14/15, 21 Sep)**, so the nearest work is now 14c itself — or ADR-0077 option B, which needs the owner |
-| ADRs | run to **0082**; start new ones at 0083. **0082 and 0077-B both need the owner** — 0082 is the owner's own proposal (sidecrew writes its own oracle) and its option D is one short run; 0077's D is measured at 14/15. **0064 and 0079 need the owner.** 0079 is the owner's own recon proposal, written up 20 Sep, and it largely retires 0064. 0075 accepted (option C), 0078 accepted (the floor applies to `--dry-run` too). 0077's **option D is accepted**; A/B/C wait on D's number |
+| next phase | **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
+| ADRs | run to **0082**; start new ones at 0083. **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
 
-## 2. Phase 14 is built. The rc is cut; the release is not.
+## 2. Phase 14 — PUBLISHED. How it got there, and what each step cost.
+
+> **Everything in this section is done.** `sidecrew@0.1.2` is on npm with provenance and
+> `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry. It is kept in full because the
+> pipeline cost **five defects of five different shapes in one day** and the next release meets the
+> same machinery. **Nothing below is an instruction** — it is a record, and some of it is written in
+> the tense it was written in.
 
 **Everything in the DoD is on `main`:**
 
@@ -62,14 +66,15 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 **The owner's four actions are all DONE as of 21 Sep** — kept below because each one cost a measured
 finding, and a future release will need them again. What is *not* done is the MCP Registry entry, §3.0′.
 
-1. **Publish `0.1.0` to npm by hand — this must come FIRST, and it is not optional.**
+1. ~~**Publish `0.1.0` to npm by hand**~~ — **DONE.** It had to come first, and that is the durable
+   part: **Trusted Publishing cannot be configured for a package that does not exist.**
    **Trusted Publishing cannot be configured for a package that does not exist.** Measured on
    21 Sep: `npm trust github sidecrew --file release.yml --allow-publish` prompts, **takes the 2FA
    code**, and only then fails
    `npm error 404 Not Found - POST https://registry.npmjs.org/-/package/sidecrew/trust`. The CLI
    validates existence *after* authenticating, so reaching the prompt proves nothing — do not read it
-   as progress. `sidecrew` is still a 404 on the registry and the name is unclaimed.
-2. **Then configure npm Trusted Publishing** — **not** a token; npm is ending token publishing, so
+   as progress. *(At the time of writing, `sidecrew` was a 404 and the name was unclaimed.)*
+2. ~~**Then configure npm Trusted Publishing**~~ — **DONE.** **Not** a token; npm is ending token publishing, so
    there is no secret to add to this repository at all. Either `npm trust github sidecrew --file
    release.yml --allow-publish` (needs npm ≥ 11.5.1 — the machine is on **11.19.1** as of 21 Sep) or
    npmjs.com → the package → Settings → Trusted Publisher → GitHub Actions, with
@@ -110,8 +115,10 @@ release to learn:
 - **An already-published version is a skip, not a failure**, so a hand publish followed by a tag does
   not stop the run before the registry step.
 
-Nothing was published by either. npm and the MCP Registry have never been touched, the `registry`
-job's `login github-oidc` flow is **still unverified**, and `0.1.0` is still unclaimed.
+Nothing was published by either rc. **All three unknowns named here were resolved on 21 Sep**: npm
+Trusted Publishing authenticated, `--provenance` wrote a SLSA statement to the sigstore transparency
+log, and the registry's `login github-oidc` reported `✓ Successfully logged in`. §3.0′ has what it
+took.
 
 **The version check had a false pass, and it is the one the workflow's own comment calls the failure
 a second release cannot fix.** It extracted `src/mcp.ts`'s version with
@@ -132,7 +139,31 @@ now fixed, and neither of which the gate would ever have caught:**
 
 ## 3. What to do next
 
-**In this order.**
+### Start here — everything live, in cost order
+
+**Nothing is blocked and nothing is half-finished.** Phase 14 is published, CI is green, the tree is
+clean, no run is in flight. Items **0 → 2** below are this week's completed work, kept because each
+cost a finding; **they are history, not a queue.** These are the live options:
+
+| | what | cost | needs |
+|---|---|---|---|
+| **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions · **one overnight run** | nothing. **Freeze its exit check before starting**, §PHASES |
+| **B** | **ADR-0082 option D** — the yield of asking a worker for tests that kill a mutant **inside a named line range** | **one short run**, no overnight | **freeze D's rule first.** The number every version of ADR-0082 rests on, and nobody has it |
+| **C** | **Decide ADR-0077 option B** — the gate accepts a test file that no longer type-checks but still passes | a decision, then an implementation | the owner. Already measured at **14/15** |
+| **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner. B above is its measurement |
+| **E** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
+
+**If no one says otherwise, do A.** It is the largest capability gain available, it is unblocked, and
+it is the only item whose absence blocks anything else. **B is the cheapest thing with a number at the
+end of it** and is a good half-session if the machine is free.
+
+**Do not start 14c and 14d against a stale plan** — `PHASES.md` § *The framework these phases are
+building toward* is the table of which phase makes which step of the vision true, and it now has a row
+for ADR-0082.
+
+---
+
+### This week's completed work, kept for what each one cost
 
 **0. Fix CI — DONE, 20 Sep.** `main` is green on `d71edbe`: `test (20)`, `test (22)` and
 `contracts` all pass. It had been red on every push since at least 18 Sep and went unnoticed because
@@ -192,8 +223,9 @@ re-runs one job against the same tag and is what got past both transient failure
 And the `npm` job's already-published **skip** arm has still never executed, because every release so
 far published a new version.
 
-**1. The owner actions are all done.** Pages is on, the versions are at `0.1.0`, `0.1.0` is
-hand-published to npm as `latest`, and Trusted Publishing is registered. `v0.1.0-rc.1` and `-rc.2`
+**1. The owner actions are all done.** Pages is on, Trusted Publishing is registered, and the
+versions are at **`0.1.2`** — `0.1.0` was hand-published (unsigned), `0.1.1` and `0.1.2` by the
+workflow with provenance. `v0.1.0-rc.1` and `-rc.2`
 both failed and published nothing. What remains of the release is §3.0′, and it is not an owner action
 — it is a commit, a push and a re-cut tag.
 
@@ -233,7 +265,8 @@ the gate did not think `*.e2e-spec.ts` was a test file, so nothing was demoted a
 answered *0 of 15* for a reason unrelated to the question. See §2 of ADR-0081 for why fixing the gate
 first is not what ADR-0077's first constraint forbids.
 
-**3. Phase 14's exit check runs for two weeks from the real tag**, not from the rc and not from today.
+**3. Phase 14's exit check runs for two weeks from the real tag — `v0.1.2`, 21 Sep 2026, so the
+window ends 5 Oct 2026.** Not from an rc and not from today.
 `F` = distinct *first-run* failures on projects outside `project-a`/`project-b`. `F ≤ 2` → fine.
 `F ≥ 3` → insert `14a′`. **Any failure producing a *wrong verdict* rather than a refusal → STOP and
 fix**, whatever `F` is.
@@ -275,6 +308,18 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   Does not block, and does not block ADR-0077-B either; that one is the cheaper win and is available
   now.
 
+- **ADR-0077 option B — MEASURED and waiting on a yes or no.** Should the gate accept a change whose
+  only remaining problem is a **type error in a test file**, provided every test still *passes*?
+  Measured 21 Sep: **14 of 15** such changes pass the project's own suite, 95 % `[0.681, 0.998]`,
+  against `S₁₄`'s `[0.008, 0.221]` — **the intervals do not overlap.** On the same 30 tasks a B-shaped
+  gate scores **16** where today's scores 2.
+  **A and C are retired** by that number. **What B costs** is the gate's simplest sentence: *"the
+  tests were not touched, at all"* becomes *"the tests still pass, though some no longer type-check"*.
+  **And the same run named B's own weak point** — `snc-27` failed with 82 regressions and passed a
+  second reading of the same bytes with 0, on an idle machine. B leans the gate onto the clause that
+  did that, so **characterising `D` where pressure is excluded is on B's critical path**, §ADR-0066
+  addendum. Recommendation: **yes in principle, and find out what causes the 82-vs-0 before shipping
+  it.** ADR-0082 would make B matter less but does not replace it.
 - **ADR-0075 — DECIDED 20 Sep: option C, symbol-scoped return.** The worker returns one
   declaration's new text and sidecrew splices it back by AST range, so the bound becomes the *symbol*
   rather than the file and a 60-line method inside a 4,000-line service comes into reach. **ADR-0076
