@@ -56,6 +56,11 @@ const arg = (name: string): string | undefined => {
   return at === -1 ? undefined : process.argv[at + 1];
 };
 const limit = Number(arg("--limit") ?? 0) || Infinity;
+/**
+ * One task, re-evaluated on its own. The gate's own error rate is `D = 2/19` (ADR-0066), so a single
+ * failing observation is exactly the one that should not be reported without a second reading.
+ */
+const only = arg("--only");
 const outPath = arg("--out")
   ?? `experiments/editing-ceiling/results/adr-0077-counterfactual-${new Date().toISOString().slice(0, 10)}.json`;
 
@@ -126,7 +131,9 @@ for (const id of declaredIds) {
 }
 say(`re-derived all ${loaded.length} from their own verdicts: ok`);
 
-const corpus = loaded.slice(0, limit === Infinity ? undefined : limit);
+const selected = only === undefined ? loaded : loaded.filter((e) => e.task_id === only);
+if (only !== undefined && selected.length === 0) throw new Error(`--only ${only} is not one of the ${loaded.length}`);
+const corpus = selected.slice(0, limit === Infinity ? undefined : limit);
 
 // ── the plan supplies the strictness the whole experiment is about ────────────────────────────────
 
@@ -197,17 +204,26 @@ interface Row {
   reached_suite: boolean;
   tests_ok: boolean | null;
   regressed: number | null;
+  /** How many distinct suite files the regressed tests came from. Counts, never names (CLAUDE.md #7). */
+  regressed_suites: number | null;
   ran_before: number | null;
   ran_after: number | null;
   passed_before: number | null;
   passed_after: number | null;
   survived_counterfactual: boolean;
   ms: number;
+  /**
+   * ADR-0066 measured a byte-identical candidate producing 155 named regressions on a swapping
+   * machine. A run that reaches the suite has to bracket each verdict, not sample the machine once at
+   * the start and call that the conditions — which is what this harness did on its first pass.
+   */
+  machine: { before: unknown; after: unknown };
 }
 
 const rows: Row[] = [];
 for (const [i, e] of corpus.entries()) {
   const start = performance.now();
+  const machineBefore = await readMachineState();
   const own = e.task.files.map((f) => f.path);
   // Confinement is the production check, unchanged — the counterfactual is about the *compile* clause
   // only. A candidate that edited a test file was never in this subset, and this asserts it.
@@ -234,6 +250,7 @@ for (const [i, e] of corpus.entries()) {
 
     let tests_ok: boolean | null = null;
     let regressed: number | null = null;
+    let regressedSuites: number | null = null;
     let ranAfter: number | null = null;
     let passedAfter: number | null = null;
     if (confined && compileCounterfactual) {
@@ -244,6 +261,9 @@ for (const [i, e] of corpus.entries()) {
       // Only the compile clause is counterfactual; weakening this one too would measure nothing.
       const reg = baseline.tests.passed_ids.filter((id) => !passedNow.has(id) && seenNow.has(id));
       regressed = reg.length;
+      // ADR-0074's reading: which suites regressed is the only structure anyone has found in these.
+      // The count of distinct suites is that structure without the client's file names.
+      regressedSuites = new Set(reg.map((id) => id.split(" ")[0])).size;
       ranAfter = suite.ran;
       passedAfter = suite.passed;
       tests_ok = suite.reported
@@ -269,12 +289,14 @@ for (const [i, e] of corpus.entries()) {
       reached_suite: tests_ok !== null,
       tests_ok,
       regressed,
+      regressed_suites: regressedSuites,
       ran_before: tests_ok === null ? null : baseline.tests.ran,
       ran_after: ranAfter,
       passed_before: tests_ok === null ? null : baseline.tests.passed,
       passed_after: passedAfter,
       survived_counterfactual: confined && compileCounterfactual && tests_ok === true,
       ms: Math.round(performance.now() - start),
+      machine: { before: machineBefore, after: await readMachineState() },
     };
   } finally {
     await rm(clone, { recursive: true, force: true });
