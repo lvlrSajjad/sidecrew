@@ -42,6 +42,7 @@ import {
 } from "../src/change.js";
 import { checkConfinement, isTestArtefact } from "../src/confinement.js";
 import { readMachineState } from "../src/doctor.js";
+import { run } from "../src/exec.js";
 import { ChangeCandidate, ChangeTask, type ErrorCounts } from "../src/schemas.js";
 import { safeName } from "../src/verifier/shared.js";
 import type { TestRunner } from "../src/verifier/shared.js";
@@ -172,8 +173,37 @@ const introducedBy = (before: ErrorCounts, after: ErrorCounts): Record<string, n
 
 // ── one baseline, then one evaluation per candidate ───────────────────────────────────────────────
 
+/**
+ * Which commit of the project this ran against, and whether its tree was clean.
+ *
+ * **The first two runs did not record this and the checkout moved 50 commits the same afternoon**, so
+ * the only thing tying those results to a tree was the baseline's own fingerprint happening to match
+ * probe 1's. A measured number whose subject is not recorded is a number that cannot be reproduced or
+ * contradicted — and re-running is the *only* way to contradict one here.
+ *
+ * The SHA and a boolean, never the path: the directory name is the client's (CLAUDE.md #7).
+ */
+const projectProvenance = async (dir: string): Promise<{ commit: string | null; clean: boolean | null }> => {
+  const head = await run("git", ["-C", dir, "rev-parse", "HEAD"], { timeoutMs: 15_000 });
+  const status = await run("git", ["-C", dir, "status", "--porcelain"], { timeoutMs: 30_000 });
+  return {
+    commit: head.code === 0 ? head.stdout.trim() : null,
+    clean: status.code === 0 ? status.stdout.trim().length === 0 : null,
+  };
+};
+
 const timeouts = DEFAULT_CHANGE_TIMEOUTS;
 const tsconfig = "tsconfig.json";
+const project = await projectProvenance(projectDir);
+say(`project: ${project.commit?.slice(0, 10) ?? "unknown"}, tree ${project.clean === null ? "unknown" : project.clean ? "clean" : "DIRTY"}`);
+if (project.clean === false) {
+  throw new Error(
+    "the project's tree is dirty. A replay against a tree that is not the one the candidates were " +
+    "produced for is a different experiment with the same name — commit, stash or check out the " +
+    "commit the reference run used.",
+  );
+}
+
 const machineAtStart = await readMachineState();
 say(`machine at start: pressure=${machineAtStart.pressure} free=${machineAtStart.free_gb?.toFixed(1)} swap=${machineAtStart.swap_gb?.toFixed(1)}`);
 
@@ -350,6 +380,9 @@ const payload = {
   },
   compiler_flags: compilerFlags,
   runner,
+  // The subject of the measurement. Recorded because the checkout moved the same afternoon the first
+  // two runs finished, and neither of them said what they had described.
+  project: { commit: project.commit, tree_clean: project.clean },
   machine_at_start: machineAtStart,
   per_task: rows,
 };

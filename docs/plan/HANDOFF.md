@@ -260,6 +260,15 @@ credit. **C is retired more firmly**: it would have pre-filtered away all 15, 14
 `--only <task_id>` for a single-task second opinion (~8 min). Both take the project path from the
 plan's `project` field and refuse to write a payload containing any segment of it.
 
+**But it will not reproduce as-is, and this is the thing to know before trying.** Both runs described
+`project-a` at **`77953e627f`**; that checkout was **pulled forward 50 commits at 16:24 the same day**,
+about 1.5 hours after the second run finished. A replay today describes a different tree and is not
+comparable with probe 1's. Check the project out at that commit first.
+**Neither result file records the commit** — the harness does now, and refuses to start on a dirty
+tree, but the two existing files predate the field and were deliberately **not** back-filled. What
+ties them to one tree is that three independent baseline captures agree exactly at 6159/6368 passing
+and 11,412 `tsc` errors. `experiments/editing-ceiling/README.md` has it written down.
+
 **What ADR-0081 cost, and why it was not optional.** The first attempt was stopped at task 1 of 15:
 the gate did not think `*.e2e-spec.ts` was a test file, so nothing was demoted and the run would have
 answered *0 of 15* for a reason unrelated to the question. See §2 of ADR-0081 for why fixing the gate
@@ -408,6 +417,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   INCONCLUSIVE.
 - **A `tsx` harness imports `../src/*.js` from source**, so uncommitted edits compile into a run with
   nothing in any log to show it. Start runs from a clean tree.
+- **The *project's* tree is the other half of that, and it moves without warning.** `project-a` was
+  pulled forward 50 commits on 21 Sep, hours after a measurement, by a normal day's work in another
+  window. **Record the project's commit in every result** — the counterfactual harness does now and
+  refuses to start on a dirty one — because a measured number whose subject is not recorded cannot be
+  reproduced *or* contradicted, and re-running is the only way to contradict one here.
 - **Anything this tool truncates for display, it also truncates for diagnosis** — five defects of that
   shape now (the 1 MB `run` cap, ADR-0072, ADR-0074, ADR-0071's blind spot, and the scanner's own
   silence).

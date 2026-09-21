@@ -827,3 +827,9 @@ whose survival and cost figures were never measured.
   exists tests the shared predicate, not the two call sites. Exporting `FORBIDDEN` or driving
   `validateChangePlan` over a fixture plan would close it. ADR-0081's no-second-copy scan is the cheap
   half of the same guarantee.
+
+- **`npm test` leaves one empty `sidecrew-nm-*` directory in the temp dir per run.** 0 B, harmless, and
+  it makes the *"no sandboxes left behind"* check that every experiment script runs on exit report a
+  non-zero count that has nothing to do with the experiment — which cost a few minutes of a wrong
+  suspicion on 21 Sep. A teardown in whichever test builds a sandbox, or a name that the sweep
+  distinguishes from a real one.

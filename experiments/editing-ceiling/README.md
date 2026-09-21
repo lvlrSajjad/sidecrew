@@ -247,3 +247,25 @@ Both runs finished on the local day they started, so **ADR-0069 has no purchase*
 in either probe, read off `baseline_captured_at` / `verified_at`. Machine state per verdict is in the
 result files; pressure was normal throughout, and the checkout was byte-identical before and after.
 Claude tokens spent on worker inference: **0**, enforced by the schema.
+
+## ADR-0077 option D — the counterfactual (21 Sep 2026)
+
+`scripts/adr-0077-counterfactual.ts` + `.sh`. Results:
+`results/adr-0077-counterfactual-2026-09-21.json` (the 15) and
+`results/adr-0077-snc-27-second-opinion.json` (the one failure, re-read).
+
+**What the two runs described, recorded here because the result files do not carry it.** Both ran
+against `project-a` at **`77953e627fe494c5a257bb4c870c5f9f9b9f75fa`**, verified clean immediately
+before the first run. Three independent baseline captures — probe 1 on 20 Sep and both of these —
+agree exactly at **6159/6368 passing and 11,412 `tsc` errors**, which is the fingerprint tying them to
+one tree.
+
+**That checkout was pulled forward 50 commits at 16:24 the same day**, about 1.5 hours after the
+second run finished. **So neither result is reproducible by re-running today**: a replay now describes
+a different tree, and the numbers would not be comparable with probe 1's. To reproduce, check the
+project out at that commit first.
+
+**The harness records this now** — `project.commit` and `project.tree_clean` are in the payload, and it
+**refuses to start on a dirty tree**. The two files above predate that field and it has deliberately
+not been back-filled: a measured artefact does not gain a field after the fact, or the next reader
+cannot tell which of its numbers were measured.
