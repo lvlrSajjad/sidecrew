@@ -24,7 +24,7 @@ import { rm } from "node:fs/promises";
 import {
   DEFAULT_CHANGE_TIMEOUTS, makeChangeSandbox, toPosix, typecheck, type ChangeTimeouts,
 } from "./change.js";
-import { isToolConfig } from "./confinement.js";
+import { isTestArtefact, isToolConfig } from "./confinement.js";
 import { estimateTokens } from "./prompt.js";
 import { MAX_FIX_TOKENS } from "./fix.js";
 import { ChangeValidationReport, ChangePlan, type ChangeShape, type ValidationIssue } from "./schemas.js";
@@ -63,8 +63,10 @@ const stillborn = (plan: string, e: ValidationIssue): ChangeValidationReport => 
  */
 const FORBIDDEN = (file: string): string | null => {
   const base = basename(file);
-  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(base)) return "a test file";
-  if (file.split("/").some((p) => p === "__tests__" || p === "__mocks__" || p === "__snapshots__")) return "a test directory";
+  // ADR-0081: the predicate is shared for the reason `isToolConfig` below is — the rule stays
+  // duplicated, the fact does not. The two spellings that used to sit here disagreed with the gate
+  // about `app.e2e-spec.ts`, which is what `nest new` generates.
+  if (isTestArtefact(file)) return "a test file or a test directory";
   if (/^(tsconfig|jsconfig)([.-][\w.-]+)?\.json$/.test(base)) return "a TypeScript config";
   if (/^(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|\.eslintrc.*|\.babelrc.*|\.swcrc)$/.test(base)) return "a build config";
   // ADR-0070. The one predicate both gates share on purpose: the *rule* stays duplicated (ADR-0048

@@ -78,8 +78,24 @@ export const isToolConfig = (path: string): boolean => {
 const isBuildConfig = (path: string): boolean =>
   BUILD_CONFIG.some((r) => r.test(basename(path))) || isToolConfig(path);
 
-/** The same pattern the workload-#1 sandbox uses to decide what a test file is. One definition, two gates. */
-const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+/**
+ * What a test file is called, and **the one definition** — `verifier/ts.ts`, `fix.ts` and
+ * `fix-validate.ts` all import this rather than spelling it again.
+ *
+ * The comment here used to say *"one definition, two gates"* and there were **four copies**. They
+ * agreed, so nothing showed, until ADR-0081: the qualifier a project puts before `spec` was not
+ * allowed for, so **`app.e2e-spec.ts` — what `nest new` generates — was not a test file to any of
+ * them**. Measured on project-a: 77 such files against 354 it did recognise.
+ *
+ * `([\w-]+[.-])?` is that qualifier: `e2e-spec`, `int-spec`, `integration.spec`, `type-test`. It
+ * cannot swallow an ordinary name, because a separator is required immediately before `spec`/`test` —
+ * `contest.ts` and `latest.ts` have none, and a test asserts it.
+ *
+ * ADR-0070's division, applied again: **what a filename means is shared, the rules that act on it stay
+ * duplicated.** ADR-0048 wants two independent refusals; it does not want two answers to a question of
+ * fact, and two answers is what this was.
+ */
+export const TEST_FILE_PATTERN = /\.([\w-]+[.-])?(test|spec)\.[cm]?[jt]sx?$/;
 
 /**
  * A test file, or anything in the places a runner keeps tests, mocks and recorded answers.
@@ -93,7 +109,7 @@ export const isTestArtefact = (path: string): boolean => {
   const parts = path.split("/");
   if (parts.some((p) => p === "__tests__" || p === "__mocks__" || p === "__snapshots__")) return true;
   const name = parts.at(-1) ?? path;
-  return TEST_FILE.test(name) || name.endsWith(".snap");
+  return TEST_FILE_PATTERN.test(name) || name.endsWith(".snap");
 };
 
 /**

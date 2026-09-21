@@ -8,7 +8,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { isToolConfig, checkConfinement, codeLines, confinementMessage, observe } from "../src/confinement.js";
+import { isTestArtefact, isToolConfig, checkConfinement, codeLines, confinementMessage, observe } from "../src/confinement.js";
 import { ChangeCandidate, ChangeTask, ConfinementRule, type ConfinementBreach } from "../src/schemas.js";
 
 const FIXTURE = "fixtures/fix-fixture";
@@ -291,5 +291,62 @@ describe("a tool config is where it lives, not just what it is called — ADR-00
     expect(isToolConfig("src/config.ts")).toBe(false);
     expect(isToolConfig("src/configuration.service.ts")).toBe(false);
     expect(isToolConfig("src/app.module.ts")).toBe(false);
+  });
+});
+
+describe("a test file is a test file however the project spells it — ADR-0081", () => {
+  // The task lists a synthetic path rather than a fixture, because the point is the NAME and the
+  // fixture's own suite must not gain a file.
+  const listing = (path: string): ChangeTask => ChangeTask.parse({
+    task_id: "t", language: "typescript", test_framework: "vitest",
+    ask: "Fix every TypeScript error in these files without changing what the code does.",
+    files: [{ path, source: "export const a = 1;\n", source_sha: "sha", errors: 1 }],
+    diagnostics: "", max_deleted_lines: 0, notes: null, attempt: 0, retry_of: null,
+    previous_error: null, correction: null, shape: "null_guard",
+  });
+  const edit = (path: string): ChangeCandidate => ChangeCandidate.parse({
+    task_id: "t", worker: { kind: "local", model: "m", revision: "r", temperature: 0, seed: 42 },
+    edits: [{ path, contents: "export const a = 2;\n" }], unparsed: null, truncated: false,
+    refusal: null, usage: { prompt_tokens: 1, completion_tokens: 1 }, timing: { ttft_ms: 1, wall_ms: 1 },
+  });
+
+  it("recognises the qualifier a project puts before spec or test", () => {
+    // `app.e2e-spec.ts` is what `nest new` generates, and it was not a test file to any of the four
+    // copies of this regex. Measured on a real NestJS codebase: 77 such files beside 354 `.spec.ts`.
+    for (const f of [
+      "test/app.e2e-spec.ts", "test/auth.e2e-spec.ts", "src/a.int-spec.ts",
+      "src/a.integration.spec.ts", "src/a.type-test.ts", "test/foo.e2e-test.ts",
+      "src/a.spec.ts", "src/a.test.ts", "src/a.spec.tsx", "src/a.test.mjs",
+      "__tests__/a.ts", "__mocks__/a.ts", "x/__snapshots__/a.snap",
+    ]) expect(isTestArtefact(f), f).toBe(true);
+  });
+
+  it("does not take an ordinary name that merely ends in those letters", () => {
+    // A separator is required immediately before `spec`/`test`, which is what keeps the qualifier
+    // from swallowing a source file. These are the words that would break it if it did not.
+    for (const f of [
+      "src/contest.ts", "src/latest.ts", "src/manifest.ts", "src/testing.ts",
+      "src/spectrum.ts", "src/inspector.ts", "src/a.ts", "src/protest.tsx",
+    ]) expect(isTestArtefact(f), f).toBe(false);
+  });
+
+  it("refuses the edit even when the plan lists the file — ADR-0048, and the hole it had", () => {
+    // This is the rule that must not be switchable from a plan. Before ADR-0081 a task listing an
+    // e2e spec produced NO breach at all: the candidate could edit the instrument the gate is.
+    expect(rules(checkConfinement(listing("test/app.e2e-spec.ts"), edit("test/app.e2e-spec.ts"))))
+      .toContain("test_file_edited");
+    expect(rules(checkConfinement(listing("src/rates.int-spec.ts"), edit("src/rates.int-spec.ts"))))
+      .toContain("test_file_edited");
+  });
+
+  it("is the only spelling of the pattern in src — a fifth copy is what let this survive", () => {
+    // Four files held the same regex, they agreed on everything except the one case that mattered,
+    // and nothing could show that because they agreed. This fails on a new copy rather than waiting
+    // for the copies to disagree again (HANDOFF § Standing hazards: a fix to one is not a fix to both).
+    const files = readdirSync("src", { recursive: true, encoding: "utf8" })
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => join("src", f));
+    const copies = files.filter((f) => /\(test\|spec\)/.test(readFileSync(f, "utf8")));
+    expect(copies).toEqual(["src/confinement.ts"]);
   });
 });

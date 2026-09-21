@@ -812,3 +812,18 @@ whose survival and cost figures were never measured.
 - **`package-lock.json` is still a sixth version place that neither workflow gates.** `release.yml`
   compares the tag against five values, `ci.yml` against four. It read `0.0.1` once while the others
   had moved. Cheap to add; nobody has.
+
+## Noticed while fixing ADR-0081 (21 Sep 2026)
+
+- **A test *directory* is still not a test artefact unless the filename says so.** ADR-0081 widened the
+  filename pattern and deliberately did not add `test/`, `tests/`, `e2e/`, `cypress/` or `spec/` as
+  directory names beside `__tests__`/`__mocks__`/`__snapshots__`. The measured gap was the separator,
+  and there is no evidence for the directory rule — a `test/helpers/build-order.ts` may be
+  infrastructure a change legitimately needs to touch, and refusing it costs a task. Worth revisiting
+  with a count from both projects rather than from an opinion: how many files live under such a
+  directory *without* a test-shaped name, and how many of those would a plan ever list.
+- **`fix-validate`'s `FORBIDDEN` is private, so the two refusals ADR-0048 wants cannot be asserted to
+  agree from a unit test.** The `isToolConfig` comment claims *"a test asserts the two agree"*; what
+  exists tests the shared predicate, not the two call sites. Exporting `FORBIDDEN` or driving
+  `validateChangePlan` over a fixture plan would close it. ADR-0081's no-second-copy scan is the cheap
+  half of the same guarantee.

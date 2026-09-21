@@ -1,4 +1,31 @@
 # Changelog
+## Unreleased
+
+**`app.e2e-spec.ts` was not a test file to the gate — ADR-0081.** Found by ADR-0077's counterfactual,
+which demotes type errors *in test files* and asks the gate's own predicate which files those are. The
+first task came back with nothing demoted; reading the recorded verdicts, **14 of the 15 sinking files
+are `*.e2e-spec.ts`** and `isTestArtefact` called none of them a test.
+
+- **It was a hole in the gate, not a wrinkle in a measurement.** `TEST_FILE` was
+  `/\.(test|spec)\.[cm]?[jt]sx?$/`, and `app.e2e-spec.ts` ends in `-spec.ts`. It is what `nest new`
+  generates — 77 such files on project-a, beside 354 `.spec.ts` the pattern did match. `test_file_edited`
+  fires even for a path the *task lists*, precisely so a plan cannot switch the rule off (ADR-0048); run
+  against the production function, a task listing `test/app.e2e-spec.ts` produced **no breach at all**.
+- **No published number moves.** Probe 1: 0 of 58 candidate edits and 0 of 58 task-listed files were a
+  test file this pattern missed. `S₁₄ = 2/30` and every rate before it stand. The defect was latent.
+- **There were four copies of the regex**, in `confinement.ts`, `verifier/ts.ts`, `fix.ts` and
+  `fix-validate.ts`, under a comment reading *"one definition, two gates"*. They agreed on everything
+  anyone had thought of, which is exactly why nothing showed. `loadChangePlan` and `fix-validate` each
+  had the same hole, so neither of ADR-0048's two independent refusals would have fired.
+- **The fix is one definition and a widened qualifier** — `/\.([\w-]+[.-])?(test|spec)\.[cm]?[jt]sx?$/`,
+  which covers `e2e-spec`, `int-spec`, `integration.spec` and `type-test`. A separator is required
+  immediately before `spec`/`test`, so `contest.ts`, `latest.ts` and `spectrum.ts` are still source, and
+  a test asserts it — that is the direction that costs a task rather than the gate. ADR-0070's division
+  applied again: the rules stay duplicated, the fact about a filename does not.
+- **A test asserts there is no second spelling of the pattern in `src`.** It fails on a fifth copy
+  rather than waiting for the copies to disagree, and it was verified by adding one and watching it go
+  red.
+
 ## v0.1.2 — `mcpName`, and the MCP Registry entry (2026-09-21)
 
 **`0.1.1` proved the pipeline and could not claim the registry entry.** It published to npm with a

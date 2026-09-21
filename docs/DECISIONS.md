@@ -5606,3 +5606,89 @@ something else. Four release defects, four different shapes, in one day.
 
 **Where the release ended up:** `sidecrew@0.1.2` on npm as `latest` with a SLSA provenance
 attestation, and `io.github.lvlrSajjad/sidecrew` active on the MCP Registry at `0.1.2`.
+
+## ADR-0081 — `app.e2e-spec.ts` was not a test file to any of the four copies of the rule that says what one is
+
+**Status:** accepted · 21 Sep 2026 · implemented the same day · found by ADR-0077's counterfactual ·
+bears on ADR-0046, ADR-0048 and ADR-0070
+
+### What happened
+
+The ADR-0077 counterfactual demotes type errors **in test files** to observations. It asks that
+question with `isTestArtefact` — the gate's own predicate — deliberately, because the whole argument
+being measured is *"the errors land in files the gate forbids editing"*, and that is only true if
+"test file" here means exactly the set a candidate may not touch.
+
+The first task came back `demoted=0 kept=1`. Reading the recorded verdicts for all 15: **14 of the 15
+sinking files are `*.e2e-spec.ts`, and `isTestArtefact` says none of them is a test file.**
+
+`TEST_FILE` was `/\.(test|spec)\.[cm]?[jt]sx?$/`. `app.e2e-spec.ts` ends in `-spec.ts`, not `.spec.ts`.
+It is what `nest new` generates. Measured on project-a: **77 such files, beside 354 `.spec.ts` the
+pattern did match.** project-b is unaffected — it is `.test.tsx` throughout — except for one
+`.type-test.ts`.
+
+### It is a hole in the gate, not a wrinkle in a measurement
+
+`checkConfinement`'s `test_file_edited` fires **even for a path the task lists**, and ADR-0048 gives
+the reason in one sentence: *a rule the plan can switch off is a rule the planner can be argued into
+switching off, and the planner is going to be a model.* Run against the production function:
+
+| the task lists | breaches |
+|---|---|
+| `src/a.spec.ts` | `test_file_edited` |
+| `test/app.e2e-spec.ts` | **none — the candidate may edit it** |
+| `src/a.int-spec.ts` | **none** |
+
+So on the flagship NestJS project, a plan listing an e2e spec let a candidate edit the instrument the
+gate is made of. `loadChangePlan` and `fix-validate`'s `FORBIDDEN` each carried their own copy of the
+same regex and had the same hole, so neither of the two independent refusals ADR-0048 asks for would
+have fired.
+
+**No published number moves.** Probe 1: **0 of 58** candidate edits and **0 of 58** task-listed files
+were a test file this pattern missed. `S₁₄ = 2/30` and every rate before it stand. The defect was
+latent — which is the only reason it is an ADR and not an erratum.
+
+### Why four copies agreed for so long
+
+The comment above the pattern read *"the same pattern the workload-#1 sandbox uses… **one definition,
+two gates**"*. There were **four**: `confinement.ts`, `verifier/ts.ts`, `fix.ts` and
+`fix-validate.ts`. They agreed on every case anyone had thought of, so nothing could show; the first
+case they disagreed about would have been the first bug, and the first case they *all* got wrong was
+invisible by construction.
+
+This is the standing hazard the release pipeline hit the same week from the other end — *the two
+workflows duplicate this check, and a fix to one is not a fix to both*. Duplication hides a defect
+twice: once because the copies agree, and once because fixing one looks like fixing it.
+
+### The decision
+
+1. **The pattern gains the qualifier**: `/\.([\w-]+[.-])?(test|spec)\.[cm]?[jt]sx?$/`. A separator is
+   required immediately before `spec`/`test`, so `contest.ts`, `latest.ts`, `manifest.ts` and
+   `spectrum.ts` are still source — asserted, because that is the direction that costs a task.
+2. **One definition, and the rules stay duplicated.** This is ADR-0070's division applied again: the
+   *rule* stays in each of the four places, because ADR-0048 wants independent refusals; the *fact*
+   about a filename does not, because two answers to a question of fact is a bug rather than a
+   safeguard. `TEST_FILE_PATTERN` and `isTestArtefact` live in `confinement.ts`; the other three
+   import them.
+3. **A test asserts there is no second spelling in `src`.** It scans the source for the regex and
+   requires exactly one file to contain it. It fails on a fifth copy rather than waiting for the
+   copies to disagree — verified by adding one and watching it go red.
+
+### What this does to ADR-0077's counterfactual
+
+The measurement had not finished — it was stopped at task 1 of 15 — and it would have answered *0 or
+1 of 15 reached the suite* for a reason that had nothing to do with ADR-0077's question. **The
+demotion set was empty because the predicate was wrong, not because the errors were somewhere else.**
+ADR-0077's reading was right on the facts: the errors do land in test files, 14 of 15 of them in the
+e2e specs a NestJS project keeps in `test/`.
+
+**Fixing the gate before running the counterfactual is not the thing ADR-0077's first constraint
+forbids**, and the difference is worth stating rather than assuming:
+
+- The fix makes the gate **stricter** — more files protected, never fewer. It can only lower a
+  survival rate, never raise one.
+- It was found by a measurement asking an independent question, not by looking for a better number.
+- It moves no published number, because nothing ever edited one of these files.
+- The counterfactual's demotion set is *defined* as the files the gate forbids editing. With the
+  predicate wrong, the measurement is wrong in either direction — running it on the old predicate
+  would not have been the conservative choice, it would have been the meaningless one.

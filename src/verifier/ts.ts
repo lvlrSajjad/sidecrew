@@ -21,6 +21,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 import { DEFAULT_VERIFIER_CONCURRENCY } from "../concurrency.js";
 import { run } from "../exec.js";
 import { MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
+import { TEST_FILE_PATTERN } from "../confinement.js";
 import { analyseTautology, type TautologyReport } from "./tautology.js";
 import {
   deriveLineRange, isResolvable, isTestRunner, jestConfigEntry, looksLikeOom, output, resolveNodeModules, safeName,
@@ -99,8 +100,15 @@ export interface VerifyTsOpts {
   sandboxRoot?: string;
 }
 
-/** Anything matching this is a test, and tests are what the sandbox must not inherit. */
-export const TEST_FILE_PATTERN = /\.(test|spec)\.[cm]?[jt]sx?$/;
+/**
+ * Anything matching this is a test, and tests are what the sandbox must not inherit.
+ *
+ * **Imported, not spelled again.** It was a fourth copy of the same regex until ADR-0081, and the four
+ * agreed on everything except the one spelling that mattered — `app.e2e-spec.ts`. Workload #1 deletes
+ * what this matches and workload #2a forbids editing it; those are opposite consequences of one fact
+ * about a filename, and one fact should have one answer.
+ */
+export { TEST_FILE_PATTERN } from "../confinement.js";
 
 /**
  * Never copied into a sandbox. `node_modules` is symlinked instead of copied; the rest is either

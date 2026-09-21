@@ -37,6 +37,7 @@ import { assertMeasuredUsage, completeApi, resolveApiTier, type ApiTierContext }
 import { changePromptText, buildChangePrompt, estimateTokens } from "./prompt.js";
 import { brief, renderBrief, shouldCorrect, type CorrectionBrief } from "./correction.js";
 import { CandidateCache, candidateKey } from "./cache.js";
+import { isTestArtefact } from "./confinement.js";
 import { appendChangeEscalation } from "./escalate.js";
 import { PlanError } from "./plan.js";
 import {
@@ -323,9 +324,11 @@ export async function loadChangePlan(planPath: string, tsconfig = "tsconfig.json
         if (!existsSync(join(projectDir, file))) problems.push(`${task.task_id} lists ${file}, which is not in ${plan.project}`);
       }
       // ADR-0048: checked here as well as in the gate, so the plan cannot switch the rule off.
+      // ADR-0081: `isTestArtefact`, not a fourth spelling of the same regex. The *rule* stays here —
+      // ADR-0048 wants two independent refusals — but "is this a test file" is a fact, and the copy
+      // that used to live on this line did not know what `nest new` calls an e2e spec.
       const forbidden = task.files.filter((f) =>
-        /\.(test|spec)\.[cm]?[jt]sx?$/.test(basename(f))
-          || f.split("/").some((p) => p === "__tests__" || p === "__mocks__" || p === "__snapshots__")
+        isTestArtefact(f)
           || /^(tsconfig|jsconfig)([.-][\w.-]+)?\.json$/.test(basename(f))
           || /^(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|\.eslintrc.*|\.babelrc.*|\.swcrc)$/.test(basename(f))
           || /^[\w.-]+\.(config|conf)\.[\w.]+$/.test(basename(f)));
