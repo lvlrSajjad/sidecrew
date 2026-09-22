@@ -82,3 +82,7 @@ experiments/editing-ceiling/plans/
 # Phase 14c: the refused set names files in a client tree. Its sha256 is in the committed census; the
 # list itself is only ever local (CLAUDE.md #7).
 experiments/reach/local/
+experiments/reach/plans/
+# The run log prints sandbox paths and a run id built from the project directory name.
+experiments/reach/results/*.log
+experiments/reach/results/*-report.json
