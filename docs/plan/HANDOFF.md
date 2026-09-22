@@ -13,29 +13,29 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 22 Sep 2026, end of day.** Four things happened and all of them are landed:
+**Last updated: 22 Sep 2026, late — Phase 14c is BUILT, not measured.** Three commits:
 
-1. **ADR-0084 — `D` was never the gate's error rate; it is the suite's flake rate.** 50 runs of
-   `project-a`'s *unmodified* suite found 11 tests each failing in exactly one run, and a run carries
-   at least one at **3/50 = 0.060 `[0.013, 0.165]`** — indistinguishable from `D = 2/19 = 0.105`
-   `[0.013, 0.331]`. **Decided and built:** a regression-only failure is re-read once and the second
-   reading decides. `project-b` at **0/50 `[0.000, 0.071]`** does not settle whether the floor is
-   project-a's (Fisher p = 0.24), and does not need to: on a suite that does not flake the retry never
-   fires, so it is free exactly where it is useless.
-2. **ADR-0083 — three of `project-a`'s tests move at 00:00 *UTC*, and the guard watched *local*
-   midnight.** So did its Python copy and its own test, which passed here and on CI and would have
-   failed in Auckland. All three fixed.
-3. **ADR-0085 — a sandbox teardown race threw away the verdict it was cleaning up after.** An exception
-   in `verifyChange`'s `finally` replaces the value the block was returning; `rm`'s `force` covers
-   `ENOENT`, not the `ENOTEMPTY` a lingering jest worker causes. Two measurements on two projects both
-   died at run 9 on it. One `removeSandbox` across all seven teardowns.
-4. **ADR-0077 option B — decided and built**, with the scope that was *measured* (any test file) and a
-   narrowing the fixture forced: **only under added strictness flags**, because with none an introduced
-   error is a real break of a working build. `ChangeVerdict` records `compiler_flags` so the schema can
-   enforce that rather than trusting `verifyChange`.
+1. **`cc1a71a` — the refused set, recorded before anything changed** (prompt §1). project-a: 72 of
+   2,174 source files, **48.1 % of bytes, `Reach` 0.519**. project-b: 76 of 2,136, 27.2 %, 0.728.
+   The lists name client files and live only in `experiments/reach/local/` (gitignored); their sha256
+   is in the committed census. **`S_big` must be drawn from that list.**
+2. **`79d2ce5` — ADR-0086, symbol-scoped return, with the spec in the same commit.** `symbols:
+   [{file, name}]` on a task; the worker answers `--- SYMBOL: file#name ---`; the answer is spliced
+   before the gate, so everything after `generate` still reads whole files. Two new rules, each with a
+   control (`edit_outside_symbol`, `symbol_not_redeclared`). 805 fast + 34 slow passing.
+3. **`20af03e` — how `Reach` is counted after 14c, declared before the number**
+   (`experiments/reach/README.md` §2). `reach-census.ts --after` implements it and **has not been run
+   on either project.**
 
-**Nothing is half-done and nothing is running.** The next thing is **Phase 14c**, whose exit check was
-frozen the same day — §3 § *Start here*.
+**Open, and it is the owner's: ADR-0086 §6.** Should `compile_ok` count errors in the *file* (built,
+option A: an error elsewhere in the file refuses the task up front) or in the *declaration* (B)? The
+recommendation is A for the measurement and B decided afterwards on its own number. Otherwise the ratio
+measures two changes at once.
+
+**Next, in order:** (1) the owner answers §6, or accepts A; (2) run `--after` on project-a, which takes
+seconds, **and if `Reach < 0.85` the frozen rule says STOP and no 2–4 h run is needed**; (3) declare the
+task set (`S_big` drawn from the refused list, `S_small` from files always in reach, same project, same
+gate settings) into a gitignored plan with its counts committed; (4) the quiet 2–4 h run.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -48,13 +48,13 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | | |
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
-| tests | `npm run lint && npm test` → **781 passing**, 1 skipped · slow set: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → 31 passing, **run it before a phase ends** |
+| tests | `npm run lint && npm test` → **805 passing**, 1 skipped · slow set: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **34 passing**, **run it before a phase ends** |
 | version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0085**; start new ones at 0086. **Two need the owner: 0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
+| next phase | **14c — BUILT 22 Sep (ADR-0086), not measured**; next steps are at the top of this file. *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
+| ADRs | run to **0086**; start new ones at 0087. **ADR-0086 §6 needs the owner, and it comes first.** Also **0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -184,7 +184,7 @@ not a queue.** These are the live options:
 
 | | what | cost | needs |
 |---|---|---|---|
-| **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions building, **attended** · then **one quiet 2–4 h run**, not a whole night | nothing. **Exit check FROZEN 22 Sep** — `prompts/phase-14c-the-reach.md` |
+| **A** | **Phase 14c — symbol-scoped return**. **BUILT 22 Sep (ADR-0086)**; what is left is the measurement | `--after` census (seconds) · then **one quiet 2–4 h run** if `Reach ≥ 0.85` | the owner on **ADR-0086 §6** first. **Exit check FROZEN 22 Sep** — `prompts/phase-14c-the-reach.md` |
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
 | **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
 | **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner. Its measurement is **E**, still blocked |
