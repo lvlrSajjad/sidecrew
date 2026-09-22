@@ -1,0 +1,46 @@
+{
+  "measured": true,
+  "kind": "reach-census",
+  "phase": "14c",
+  "when": "after — whole-file clause plus symbol-scoped tasks, by experiments/reach/README.md §2",
+  "label": "project-a",
+  "date": "2026-09-22T20:45:26.592Z",
+  "rule": {
+    "clause": "files_too_large_to_rewrite",
+    "test": "rewriteCost([source]) > MAX_FIX_TOKENS",
+    "MAX_FIX_TOKENS": 8192
+  },
+  "universe": "every .ts/.tsx under <project>/src, .d.ts excluded",
+  "all_files": {
+    "files": 2179,
+    "bytes": 10450540,
+    "refused_files": 72,
+    "refused_bytes": 5025144,
+    "symbol_bytes": 4096529,
+    "refused_file_share": 0.03304268012849931,
+    "refused_byte_share": 0.4808501761631456,
+    "reach_whole_file": 0.5191498238368544,
+    "reach": 0.9111419122839586
+  },
+  "source_files": {
+    "files": 2174,
+    "bytes": 10439745,
+    "refused_files": 72,
+    "refused_bytes": 5025144,
+    "symbol_bytes": 4096529,
+    "refused_file_share": 0.03311867525298988,
+    "refused_byte_share": 0.48134738923220827,
+    "reach_whole_file": 0.5186526107677918,
+    "reach": 0.9110500304365672
+  },
+  "refused_list_sha256": "6d35f3130939e1c2b36f828dfeaa069bd724924624da64e75122a7c0fb6dd4aa",
+  "refused_list_count": 72,
+  "project_commit": "1d79d903f9c743aa58d2063e98055325a5ef7858",
+  "project_dirty": false,
+  "sidecrew_commit": "8f36fc7f4838282e44b057e66f965f76a8a3526b",
+  "sidecrew_dirty": false,
+  "machine": {
+    "host_hash": "436d02afea14",
+    "node": "v20.20.0"
+  }
+}

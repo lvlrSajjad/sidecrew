@@ -6253,7 +6253,7 @@ runner's message and stops after three so the next occurrence says which.
 
 ## ADR-0086 — Symbol-scoped return: what option C is, built, and the one choice it leaves the owner
 
-**Status:** **accepted** in its built shape, 22 Sep 2026 · **§6 is PROPOSED and needs the owner** ·
+**Status:** **accepted** in its built shape, 22 Sep 2026 · **§6 decided by the owner the same evening: option A** ·
 builds ADR-0075 option C · Phase 14c
 
 ADR-0075 decided *what* (the worker returns a declaration and sidecrew splices it) and not *how*.
@@ -6320,7 +6320,7 @@ has to fit the worker's context, which it would not have done even with the outp
 The worker also sees less. It gets no sibling signatures, which would be the next thing to try if
 `S_big` comes out low, and it is named here so nobody reaches for it silently.
 
-### 6. PROPOSED — does `compile_ok` count errors in the file, or in the declaration?
+### 6. DECIDED, option A (owner, 22 Sep 2026) — does `compile_ok` count errors in the file, or in the declaration?
 
 ADR-0048's clause is *zero `tsc` errors in the task's **files***. On a symbol task in a large file that
 means an error in some *other* method makes the task unsatisfiable. The worker was not allowed to touch
@@ -6338,3 +6338,6 @@ that method, so a symbol-scoped task on a large file with any pre-existing error
 reach and changing the gate in the same run would mean `S_big / S_small` measures two changes at once,
 which is the exact trap `prompts/phase-14c-the-reach.md` §2 names. Under `compiler_flags: []` the cost
 of A is expected to be small. That is an estimate, and the validator's refusal count will measure it.
+
+**Decided: A**, by the owner on 22 Sep 2026, on that recommendation. B stays open, to be decided on its
+own measurement once 14c's number exists.
