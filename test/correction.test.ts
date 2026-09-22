@@ -79,7 +79,7 @@ describe("ADR-0044 §4 rule 1 — fed by the gate, never by raw output", () => {
       compile_ok: true,
       stage_reached: "tests",
       errors: { ...base().errors, remaining_in_target: {}, message: null },
-      tests: { reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12, regressed: ["a.test.ts::adds", "a.test.ts::subtracts"], message: null },
+      tests: { reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12, regressed: ["a.test.ts::adds", "a.test.ts::subtracts"], message: null, first_reading: null },
     }), "rename");
     expect(b.findings.join("\n")).toContain("a.test.ts::adds");
   });
@@ -90,7 +90,7 @@ describe("ADR-0044 §4 rule 1 — fed by the gate, never by raw output", () => {
       compile_ok: true,
       stage_reached: "tests",
       errors: { ...base().errors, remaining_in_target: {}, message: null },
-      tests: { reported: true, ran_before: 30, ran_after: 30, passed_before: 30, passed_after: 30, regressed: many, message: null },
+      tests: { reported: true, ran_before: 30, ran_after: 30, passed_before: 30, passed_after: 30, regressed: many, message: null, first_reading: null },
     }), "rename");
     expect(b.findings.join("\n")).toContain("…");
     expect(b.findings.join("\n")).not.toContain("case 20");
@@ -107,7 +107,7 @@ describe("shouldCorrect — the three refusals that keep §2.2 honest", () => {
     // token spent here is bought against a denominator that should have excluded the task.
     const v = base({
       stage_reached: "tests",
-      tests: { reported: false, ran_before: 12, ran_after: 0, passed_before: 12, passed_after: 0, regressed: [], message: "no report" },
+      tests: { reported: false, ran_before: 12, ran_after: 0, passed_before: 12, passed_after: 0, regressed: [], message: "no report", first_reading: null },
     });
     const gate = shouldCorrect(v, budget(), nothing);
     expect(gate.write).toBe(false);
@@ -153,7 +153,7 @@ describe("the survivor case (ADR-0057)", () => {
     tests_ok: true,
     confined: true,
     errors: { ...base().errors, remaining_in_target: {}, message: null },
-    tests: { reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12, regressed: [], message: null },
+    tests: { reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12, regressed: [], message: null, first_reading: null },
     observations,
     error: null,
   });

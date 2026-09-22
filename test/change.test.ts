@@ -401,3 +401,68 @@ describe("the verdict says why the suites that regressed regressed — ADR-0074"
     expect(relevantSuiteOutput(RUN, [])).toBe(RUN);
   });
 });
+
+describe("a regression must reproduce to count — ADR-0084", () => {
+  // Measured: 11 tests in one real project each failed in exactly one of 50 runs of an UNMODIFIED
+  // tree, and 3/50 of runs carried at least one. That is indistinguishable from `D = 2/19`, the
+  // number this project had been calling the gate's own error rate. One observation was never enough.
+  const reading = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+    reported: true, ran_after: 12, passed_after: 10, regressed: ["a.test.ts::x", "a.test.ts::y"],
+    message: "two failed", ...over,
+  });
+
+  it("keeps the deciding reading in `tests` and the discarded one beside it", () => {
+    // The block the refinement reads must be the one that justifies tests_ok, or a rescued verdict
+    // would claim a survival its own fields contradict (CLAUDE.md #2). So the FIRST reading moves.
+    const rescued = verdict({
+      tests: {
+        reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12,
+        regressed: [], message: null, first_reading: reading(),
+      },
+    });
+    const parsed = ChangeVerdict.parse(rescued);
+    expect(parsed.survived).toBe(true);
+    expect(parsed.tests?.regressed).toEqual([]);
+    expect(parsed.tests?.first_reading?.regressed).toHaveLength(2);
+    expect(changeSurvives(parsed)).toBe(true);
+  });
+
+  it("defaults the field to null, so a verdict written before ADR-0084 still parses", () => {
+    const { first_reading: _dropped, ...older } = (verdict().tests ?? {}) as Record<string, unknown>;
+    expect(ChangeVerdict.parse(verdict({ tests: older })).tests?.first_reading).toBe(null);
+  });
+
+  it("refuses a first reading that did not fail — a passing reading is never re-read", () => {
+    // Without this, "record a second reading" and "re-run until it passes" are the same shape.
+    const bogus = verdict({
+      tests: {
+        reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12,
+        regressed: [], message: null,
+        first_reading: reading({ regressed: [], passed_after: 12, message: null }),
+      },
+    });
+    expect(() => ChangeVerdict.parse(bogus)).toThrow(/only when it failed/);
+  });
+
+  it("refuses to spend the retry on a machine failure — that is ADR-0012, not a flake", () => {
+    const machineFailure = verdict({
+      tests: {
+        reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 12,
+        regressed: [], message: null,
+        first_reading: reading({ reported: false, ran_after: 0, passed_after: 0, regressed: [], message: "no report" }),
+      },
+    });
+    expect(() => ChangeVerdict.parse(machineFailure)).toThrow(/machine problem, not a flake/);
+  });
+
+  it("still refuses a survival the deciding reading contradicts", () => {
+    // The retry moves which reading is authoritative. It does not weaken the iff over that reading.
+    const stillBroken = verdict({
+      tests: {
+        reported: true, ran_before: 12, ran_after: 12, passed_before: 12, passed_after: 10,
+        regressed: ["a.test.ts::x"], message: "still failing", first_reading: reading(),
+      },
+    });
+    expect(() => ChangeVerdict.parse(stillBroken)).toThrow(/survived must equal|now fails/);
+  });
+});

@@ -499,6 +499,20 @@ export interface VerifyChangeOpts {
   keepSandbox?: boolean;
   /** ADR-0063. Must match the flags the baseline was captured with, or the two error counts are not comparable. */
   compilerFlags?: readonly string[];
+  /**
+   * **ADR-0084, and it defaults ON.** Re-read the suite once when a verdict is failing *only* on
+   * regressions, and let the second reading decide.
+   *
+   * Measured: 11 tests in one real project each failed in exactly one of 50 runs of an **unmodified**
+   * tree, and `3/50` of runs carried at least one — indistinguishable from `D = 2/19`, the number this
+   * project had been calling the gate's own error rate. One observation was never enough to call a
+   * regression.
+   *
+   * The asymmetry is deliberate and sound in one direction only: **a candidate that genuinely breaks a
+   * test breaks it twice**, so the false-*pass* rate is unchanged while a ~6 % false-*fail* rate goes
+   * away. Off is for reproducing a number measured before this existed.
+   */
+  retryRegressions?: boolean;
 }
 
 /**
@@ -703,68 +717,126 @@ export async function verifyChange(
       // rescued by running it.
       if (compile_ok) {
         stage_reached = "tests";
-        const suite = await runSuite(sandbox, projectDir, opts.runner, timeouts.tests);
-        timing_ms.tests = suite.ms;
-        const passedNow = new Set(suite.passed_ids);
-        const seenNow = new Set(suite.seen_ids);
-        // A test that passed before and **failed** after is a regression. A test whose id is not in
-        // the report at all is not evidence of anything, and calling it a regression fails good
-        // changes on any project whose test titles are generated — a `describe` built from
-        // `Date.now()` gets a different id every run, so its baseline id is never found again
-        // (ADR-0053). Measured on a real React project: two such tests failed every candidate.
-        //
-        // Safe here for a reason specific to this workload: a candidate **cannot** delete a test,
-        // because editing a test file is a confinement breach (ADR-0046, ADR-0048), and `ran_after >=
-        // ran_before` below still refuses a suite that collected fewer tests than the baseline. So an
-        // id that vanished is a renamed test, never a removed one.
-        const regressed = opts.baseline.tests.passed_ids.filter((id) => !passedNow.has(id) && seenNow.has(id));
-        const vanished = opts.baseline.tests.passed_ids.filter((id) => !seenNow.has(id)).length;
-        tests = {
-          reported: suite.reported,
-          ran_before: opts.baseline.tests.ran,
-          ran_after: suite.ran,
-          regressed,
-          passed_before: opts.baseline.tests.passed,
-          passed_after: suite.passed,
-          message: suite.reported && regressed.length === 0
-            ? (vanished === 0 ? null : truncateError(
-                `${vanished} test(s) that passed in the baseline are absent from this report — generated ` +
-                "test names, not regressions; a candidate cannot delete a test (ADR-0053)"))
-            // ADR-0074: the suites that regressed, not the first 2 KB the runner happened to print.
-            : truncateError(relevantSuiteOutput(suite.message, regressed)),
+
+        /**
+         * One suite run, read against the baseline. **Extracted so ADR-0084's retry takes its second
+         * reading through exactly this code** — a retry judged by a different path is not a retry, and
+         * the two readings have to be comparable to be worth taking.
+         *
+         * A test that passed before and **failed** after is a regression. A test whose id is not in
+         * the report at all is not evidence of anything, and calling it a regression fails good
+         * changes on any project whose test titles are generated — a `describe` built from
+         * `Date.now()` gets a different id every run, so its baseline id is never found again
+         * (ADR-0053). Measured on a real React project: two such tests failed every candidate; and on
+         * a Nest one, 349 of 6,529 ids did not recur between runs at all.
+         *
+         * Safe here for a reason specific to this workload: a candidate **cannot** delete a test,
+         * because editing a test file is a confinement breach (ADR-0046, ADR-0048), and `ran_after >=
+         * ran_before` below still refuses a suite that collected fewer tests than the baseline. So an
+         * id that vanished is a renamed test, never a removed one.
+         */
+        const readSuite = async (): Promise<{
+          reported: boolean; ran: number; passed: number; regressed: string[]; vanished: number;
+          message: string; ms: number;
+        }> => {
+          const suite = await runSuite(sandbox, projectDir, opts.runner, timeouts.tests);
+          const passedNow = new Set(suite.passed_ids);
+          const seenNow = new Set(suite.seen_ids);
+          return {
+            reported: suite.reported,
+            ran: suite.ran,
+            passed: suite.passed,
+            regressed: opts.baseline.tests.passed_ids.filter((id) => !passedNow.has(id) && seenNow.has(id)),
+            vanished: opts.baseline.tests.passed_ids.filter((id) => !seenNow.has(id)).length,
+            message: suite.message,
+            ms: suite.ms,
+          };
         };
-        // ADR-0067: `suite.passed >= baseline.passed` is the clause `regressed` cannot express. A
+        type Reading = Awaited<ReturnType<typeof readSuite>>;
+
+        // ADR-0067: `passed >= baseline.passed` is the clause `regressed` cannot express. A
         // `test.each` block shares one `fullName` across its cases, so breaking one of nine leaves the
-        // id in `passedNow` and records nothing — and `ran_after >= ran_before` misses it too, because
-        // a failing case still ran. Counts catch it, and they are also *more* robust to the generated
+        // id in the passing set and records nothing — and `ran >= ran_before` misses it too, because a
+        // failing case still ran. Counts catch it, and they are also *more* robust to the generated
         // name problem ADR-0053 solved: a renamed test still counts.
-        tests_ok = suite.reported
-          && regressed.length === 0
-          && suite.ran >= opts.baseline.tests.ran
-          && suite.ran > 0
-          && suite.passed >= opts.baseline.tests.passed;
+        const okOf = (r: Reading): boolean => r.reported
+          && r.regressed.length === 0
+          && r.ran >= opts.baseline.tests.ran
+          && r.ran > 0
+          && r.passed >= opts.baseline.tests.passed;
+
+        const messageOf = (r: Reading): string | null => r.reported && r.regressed.length === 0
+          ? (r.vanished === 0 ? null : truncateError(
+              `${r.vanished} test(s) that passed in the baseline are absent from this report — generated ` +
+              "test names, not regressions; a candidate cannot delete a test (ADR-0053)"))
+          // ADR-0074: the suites that regressed, not the first 2 KB the runner happened to print.
+          : truncateError(relevantSuiteOutput(r.message, r.regressed));
+
+        let reading = await readSuite();
+        timing_ms.tests = reading.ms;
+        let firstReading: NonNullable<ChangeVerdict["tests"]>["first_reading"] = null;
+
+        /**
+         * **ADR-0084.** Only a failure that rests on *regressions* buys a second reading — never a
+         * missing report, which is a machine problem and a different thing (ADR-0012), and never a
+         * suite that collected fewer tests, which is structural rather than flaky. Spending the retry
+         * on those would turn this into "re-run until it passes", which is the one shape it must never
+         * become, and the schema refuses a verdict whose first reading was not a regression failure.
+         *
+         * The second reading runs **in the same sandbox**. That is the conservative choice: state a
+         * test left behind can only make the re-read *more* likely to fail, and it isolates the
+         * runner's own nondeterminism from the clone's. It is also the cheap one — a fresh clone of a
+         * real project is half a gigabyte, and this is spent on a candidate that is already failing.
+         */
+        const regressionOnly = reading.reported
+          && (reading.regressed.length > 0 || reading.passed < opts.baseline.tests.passed);
+        if (!okOf(reading) && regressionOnly && (opts.retryRegressions ?? true)) {
+          const second = await readSuite();
+          timing_ms.tests = (timing_ms.tests ?? 0) + second.ms;
+          firstReading = {
+            reported: reading.reported,
+            ran_after: reading.ran,
+            passed_after: reading.passed,
+            regressed: reading.regressed,
+            message: messageOf(reading),
+          };
+          reading = second;
+        }
+
+        tests = {
+          reported: reading.reported,
+          ran_before: opts.baseline.tests.ran,
+          ran_after: reading.ran,
+          regressed: reading.regressed,
+          passed_before: opts.baseline.tests.passed,
+          passed_after: reading.passed,
+          message: messageOf(reading),
+          first_reading: firstReading,
+        };
+        tests_ok = okOf(reading);
         if (tests_ok) stage_reached = "done";
-        else if (!suite.reported) {
-          problems.push(`the ${opts.runner} run produced no report — a machine problem, not the change's (ADR-0012)\n${suite.message}`);
-        } else if (regressed.length > 0) {
+        else if (!reading.reported) {
+          problems.push(`the ${opts.runner} run produced no report — a machine problem, not the change's (ADR-0012)\n${reading.message}`);
+        } else if (reading.regressed.length > 0) {
           problems.push(
-            `${regressed.length} test(s) that passed before now fail:\n` +
-            regressed.slice(0, 20).map((t) => `  ${t}`).join("\n") +
-            (regressed.length > 20 ? `\n  … and ${regressed.length - 20} more` : ""),
+            `${reading.regressed.length} test(s) that passed before now fail:\n` +
+            reading.regressed.slice(0, 20).map((t) => `  ${t}`).join("\n") +
+            (reading.regressed.length > 20 ? `\n  … and ${reading.regressed.length - 20} more` : "") +
+            (firstReading === null ? "" : " (confirmed by a second reading — ADR-0084)"),
           );
-        } else if (suite.passed < opts.baseline.tests.passed) {
+        } else if (reading.passed < opts.baseline.tests.passed) {
           // Named separately from `regressed`, because the correction round and a human read it
           // differently: there are no test *names* to give here — that is precisely why the id-based
           // check missed it — so the sentence has to say what it does know (ADR-0067).
           problems.push(
-            `${opts.baseline.tests.passed - suite.passed} fewer test(s) passed than in the baseline ` +
-            `(${suite.passed} vs ${opts.baseline.tests.passed}) while no test id stopped passing. That is a ` +
+            `${opts.baseline.tests.passed - reading.passed} fewer test(s) passed than in the baseline ` +
+            `(${reading.passed} vs ${opts.baseline.tests.passed}) while no test id stopped passing. That is a ` +
             "`test.each` case breaking under a shared name: the id is still in the passing set, and the " +
             "failing case still ran, so only the counts can see it (ADR-0067)",
           );
         } else {
           problems.push(
-            `${suite.ran} tests ran and the baseline ran ${opts.baseline.tests.ran} — a suite that collected ` +
+            `${reading.ran} tests ran and the baseline ran ${opts.baseline.tests.ran} — a suite that collected ` +
             "fewer tests than before is not a green suite (ADR-0048)",
           );
         }

@@ -390,6 +390,7 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   "max_group_size": 10,
   "correction": { "enabled": false, "max_corrections": 0, "max_tokens": 0, "on_observations": false },
   "compiler_flags": [],
+  "retry_regressions": true,
   "steps": [
     {
       "name": "widen the accepted input types",
@@ -409,6 +410,16 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   ]
 }
 ```
+
+### `retry_regressions` — on by default, and the only reason to turn it off
+
+ADR-0084. A verdict failing **only** on regressions is re-read once and the second reading decides;
+`tests.first_reading` keeps the one that was discarded. It is `true` unless a run is reproducing a
+number measured before it existed — every survival rate published up to 22 Sep 2026 was taken one
+evaluation per candidate, and those are biased low by the ~6 % this removes.
+
+It is **not** a strictness dial. Turning it off does not make the gate stricter in any useful sense; it
+makes it noisier, in the direction that fails changes which did nothing wrong.
 
 ### `compiler_flags` — strictness an experiment adds, and every number says so
 
@@ -589,7 +600,7 @@ survival rate that quietly stopped having a denominator.
     "remaining_in_target": {},
     "message": null
   },
-  "tests": { "reported": true, "ran_before": 12, "ran_after": 12, "passed_before": 12, "passed_after": 12, "regressed": [], "message": null },
+  "tests": { "reported": true, "ran_before": 12, "ran_after": 12, "passed_before": 12, "passed_after": 12, "regressed": [], "message": null, "first_reading": null },
   "confinement": [],
   "observations": [],
   "refused": null,
@@ -604,6 +615,32 @@ survival rate that quietly stopped having a denominator.
 }
 ```
 
+### `tests.first_reading` — the reading the verdict did not rest on (ADR-0084)
+
+`null` on almost every verdict. It is present only when the suite failed on **regressions** and was
+re-read, and it carries the reading that was discarded.
+
+**The rule: a regression-only failure is re-read once, and the second reading decides.** Not *take the
+better of two* — the asymmetry is deliberate and sound in one direction only. A candidate that
+genuinely breaks a test **breaks it twice**, so the false-*pass* rate is unchanged; what goes away is a
+false-*fail* rate that was measured at `3/50` of runs on an **unmodified** tree, where 11 tests each
+failed in exactly one of 50 runs. That figure is indistinguishable from `D = 2/19`, the number this
+project had been calling the gate's own error rate.
+
+**Only a regression buys the retry.** A missing report is a machine problem and a different thing
+(ADR-0012); a suite that collected fewer tests is structural rather than flaky. Spending the retry on
+either would make this *re-run until it passes*, and the schema refuses a verdict whose `first_reading`
+is not a reported regression failure.
+
+**The block above always holds the deciding reading**, because `ChangeVerdict`'s refinement requires
+`tests_ok` to be supported by the fields beside it — a verdict that claims a survival its own fields do
+not support must not serialise (CLAUDE.md #2). So a rescued verdict says what it was rescued from
+rather than quietly replacing it. The second reading runs in the **same** sandbox: state a test leaves
+behind can only make the re-read *more* likely to fail, which is the conservative direction, and a
+fresh clone of a real project is half a gigabyte spent on a candidate that is already failing.
+
+`retryRegressions` turns it off, for reproducing a number measured before it existed.
+
 ### Three fields that record and never gate
 
 `baseline_captured_at`, `verified_at` and `machine` are the two false-negative sources this project has
@@ -616,9 +653,12 @@ survival stops being comparable with Phase 11's and nothing fails.
 verified against it for hours, so the two can land on different calendar days — and the measured
 consequence is not one lost task. A single test asserting on what was tracked *today* passed at capture
 and fails afterwards, so **every** candidate verified past the boundary inherits it as a regression.
-`crossesCalendarDay` compares local calendar days rather than elapsed hours, because the failure is a
-step function at whatever boundary the project's tests encode and "older than N hours" needs a number
-nobody has. `sidecrew fix` warns once, on the first verdict where it becomes true, and does not stop.
+`crossesCalendarDay` compares **local or UTC** calendar days rather than elapsed hours, because the
+failure is a step function at whatever boundary the project's tests encode and "older than N hours"
+needs a number nobody has. **Both frames, since ADR-0083** — a real suite was measured moving three
+tests at 00:00 **UTC** while the machine's local clock read 01:55 → 02:02 and never changed day, so
+local alone stayed silent. `sidecrew fix` warns once, on the first verdict where it becomes true, and
+does not stop.
 
 **`machine` is ADR-0066 option C**, and it is a *pair* of samples rather than one. The ADR's own
 amendment ruled out the pressure level as a threshold — a large suite reaches `warn` unaided on the

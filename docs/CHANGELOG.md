@@ -1,6 +1,30 @@
 # Changelog
 ## Unreleased
 
+**ADR-0084's mitigation is decided and built: a regression must reproduce to count.** Owner's decision,
+22 Sep — accepted behind a flag defaulting **on**, and sequenced **before Phase 14c**, because 14c ends
+in an overnight measurement and every later number is taken with this instrument. ADR-0077 option B is
+accepted to land **after** it, for the same reason in reverse: B leans the gate harder on the suite.
+
+- **The rule: a verdict failing *only* on regressions is re-read once, and the second reading decides.**
+  Not *take the better of two*. The asymmetry is deliberate and sound in one direction only — a
+  candidate that genuinely breaks a test **breaks it twice**, so the false-*pass* rate is unchanged
+  while the measured ~6 % false-*fail* rate goes away.
+- **Only a regression buys the retry.** A missing report is a machine problem (ADR-0012); a suite that
+  collected fewer tests is structural. **The schema refuses a verdict whose `first_reading` is not a
+  reported regression failure**, so this cannot drift into *re-run until it passes* — and a test
+  asserts exactly that.
+- **Both readings are recorded and nothing is hidden.** `tests` carries the deciding reading, because
+  the refinement requires `tests_ok` to be supported by the fields beside it (CLAUDE.md #2), and
+  `tests.first_reading` carries the discarded one — so a rescued verdict says what it was rescued from.
+- **The second reading runs in the same sandbox**, which is the conservative choice: state a test
+  leaves behind can only make the re-read *more* likely to fail, and a fresh clone of a real project is
+  half a gigabyte spent on a candidate that is already failing.
+- Contract change, so `docs/specs/pipeline.md` moves in the same commit: `tests.first_reading` on
+  `ChangeVerdict` and `retry_regressions` on `ChangePlan`, both defaulted so verdicts and plans written
+  before this still parse. `changeSurvives` is **unchanged** — the retry moves which reading is
+  authoritative, not what the gate is.
+
 **ADR-0085 — a sandbox teardown race throws away the verdict it was cleaning up after.** Two 25-run
 measurements, on **two different projects**, both died **at run 9**. `rm(dir, { recursive: true, force:
 true })` throws `ENOTEMPTY` when something is still writing into the tree as it is unlinked — a jest

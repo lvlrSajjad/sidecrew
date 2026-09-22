@@ -5191,9 +5191,10 @@ caught it was written for a different reason entirely.
 
 ## ADR-0077 — `null_guard` under a strictness flag is unpassable by construction, and gets more so as the worker improves (PROPOSED)
 
-**Status:** **option D accepted 20 Sep 2026 and MEASURED 21 Sep — 14/15, see the section below** ·
-Phase 14b · A is retired by that number, C more firmly; **B is recommended and needs the owner** ·
-originally: A, B and C remain open and are deliberately not decided — D is the decision to *measure before choosing*, and it is the whole of
+**Status:** **option D accepted 20 Sep 2026 and MEASURED 21 Sep — 14/15.** **Option B ACCEPTED by the
+owner, 22 Sep, to land AFTER ADR-0084's retry** — B leans the gate harder on the suite, and ADR-0084
+is what makes the suite trustworthy enough to lean on. A and C are retired by the number ·
+Phase 14b · originally: A, B and C remain open and are deliberately not decided — D is the decision to *measure before choosing*, and it is the whole of
 what was agreed. Phase 14b's own verdict — `PROCEED to 14c` — does not depend on any of them.
 
 **What D commits to, so a later session does not widen it.** One run: re-gate probe 1's **15
@@ -6022,9 +6023,9 @@ and it costs one suite run per sample.
 
 ## ADR-0084 — `D` is the suite's flake rate, not the gate's error rate
 
-**Status:** the **measurement is accepted** (22 Sep 2026, overnight) · the **mitigation is proposed and
-needs the owner** · supersedes the reassurance in ADR-0083 · bears on ADR-0066, ADR-0069, ADR-0077 and
-every survival number this project has published
+**Status:** the **measurement is accepted** (22 Sep 2026, overnight) · **the mitigation is ACCEPTED by
+the owner, 22 Sep — option "yes, behind a flag defaulting on"** · supersedes the reassurance in
+ADR-0083 · bears on ADR-0066, ADR-0069, ADR-0077 and every survival number this project has published
 
 ### The measurement
 
@@ -6101,6 +6102,26 @@ finding.
 **Recommendation: do it, behind a flag that defaults on, and record both readings rather than
 collapsing them.** The alternative is publishing survival rates that are known to be biased low by a
 mechanism that is now measured and cheap to correct.
+
+**DECIDED 22 Sep 2026 — accepted as recommended.** The owner also sequenced it: **this lands before
+Phase 14c**, because 14c ends in an overnight measurement and every later number is taken with this
+instrument. ADR-0077 option B is accepted **after** this, for the same reason in reverse — B leans the
+gate harder on the suite, and the suite is the thing that was disagreeing with itself.
+
+### The rule this implements, stated before the code
+
+**A regression-only failure is re-read once, and the second reading decides.** Not *"take the better of
+two"* — the asymmetry is deliberate and it is sound in one direction only: a candidate that genuinely
+breaks a test **breaks it twice**, so the false-*pass* rate stays where it was, while a ~6 % false-*fail*
+rate is removed. The retry is spent only on a verdict that is already failing on `tests_ok` with a
+report, so it costs nothing on the happy path and nothing on a machine problem.
+
+**Both readings are recorded.** The `tests` block carries the deciding reading, because
+`ChangeVerdict`'s refinement requires `tests_ok` to be supported by the fields beside it — a verdict
+that claims a survival its own fields do not support must not serialise (CLAUDE.md #2). The discarded
+reading is kept in `tests.first_reading`, so a verdict that was rescued says so and a reader can see
+what it was rescued from. **Nothing is collapsed and nothing is hidden**, which is ADR-0066's rule
+applied to a gate rather than to a measurement.
 
 ### project-b, 15 runs — and why it settles nothing
 

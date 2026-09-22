@@ -660,6 +660,9 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
   // one after and two compiler configurations do not produce comparable counts. A local binding rather
   // than four reads of `plan.compiler_flags` so a call site cannot quietly be the one that differs.
   const compilerFlags = plan.compiler_flags;
+  // ADR-0084. Read once here for the same reason `compilerFlags` is: four call sites reading a plan
+  // field independently is four chances for one of them to be the one that differs.
+  const retryRegressions = plan.retry_regressions;
 
 
   const dir = opts.dir ?? sidecrewDir();
@@ -868,7 +871,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
 
             const gateStart = performance.now();
             const verdict = await verifyChange(current, candidate, {
-              sandbox, baseline, projectDir, runner, tsconfig, compilerFlags,
+              sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions,
               timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
             });
             gate_ms += performance.now() - gateStart;
@@ -932,7 +935,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
 
                 const g2 = performance.now();
                 const v2 = await verifyChange(corrected, c2, {
-                  sandbox, baseline, projectDir, runner, tsconfig, compilerFlags,
+                  sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions,
                   timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
                 });
                 gate_ms += performance.now() - g2;

@@ -699,6 +699,15 @@ export const ChangePlan = z.object({
    * configurations is meaningless rather than merely imprecise.
    */
   compiler_flags: z.array(StrictnessFlag).default([]),
+  /**
+   * **ADR-0084, and it defaults to `true`.** Re-read the suite once when a verdict is failing *only*
+   * on regressions, and let the second reading decide.
+   *
+   * Set it `false` to reproduce a number measured before this existed — every survival rate published
+   * up to 22 Sep 2026 was taken one evaluation per candidate, and those are biased low by the ~6 %
+   * this removes. That is the only reason to turn it off; it is not a strictness dial.
+   */
+  retry_regressions: z.boolean().default(true),
   steps: z.array(ChangeStep).min(1),
 }).strict();
 export type ChangePlan = z.infer<typeof ChangePlan>;
@@ -878,6 +887,26 @@ const ChangeVerdictFields = z.object({
     /** Names of tests that passed before and do not now. The other half of what a correction reads. */
     regressed: z.array(z.string()),
     message: ErrorText.nullable(),
+    /**
+     * **The reading this verdict did NOT rest on — ADR-0084.** Present only when a regression-only
+     * failure was re-read and the second reading decided.
+     *
+     * The block above always carries the **deciding** reading, because the refinement below requires
+     * `tests_ok` to be supported by the fields beside it: a verdict that claims a survival its own
+     * fields do not support must not serialise (CLAUDE.md #2). So the discarded reading lives here
+     * rather than replacing it, and **a candidate that was rescued says what it was rescued from.**
+     *
+     * Measured: 11 tests in one project each failed in exactly one of 50 runs of an *unmodified* tree,
+     * and a run carried at least one such failure `3/50` of the time — indistinguishable from `D`
+     * itself. One observation was never enough to call a regression.
+     */
+    first_reading: z.object({
+      reported: z.boolean(),
+      ran_after: NonNegInt,
+      passed_after: NonNegInt,
+      regressed: z.array(z.string()),
+      message: ErrorText.nullable(),
+    }).nullable().default(null),
   }).nullable(),
   confinement: z.array(ConfinementBreach),
   /**
@@ -987,6 +1016,22 @@ export const ChangeVerdict = ChangeVerdictFields.superRefine((v, ctx) => {
     // direction — this one let a bad change through, where ADR-0066's failure only refused a good one.
     else if (v.tests.passed_after < v.tests.passed_before) {
       fail(["tests_ok"], `tests_ok cannot be true when fewer tests passed than in the baseline (${v.tests.passed_after} < ${v.tests.passed_before})`);
+    }
+  }
+  // ADR-0084. A retry is spent only on a verdict that was failing on `tests_ok` **with a report** — a
+  // machine problem is not a flake and does not buy a second suite run. Asserting it here keeps the
+  // rule from drifting into "re-run until it passes", which is the one shape this must never become.
+  if (v.tests?.first_reading != null) {
+    const first = v.tests.first_reading;
+    const firstFailed = !first.reported
+      || first.regressed.length > 0
+      || first.passed_after < v.tests.passed_before
+      || first.ran_after < v.tests.ran_before;
+    if (!firstFailed) {
+      fail(["tests", "first_reading"], "a first reading is recorded only when it failed — a passing reading is not re-read");
+    }
+    if (!first.reported) {
+      fail(["tests", "first_reading"], "a reading that produced no report is a machine problem, not a flake, and does not spend the retry");
     }
   }
   if (v.survived !== changeSurvives(v)) {
