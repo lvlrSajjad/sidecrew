@@ -78,3 +78,7 @@ experiments/editing-ceiling/results/*-report.json
 # Phase 14b probe 2 plans the same 30 tasks with narrowed asks, so it carries the same absolute path
 # into a client checkout that the correction-round plans do. Same rule, same reason.
 experiments/editing-ceiling/plans/
+
+# Phase 14c: the refused set names files in a client tree. Its sha256 is in the committed census; the
+# list itself is only ever local (CLAUDE.md #7).
+experiments/reach/local/
