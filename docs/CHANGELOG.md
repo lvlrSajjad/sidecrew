@@ -21,6 +21,16 @@ CEST, so the local day never changed.
   cross — true in CEST, true on CI's UTC runners, **false in `Pacific/Auckland`**. It now uses explicit
   `Z` instants for the crossing case and a one-minute window at local noon for the non-crossing one,
   the only shape safe in every timezone. Verified in all three.
+- **The direction matters and it is the good one.** The three went **fail → pass** — they were among
+  the project's 209 already-failing tests. `tests_ok` allows more passing, so a verdict taken across
+  that boundary could only have been *helped*. **The floor under `D` in the direction that fails a
+  candidate is 0 across 25 runs**, which is better news for ADR-0077 option B than a spread of 3
+  sounds. The guard is still right: the mechanism is direction-agnostic and ADR-0069's own case was
+  the harmful direction.
+- **Unlooked-for: 5.3 % of test ids are not stable between runs** — 349 of 6,529 appeared in some runs
+  and not others. ADR-0053's generated-name phenomenon, measured here for the first time and far
+  larger than the two tests that ADR was written from. The gate already handles it correctly; this
+  records the scale, because 5.3 % is where somebody would be tempted to "fix" the id comparison.
 - **It does not explain `snc-27`**, whose verdict was taken at 12:26Z against an 11:35Z baseline,
   nowhere near either boundary. Against the rule frozen before the run: `0 < spread < 82`, a floor
   exists and is smaller than the flip; the remainder still needs one.

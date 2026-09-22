@@ -5972,13 +5972,37 @@ nowhere near either boundary — and its 82 regressions remain unexplained. Agai
 before the run: `0 < spread < 82`, *a floor exists and is smaller than `snc-27`'s flip; the remainder
 still needs one.*
 
-**What it does explain is a class of false regression nobody had named**, and it bounds it: on this
-project, at this boundary, **three tests**. A verdict taken across 00:00Z against a baseline taken
-before it would record three regressions that no change caused. Small, real, and now warned about.
+**And the direction matters — the first draft of this ADR had it backwards.** The three tests went
+**fail → pass**, not pass → fail: at run 1 they were among the project's 209 already-failing tests, and
+after 00:00Z they passed. In gate terms that is **harmless**. `tests_ok` requires `regressed.length ===
+0` and `passed >= baseline.passed`; a test that failed in the baseline and passes later is not a
+regression and more passing is allowed. **A verdict taken across this boundary could only have been
+helped by it, never failed.**
 
-**For ADR-0077 option B this is mildly reassuring rather than alarming.** B leans the gate on *the
-tests still passing*, and the measured floor under that clause is three tests at a known, warnable
-boundary — not a general instability. The control arm, 55 runs across a boundary-free window, is what
+So the floor under `D` **in the direction that fails a candidate** is **0 across 25 runs**, and the
+measured floor of 3 is in the direction that cannot. That is better news for ADR-0077 option B than a
+spread of 3 sounds.
+
+**The guard is still right, because the mechanism is direction-agnostic.** ADR-0069's own case was the
+harmful direction — *"the test that asserts on what was tracked today had already flipped"*. Which way
+a date-dependent test moves across a boundary depends on what it asserts, and both directions exist in
+the same project. One night measured one boundary in one direction; the warning has to cover both.
+
+### A second finding, unlooked-for: 5.3 % of the test ids are not stable between runs
+
+**349 of 6,529** ids appeared in some of the 25 runs and not others — `6180` were seen in all 25
+(5,968 always passing, 209 never, 3 flaky). That is ADR-0053's generated-name phenomenon, measured on
+this project for the first time and much larger than the *"two such tests"* that ADR was written from.
+
+**The gate already handles it correctly and this is a check on that, not a defect**: `regressed` counts
+only ids present in `seen_ids` now, so a vanished id is never a regression, and `ran_after >=
+ran_before` still refuses a suite that collected fewer. Worth recording because 5.3 % is the scale at
+which somebody would otherwise be tempted to "fix" the id comparison, and ADR-0053 is why they should
+not.
+
+**For ADR-0077 option B this is reassuring.** B leans the gate on *the tests still passing*, and
+across 25 runs of an unmodified tree **no test moved in the direction that fails a candidate** — the
+only movement was three tests at a known, warnable boundary, moving the harmless way. The control arm, 55 runs across a boundary-free window, is what
 turns that into a statement with a number under it.
 
 ### The instrument that found it
