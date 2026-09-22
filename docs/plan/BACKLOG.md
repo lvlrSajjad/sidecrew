@@ -833,3 +833,20 @@ whose survival and cost figures were never measured.
   non-zero count that has nothing to do with the experiment — which cost a few minutes of a wrong
   suspicion on 21 Sep. A teardown in whichever test builds a sandbox, or a name that the sweep
   distinguishes from a real one.
+
+## Noticed while building ADR-0077 option B (22 Sep 2026)
+
+- **Nothing runs the slow suite, so its assertions rot silently.** `test/fix.slow.test.ts`'s
+  *"is off by default, so the task escalates"* had been failing since **ADR-0054** landed — it expected
+  `{ suppression_added: 2 }` and the gate now also reports `documentation_changed: 2`, because the
+  control's suppression is a `// @ts-ignore` and that is a comment line added. The gate was right the
+  whole time; the expectation was stale, and `ci.yml` runs the fast set by design (the slow files need
+  real toolchains). **The same shape as CI being red from 18–20 Sep with nobody looking.** Options: a
+  scheduled workflow that runs `SIDECREW_SLOW=1` on the fixture only — it needs no client project and
+  took 67 s here — or a release-gate step, or a documented "run it before a phase ends". The first is
+  cheapest and would have caught this within a day.
+- **A suppression is counted twice in `confinement_breaks`.** ADR-0054 counts comment lines and a
+  `// @ts-ignore` is one, so every `suppression_added` also reports `documentation_changed`. Harmless
+  for the gate — both are breaches, the candidate is refused either way — but the *stat* over-reports
+  documentation changes, and Phase 11b's numbers are read off that stat. Whether ADR-0054's rule should
+  exclude suppression comments is a decision, not a fix.

@@ -252,7 +252,13 @@ describe.skipIf(!SLOW)("the correction round, end to end (ADR-0044 §4)", () => 
     expect(result.stats.survived).toBe(0);
     expect(result.stats.corrections.written).toBe(0);
     // Two attempts, both refused by the confinement checker without the candidate being compiled.
-    expect(result.stats.confinement_breaks).toEqual({ suppression_added: 2 });
+    //
+    // **Both rules fire, and that is the gate being right rather than a bug.** ADR-0054 made an
+    // unrequested documentation change a breach, and the control's suppression is a `// @ts-ignore`
+    // line — which is a comment line added, so it trips that rule as well. The expectation here was
+    // written before ADR-0054 and had been stale ever since, silently, because `ci.yml` runs the fast
+    // set and nothing runs this file. `suppression_added` is still the meaningful one.
+    expect(result.stats.confinement_breaks).toEqual({ documentation_changed: 2, suppression_added: 2 });
     expect(result.stats.claude_tokens.planning).toBe(0);
   });
 

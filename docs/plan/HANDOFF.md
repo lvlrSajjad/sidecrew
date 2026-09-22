@@ -44,7 +44,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | | |
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
-| tests | `npm run lint && npm test` → **779 passing**, 1 skipped |
+| tests | `npm run lint && npm test` → **781 passing**, 1 skipped · slow set: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → 31 passing, **run it before a phase ends** |
 | version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
@@ -159,7 +159,7 @@ not a queue.** These are the live options:
 |---|---|---|---|
 | **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions · **one overnight run** | nothing. **Freeze its exit check before starting**, §PHASES |
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
-| **C** | **Implement ADR-0077 option B** — the gate accepts a test file that no longer type-checks but still passes | an implementation | **decided 22 Sep: yes, after ADR-0084**, which has now landed. Unblocked |
+| **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
 | **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner. Its measurement is **E**, still blocked |
 | **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **BLOCKED: stryker is installed in neither tree.** Adding `@stryker-mutator/core` is the owner's call — a devDependency in a client repo, or a new one here |
 | **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
@@ -169,8 +169,8 @@ The reasoning is worth keeping: every item here ends in a measurement, and all o
 an instrument that had a known ~6 % false-failure rate. Fixing that first makes every later number
 cleaner, which is why it went ahead of the bigger prize.
 
-**C is now unblocked** and is the small one: ADR-0077 option B was accepted to land after ADR-0084, and
-ADR-0084 has landed.
+**B and C are both done.** What is left on this board is **A (Phase 14c)**, the two open decisions
+(D and E), and the passive exit check.
 
 **The one run worth doing unattended next:** 50 runs of project-b's suite (`scripts/suite-reproducibility.sh`
 with `PLAN` pointing at a project-b plan and `OUT` set), ~3.5 h, no worker and no model. It closes
@@ -436,6 +436,10 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   and **not** `ENOTEMPTY`, which is what a jest worker outliving its run produces. Two measurements on
   two projects both died at run 9 on it. Every teardown goes through `removeSandbox` now; do not spell
   the options again at a new call site.
+- **Nothing runs the slow suite, so its assertions rot.** `test/fix.slow.test.ts` had a stale
+  expectation from the day **ADR-0054** landed and nobody saw it, because `ci.yml` runs the fast set by
+  design. **Run `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` before a phase ends** — it needs
+  only the fixture, no client project, and it took 67 s.
 - **An import cycle here is a wrong number, not a crash.** `doctor` reaching into `plan.ts` closed
   `concurrency → serve → doctor → plan → verifier/ts → concurrency`, which under ESM made
   `DEFAULT_STRYKER_CONCURRENCY` **`undefined`**. One assertion written for a different reason caught
