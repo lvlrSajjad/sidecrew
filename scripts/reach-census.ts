@@ -1,6 +1,10 @@
 // How much of a project can a worker physically be asked to change? — Phase 14c's `Reach`
 //
-//   npx tsx scripts/reach-census.ts <project-dir> --label project-a [--out FILE] [--list FILE]
+//   npx tsx scripts/reach-census.ts <project-dir> --label project-a [--after] [--out FILE] [--list FILE]
+//
+// `--after` counts what a **symbol-scoped** task can reach as well (ADR-0086), by the definition
+// `experiments/reach/README.md` §2 declared on 22 Sep 2026 before any after-number existed. Without
+// it, the census is the "before" one and counts the whole-file clause alone.
 //
 // **What it counts.** Every `.ts`/`.tsx` file under `<project>/src`, by bytes, split by whether
 // `validateChangePlan`'s `files_too_large_to_rewrite` clause refuses a one-file task on it:
@@ -26,6 +30,7 @@ import { isTestArtefact } from "../src/confinement.js";
 import { toPosix } from "../src/change.js";
 import { MAX_FIX_TOKENS } from "../src/fix.js";
 import { rewriteCost } from "../src/fix-validate.js";
+import { declarations } from "../src/symbols.js";
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -40,7 +45,8 @@ if (projectArg === undefined || label === undefined) {
 }
 const project = resolve(projectArg);
 const today = new Date().toISOString().slice(0, 10);
-const out = flag("--out") ?? `experiments/reach/results/census-before-${label}-${today}.json`;
+const after = args.includes("--after");
+const out = flag("--out") ?? `experiments/reach/results/census-${after ? "after" : "before"}-${label}-${today}.json`;
 const listOut = flag("--list") ?? `experiments/reach/local/refused-${label}-${today}.txt`;
 
 const git = (cwd: string, ...a: string[]): string => execFileSync("git", ["-C", cwd, ...a], { encoding: "utf8" }).trim();
@@ -55,8 +61,32 @@ function walk(dir: string, found: string[]): string[] {
   return found;
 }
 
-interface Tally { files: number; bytes: number; refused_files: number; refused_bytes: number }
-const tally = (): Tally => ({ files: 0, bytes: 0, refused_files: 0, refused_bytes: 0 });
+interface Tally { files: number; bytes: number; refused_files: number; refused_bytes: number; symbol_bytes: number }
+const tally = (): Tally => ({ files: 0, bytes: 0, refused_files: 0, refused_bytes: 0, symbol_bytes: 0 });
+
+/**
+ * README §2: in a file the whole-file clause refuses, the bytes inside the union of every declaration
+ * that resolves **uniquely** and whose own text passes the same size clause. Nothing else in that file
+ * — imports, JSDoc, an ambiguous overload, a declaration too big to return — is addressable.
+ */
+function symbolBytes(text: string, rel: string): number {
+  const all = declarations(text, rel, project);
+  if (all === null) throw new Error("typescript is not resolvable from the project, so --after cannot be counted");
+  const count = new Map<string, number>();
+  for (const d of all) count.set(d.name, (count.get(d.name) ?? 0) + 1);
+  const spans = all
+    .filter((d) => count.get(d.name) === 1 && rewriteCost([text.slice(d.span.start, d.span.end)]) <= MAX_FIX_TOKENS)
+    .map((d) => d.span)
+    .sort((a, b) => a.start - b.start);
+  let covered = 0;
+  let reach = 0;
+  for (const s of spans) {
+    const from = Math.max(s.start, reach);
+    if (s.end > from) covered += Buffer.byteLength(text.slice(from, s.end), "utf8");
+    reach = Math.max(reach, s.end);
+  }
+  return covered;
+}
 
 const all = tally();
 const source = tally(); // test artefacts excluded — a plan may never list one (ADR-0048)
@@ -68,10 +98,11 @@ for (const abs of walk(join(project, "src"), []).sort()) {
   const rel = toPosix(relative(project, abs));
   const isRefused = rewriteCost([text]) > MAX_FIX_TOKENS;
   const buckets = isTestArtefact(rel) ? [all] : [all, source];
+  const bySymbol = after && isRefused ? symbolBytes(text, rel) : 0;
   for (const t of buckets) {
     t.files += 1;
     t.bytes += bytes;
-    if (isRefused) { t.refused_files += 1; t.refused_bytes += bytes; }
+    if (isRefused) { t.refused_files += 1; t.refused_bytes += bytes; t.symbol_bytes += bySymbol; }
   }
   if (isRefused && !isTestArtefact(rel)) refused.push(rel);
 }
@@ -80,7 +111,9 @@ const share = (t: Tally) => ({
   ...t,
   refused_file_share: t.files === 0 ? 0 : t.refused_files / t.files,
   refused_byte_share: t.bytes === 0 ? 0 : t.refused_bytes / t.bytes,
-  reach: t.bytes === 0 ? 0 : 1 - t.refused_bytes / t.bytes,
+  reach_whole_file: t.bytes === 0 ? 0 : 1 - t.refused_bytes / t.bytes,
+  // README §2. Equal to `reach_whole_file` on a "before" census, where no symbol bytes are counted.
+  reach: t.bytes === 0 ? 0 : (t.bytes - t.refused_bytes + t.symbol_bytes) / t.bytes,
 });
 
 const listText = `${refused.join("\n")}\n`;
@@ -88,7 +121,9 @@ const payload = {
   measured: true,
   kind: "reach-census",
   phase: "14c",
-  when: "before — files_too_large_to_rewrite as it stood before 14c changed anything",
+  when: after
+    ? "after — whole-file clause plus symbol-scoped tasks, by experiments/reach/README.md §2"
+    : "before — files_too_large_to_rewrite as it stood before 14c changed anything",
   label,
   date: new Date().toISOString(),
   rule: { clause: "files_too_large_to_rewrite", test: "rewriteCost([source]) > MAX_FIX_TOKENS", MAX_FIX_TOKENS },
