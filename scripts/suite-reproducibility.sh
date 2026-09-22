@@ -17,6 +17,9 @@ export NODE_OPTIONS=--max-old-space-size=8192               # ADR-0032
 cd "$(dirname "$0")/.." || exit 1
 PLAN="${PLAN:-experiments/correction-round/plans/project-a-2026-09-20/change_plan.json}"
 RUNS="${RUNS:-20}"
+# Where the result goes. Defaulted by the harness when unset; set it when measuring a second project,
+# so two runs on the same day do not overwrite each other.
+OUT="${OUT:-}"
 LOG=experiments/gate-error-rate/results/suite-reproducibility.log
 
 mkdir -p experiments/gate-error-rate/results
@@ -48,6 +51,10 @@ say "commit $(git rev-parse HEAD)"
 say "local time now $(date '+%H:%M'); ~${RUNS} runs at roughly 5 min each"
 
 say "── the floor under D: ${RUNS} runs of the unmodified suite ──"
-npx tsx scripts/suite-reproducibility.ts "$PLAN" --runs "$RUNS" 2>&1 | tee -a "$LOG"
+if [ -n "$OUT" ]; then
+  npx tsx scripts/suite-reproducibility.ts "$PLAN" --runs "$RUNS" --out "$OUT" 2>&1 | tee -a "$LOG"
+else
+  npx tsx scripts/suite-reproducibility.ts "$PLAN" --runs "$RUNS" 2>&1 | tee -a "$LOG"
+fi
 say "harness exited ${PIPESTATUS[0]}"
 say "free disk now: $(df -h . | awk 'NR==2 {print $4}')"
