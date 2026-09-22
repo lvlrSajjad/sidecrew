@@ -5979,9 +5979,15 @@ after 00:00Z they passed. In gate terms that is **harmless**. `tests_ok` require
 regression and more passing is allowed. **A verdict taken across this boundary could only have been
 helped by it, never failed.**
 
-So the floor under `D` **in the direction that fails a candidate** is **0 across 25 runs**, and the
-measured floor of 3 is in the direction that cannot. That is better news for ADR-0077 option B than a
-spread of 3 sounds.
+So *within those 25 runs* the floor in the direction that fails a candidate was **0**, and the measured
+floor of 3 was in the direction that cannot.
+
+**That did not survive a larger sample, and the correction is ADR-0084.** A 50-run control in a
+boundary-free window found **11 tests that each failed in exactly one of 50 runs**, clustered into 3
+runs — the harmful direction, pass → fail. 25 runs simply did not catch any. **Do not quote the
+sentence above as a floor of zero**; it is a statement about a sample that was too small, kept here
+because this ADR's other conclusions rest on the same run and a reader has to know which parts a later
+measurement moved.
 
 **The guard is still right, because the mechanism is direction-agnostic.** ADR-0069's own case was the
 harmful direction — *"the test that asserts on what was tracked today had already flipped"*. Which way
@@ -6000,9 +6006,10 @@ ran_before` still refuses a suite that collected fewer. Worth recording because 
 which somebody would otherwise be tempted to "fix" the id comparison, and ADR-0053 is why they should
 not.
 
-**For ADR-0077 option B this is reassuring.** B leans the gate on *the tests still passing*, and
-across 25 runs of an unmodified tree **no test moved in the direction that fails a candidate** — the
-only movement was three tests at a known, warnable boundary, moving the harmless way. The control arm, 55 runs across a boundary-free window, is what
+**For ADR-0077 option B, read ADR-0084 rather than this paragraph.** It said that across 25 runs no
+test moved in the direction that fails a candidate. True of those 25 and false in general: the 50-run
+control found the harmful direction at a rate that matters. The date-boundary finding above stands; the
+reassurance did not. The control arm, 55 runs across a boundary-free window, is what
 turns that into a statement with a number under it.
 
 ### The instrument that found it
@@ -6012,3 +6019,92 @@ turns that into a statement with a number under it.
 **counts only** in the payload because a test id carries a client file path. It is worth keeping: *is
 this project's suite deterministic* is a question worth asking of any project sidecrew is pointed at,
 and it costs one suite run per sample.
+
+## ADR-0084 — `D` is the suite's flake rate, not the gate's error rate
+
+**Status:** the **measurement is accepted** (22 Sep 2026, overnight) · the **mitigation is proposed and
+needs the owner** · supersedes the reassurance in ADR-0083 · bears on ADR-0066, ADR-0069, ADR-0077 and
+every survival number this project has published
+
+### The measurement
+
+50 runs of `project-a`'s **unmodified** suite, fresh clone each, no change applied, 01:39Z → 04:45Z —
+**no calendar boundary of either kind** — machine `normal` throughout.
+`experiments/gate-error-rate/results/suite-reproducibility-2026-09-22.json`.
+
+**11 tests, in 6 suites, each failed in exactly one of the 50 runs.** They cluster into three runs:
+
+| run | at | passing | short by |
+|---|---|---|---|
+| 8 | 02:06:02Z | 6316 | 4 |
+| 22 | 02:58:37Z | 6314 | 6 |
+| 23 | 03:03:08Z | 6319 | 1 |
+| the other 47 | | 6320 | — |
+
+This is **the harmful direction**: tests that passed become tests that fail. In the gate that is a
+regression, `tests_ok` is false, and the candidate does not survive.
+
+### What it explains
+
+**Every one of these would have failed a candidate that deserved to pass**, and the rate at which a run
+carries at least one is **3/50 = 0.060, 95 % `[0.013, 0.165]`**.
+
+| | k/n | 95 % exact |
+|---|---|---|
+| runs carrying ≥ 1 spurious failure — this measurement | **3/50** | **[0.013, 0.165]** |
+| `D`, the gate's measured error rate — ADR-0066 | 2/19 | [0.013, 0.331] |
+
+**The intervals share a lower bound and overlap over their whole length.** `D = 0.105` and this 0.060
+are not distinguishable on these samples.
+
+**So the most likely reading of `D` is that it was never the gate's error at all.** `verifyChange` did
+its job each time: it compared a suite result against a baseline and reported what it saw. What moved
+was the suite. ADR-0066 proposed memory pressure and implemented recording for it; the 21 Sep instance
+excluded pressure with telemetry on both sides; this supplies the mechanism that was missing, and it
+requires no defect in any code this project wrote.
+
+**It does not explain `snc-27`'s 82.** The largest spurious failure observed here is **6**, an order of
+magnitude short. Same *kind* of event, not the same size, and calling 82 explained by this would be
+exactly the overreach the rest of this ADR argues against.
+
+### What it means for every rate this project has published
+
+**A single evaluation of a candidate carries roughly a 6 % chance of a spurious failure**, in the
+direction that fails it. Every survival number measured one evaluation per candidate. So published
+rates are **biased low** by something on that order, and the bias is a property of the projects
+measured rather than of sidecrew.
+
+This does not invalidate them and must not be used to revise them upward — that would be adjusting a
+number after seeing which way an error points, which is what §4.0 precondition 4 forbids. It is a
+caveat that belongs beside them, and it is smaller than most of the intervals already quoted.
+
+### The mitigation — proposed, and the owner's call
+
+**Re-run the suite once before recording a failure that rests only on regressions.** If the second run
+agrees, the candidate failed. If it disagrees, the verdict records both and the disagreement is the
+finding.
+
+- **It costs nothing on the happy path.** Only a candidate that already failed on `tests_ok` pays, and
+  only those which compiled — 2 of 30 on the flagship shape, so the expected cost is a fraction of one
+  extra suite run per plan.
+- **It cannot make the gate more permissive in the way that matters.** A candidate that genuinely
+  breaks tests breaks them twice. This only rescues one that never broke them.
+- **It is the standard already applied by hand.** `snc-27` was re-read precisely because one failing
+  observation against `D = 0.105` is not enough to publish, and ADR-0066's rule — *never take the
+  better of two readings because it is better* — is what makes the *recorded disagreement*, rather than
+  the better number, the output.
+- **Against:** it makes a verdict a function of two runs rather than one, which is a contract change
+  (`ChangeVerdict` would need to carry the second reading), and it spends wall-clock at the most
+  expensive stage. And a 6 % floor is a property of *this* project; another may be clean, in which case
+  this buys nothing there.
+
+**Recommendation: do it, behind a flag that defaults on, and record both readings rather than
+collapsing them.** The alternative is publishing survival rates that are known to be biased low by a
+mechanism that is now measured and cheap to correct.
+
+### What this says about ADR-0077 option B
+
+B gates on *the tests still passing*. The suite it would lean on fails 11 tests intermittently at
+roughly 6 % of runs. **That is an argument for the mitigation above, not against B** — because today's
+gate already rests on exactly the same suite for every candidate that reaches it, so B adds no exposure
+that is not already there. What changed is that the exposure now has a number.

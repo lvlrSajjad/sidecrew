@@ -1,0 +1,1180 @@
+{
+  "measured": true,
+  "experiment": "gate-error-rate",
+  "what": "is the project's own suite deterministic? the floor under D (ADR-0066 addendum)",
+  "rule": "frozen in this script's header before the run, 22 Sep 2026",
+  "change_applied": false,
+  "runs_requested": 50,
+  "runs_reported": 50,
+  "short_of_plan": false,
+  "project": {
+    "commit": "1d79d903f9c743aa58d2063e98055325a5ef7858",
+    "tree_clean": true
+  },
+  "runner": "jest",
+  "result": {
+    "passed_min": 6314,
+    "passed_max": 6320,
+    "spread": 6,
+    "flaky_tests": 11,
+    "flaky_suites": 6,
+    "passed_in_k_runs": {
+      "49": 11
+    },
+    "always_passed": 5960,
+    "never_passed": 209
+  },
+  "verdict": "A FLOOR EXISTS and is smaller than snc-27's flip — partial explanation, the remainder needs one",
+  "per_run": [
+    {
+      "i": 1,
+      "started_at": "2026-09-22T01:39:46.869Z",
+      "ms": 222775,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 23.176742553710938,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.1199188232421875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.341232299804688,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9763641357421875
+        }
+      }
+    },
+    {
+      "i": 2,
+      "started_at": "2026-09-22T01:43:29.677Z",
+      "ms": 223956,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.338729858398438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9762725830078125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.467193603515625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9876861572265625
+        }
+      }
+    },
+    {
+      "i": 3,
+      "started_at": "2026-09-22T01:47:13.667Z",
+      "ms": 225875,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.475418090820312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9874420166015625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.37298583984375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.882415771484375
+        }
+      }
+    },
+    {
+      "i": 4,
+      "started_at": "2026-09-22T01:50:59.576Z",
+      "ms": 225960,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.383926391601562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8823699951171875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.33941650390625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.93048095703125
+        }
+      }
+    },
+    {
+      "i": 5,
+      "started_at": "2026-09-22T01:54:45.569Z",
+      "ms": 220024,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.348312377929688,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.930023193359375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.384521484375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.989593505859375
+        }
+      }
+    },
+    {
+      "i": 6,
+      "started_at": "2026-09-22T01:58:25.623Z",
+      "ms": 228995,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.381134033203125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.989532470703125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.277313232421875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0208282470703125
+        }
+      }
+    },
+    {
+      "i": 7,
+      "started_at": "2026-09-22T02:02:14.648Z",
+      "ms": 227860,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.287857055664062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0195465087890625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.110885620117188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.7397613525390625
+        }
+      }
+    },
+    {
+      "i": 8,
+      "started_at": "2026-09-22T02:06:02.538Z",
+      "ms": 212627,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6316,
+      "failed": 193,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.122039794921875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.7394561767578125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.40777587890625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.859283447265625
+        }
+      }
+    },
+    {
+      "i": 9,
+      "started_at": "2026-09-22T02:09:35.200Z",
+      "ms": 227337,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.41748046875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.859222412109375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.362747192382812,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.04296875
+        }
+      }
+    },
+    {
+      "i": 10,
+      "started_at": "2026-09-22T02:13:22.572Z",
+      "ms": 225375,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.373565673828125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.04290771484375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.213851928710938,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.823699951171875
+        }
+      }
+    },
+    {
+      "i": 11,
+      "started_at": "2026-09-22T02:17:07.982Z",
+      "ms": 223125,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.225341796875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.82342529296875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.355239868164062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9893035888671875
+        }
+      }
+    },
+    {
+      "i": 12,
+      "started_at": "2026-09-22T02:20:51.141Z",
+      "ms": 227893,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.365936279296875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9892578125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.382080078125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.09271240234375
+        }
+      }
+    },
+    {
+      "i": 13,
+      "started_at": "2026-09-22T02:24:39.069Z",
+      "ms": 236995,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.393966674804688,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.092376708984375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.336761474609375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0296478271484375
+        }
+      }
+    },
+    {
+      "i": 14,
+      "started_at": "2026-09-22T02:28:36.097Z",
+      "ms": 223259,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.349716186523438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.028778076171875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.325515747070312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8114166259765625
+        }
+      }
+    },
+    {
+      "i": 15,
+      "started_at": "2026-09-22T02:32:19.386Z",
+      "ms": 219136,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.336212158203125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.811004638671875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.471786499023438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8432769775390625
+        }
+      }
+    },
+    {
+      "i": 16,
+      "started_at": "2026-09-22T02:35:58.553Z",
+      "ms": 226159,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.483734130859375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8430328369140625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.312545776367188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8802032470703125
+        }
+      }
+    },
+    {
+      "i": 17,
+      "started_at": "2026-09-22T02:39:44.743Z",
+      "ms": 221633,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.322769165039062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.880126953125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.546600341796875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.91455078125
+        }
+      }
+    },
+    {
+      "i": 18,
+      "started_at": "2026-09-22T02:43:26.411Z",
+      "ms": 229030,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.558746337890625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.914398193359375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.376144409179688,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9486541748046875
+        }
+      }
+    },
+    {
+      "i": 19,
+      "started_at": "2026-09-22T02:47:15.476Z",
+      "ms": 229099,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.388992309570312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.948486328125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.1837158203125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.732421875
+        }
+      }
+    },
+    {
+      "i": 20,
+      "started_at": "2026-09-22T02:51:04.606Z",
+      "ms": 228173,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.192459106445312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.7323150634765625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.639541625976562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0347900390625
+        }
+      }
+    },
+    {
+      "i": 21,
+      "started_at": "2026-09-22T02:54:52.812Z",
+      "ms": 224695,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.650863647460938,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0344696044921875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.395263671875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.81158447265625
+        }
+      }
+    },
+    {
+      "i": 22,
+      "started_at": "2026-09-22T02:58:37.537Z",
+      "ms": 271333,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6314,
+      "failed": 195,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.408798217773438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8110198974609375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.03765869140625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.5405426025390625
+        }
+      }
+    },
+    {
+      "i": 23,
+      "started_at": "2026-09-22T03:03:08.904Z",
+      "ms": 240900,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6319,
+      "failed": 190,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.033767700195312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.54052734375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.012252807617188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.6285858154296875
+        }
+      }
+    },
+    {
+      "i": 24,
+      "started_at": "2026-09-22T03:07:09.834Z",
+      "ms": 225947,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.00164794921875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.612762451171875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.393905639648438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0037384033203125
+        }
+      }
+    },
+    {
+      "i": 25,
+      "started_at": "2026-09-22T03:10:55.816Z",
+      "ms": 224205,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.406982421875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0030517578125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.4569091796875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8865814208984375
+        }
+      }
+    },
+    {
+      "i": 26,
+      "started_at": "2026-09-22T03:14:40.056Z",
+      "ms": 222516,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.4669189453125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.88641357421875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.360214233398438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.987579345703125
+        }
+      }
+    },
+    {
+      "i": 27,
+      "started_at": "2026-09-22T03:18:22.606Z",
+      "ms": 224568,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.3695068359375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.987518310546875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.301422119140625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.89569091796875
+        }
+      }
+    },
+    {
+      "i": 28,
+      "started_at": "2026-09-22T03:22:07.207Z",
+      "ms": 221121,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.296646118164062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8956451416015625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.387664794921875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.88037109375
+        }
+      }
+    },
+    {
+      "i": 29,
+      "started_at": "2026-09-22T03:25:48.363Z",
+      "ms": 226088,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.398330688476562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.87908935546875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.2476806640625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.784637451171875
+        }
+      }
+    },
+    {
+      "i": 30,
+      "started_at": "2026-09-22T03:29:34.481Z",
+      "ms": 219491,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.256546020507812,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.784576416015625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.347381591796875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9119720458984375
+        }
+      }
+    },
+    {
+      "i": 31,
+      "started_at": "2026-09-22T03:33:14.002Z",
+      "ms": 224717,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.359207153320312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9119720458984375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.517913818359375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0200653076171875
+        }
+      }
+    },
+    {
+      "i": 32,
+      "started_at": "2026-09-22T03:36:58.753Z",
+      "ms": 224367,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.528793334960938,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0199127197265625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.402633666992188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.002471923828125
+        }
+      }
+    },
+    {
+      "i": 33,
+      "started_at": "2026-09-22T03:40:43.149Z",
+      "ms": 233470,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.414382934570312,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.002410888671875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.084732055664062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.7889251708984375
+        }
+      }
+    },
+    {
+      "i": 34,
+      "started_at": "2026-09-22T03:44:36.652Z",
+      "ms": 225618,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.084671020507812,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.788482666015625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.199356079101562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.873870849609375
+        }
+      }
+    },
+    {
+      "i": 35,
+      "started_at": "2026-09-22T03:48:22.305Z",
+      "ms": 227640,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.209152221679688,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8738250732421875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.5550537109375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9840545654296875
+        }
+      }
+    },
+    {
+      "i": 36,
+      "started_at": "2026-09-22T03:52:09.980Z",
+      "ms": 234778,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.565704345703125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9838409423828125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.3267822265625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0695037841796875
+        }
+      }
+    },
+    {
+      "i": 37,
+      "started_at": "2026-09-22T03:56:04.793Z",
+      "ms": 215178,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.3377685546875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0692596435546875
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.37652587890625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.969329833984375
+        }
+      }
+    },
+    {
+      "i": 38,
+      "started_at": "2026-09-22T03:59:40.005Z",
+      "ms": 228861,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.382492065429688,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.962188720703125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.4368896484375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9956817626953125
+        }
+      }
+    },
+    {
+      "i": 39,
+      "started_at": "2026-09-22T04:03:28.901Z",
+      "ms": 225428,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.447067260742188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.99554443359375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.350448608398438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8887481689453125
+        }
+      }
+    },
+    {
+      "i": 40,
+      "started_at": "2026-09-22T04:07:14.359Z",
+      "ms": 229801,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.361312866210938,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8886260986328125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.118118286132812,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8470916748046875
+        }
+      }
+    },
+    {
+      "i": 41,
+      "started_at": "2026-09-22T04:11:04.194Z",
+      "ms": 227283,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.129745483398438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8470001220703125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.287017822265625,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.927215576171875
+        }
+      }
+    },
+    {
+      "i": 42,
+      "started_at": "2026-09-22T04:14:51.511Z",
+      "ms": 229651,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.297622680664062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.926849365234375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.206832885742188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.89215087890625
+        }
+      }
+    },
+    {
+      "i": 43,
+      "started_at": "2026-09-22T04:18:41.195Z",
+      "ms": 225086,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.218780517578125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.89208984375
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.38201904296875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9123992919921875
+        }
+      }
+    },
+    {
+      "i": 44,
+      "started_at": "2026-09-22T04:22:26.316Z",
+      "ms": 231665,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.393798828125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.912353515625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.17083740234375,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8378143310546875
+        }
+      }
+    },
+    {
+      "i": 45,
+      "started_at": "2026-09-22T04:26:18.016Z",
+      "ms": 229519,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.182861328125,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.8372955322265625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.22998046875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9237213134765625
+        }
+      }
+    },
+    {
+      "i": 46,
+      "started_at": "2026-09-22T04:30:07.565Z",
+      "ms": 223603,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.241836547851562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.923614501953125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.157089233398438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.860931396484375
+        }
+      }
+    },
+    {
+      "i": 47,
+      "started_at": "2026-09-22T04:33:51.202Z",
+      "ms": 226545,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.166717529296875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.860382080078125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.315811157226562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.84112548828125
+        }
+      }
+    },
+    {
+      "i": 48,
+      "started_at": "2026-09-22T04:37:37.778Z",
+      "ms": 225684,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.328582763671875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.841064453125
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.480728149414062,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9368896484375
+        }
+      }
+    },
+    {
+      "i": 49,
+      "started_at": "2026-09-22T04:41:23.493Z",
+      "ms": 225539,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.492721557617188,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9364166259765625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.420791625976562,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9615325927734375
+        }
+      }
+    },
+    {
+      "i": 50,
+      "started_at": "2026-09-22T04:45:09.065Z",
+      "ms": 230961,
+      "reported": true,
+      "ran": 6529,
+      "passed": 6320,
+      "failed": 189,
+      "machine": {
+        "before": {
+          "pressure": "normal",
+          "free_gb": 24.432968139648438,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 3.9614410400390625
+        },
+        "after": {
+          "pressure": "normal",
+          "free_gb": 24.340576171875,
+          "swap_gb": 0.008115234375,
+          "compressed_gb": 4.0646209716796875
+        }
+      }
+    }
+  ]
+}

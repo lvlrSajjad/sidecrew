@@ -13,7 +13,11 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 22 Sep 2026** — overnight, on an idle machine the owner handed over. Measured that
+**Last updated: 22 Sep 2026** — overnight, on an idle machine the owner handed over. **The headline is
+ADR-0084: `D` is the suite's flake rate, not the gate's.** 50 runs of an unmodified suite found 11
+tests each failing once, and `3/50 = 0.060 [0.013, 0.165]` against `D`'s `2/19 = 0.105 [0.013, 0.331]`
+— indistinguishable. The mitigation (re-run once before recording a regression-only failure) is
+**proposed and needs the owner**. Measured that
 `project-a`'s **unmodified** suite moves three tests at **00:00 UTC**, which exposed **ADR-0083**:
 `crossesCalendarDay` watched local midnight only, and so did its Python copy and its own test. Fixed.
 A 55-run control across a boundary-free window is in §3 § *Start here*. **ADR-0082 option D could not
@@ -46,7 +50,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0083**; start new ones at 0084. **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
+| ADRs | run to **0084**; start new ones at 0085. **0084's mitigation needs the owner.** **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -323,6 +327,19 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   Does not block, and does not block ADR-0077-B either; that one is the cheaper win and is available
   now.
 
+- **ADR-0084's mitigation — re-run the suite once before recording a regression-only failure.**
+  Measured overnight: this project's suite fails 11 tests intermittently, at **3/50 = 0.060**
+  `[0.013, 0.165]` of runs — statistically indistinguishable from `D = 2/19 = 0.105` `[0.013, 0.331]`.
+  **So `D` was most likely never the gate's error**; `verifyChange` reported what it saw and the suite
+  moved underneath it.
+  **The mitigation is free on the happy path** (only a candidate that already failed on `tests_ok`
+  pays), **cannot rescue a candidate that genuinely breaks tests** (those break twice), and is the
+  standard already applied by hand to `snc-27`. **Against:** it makes a verdict a function of two runs,
+  which is a `ChangeVerdict` contract change, and a 6 % floor is a property of *this* project.
+  Recommendation: **do it, behind a flag defaulting on, recording both readings rather than collapsing
+  them** — ADR-0066's rule is that the recorded disagreement is the output, not the better number.
+  **It does not block ADR-0077 option B and B does not block it**; B adds no exposure to the suite that
+  today's gate does not already have.
 - **ADR-0077 option B — MEASURED and waiting on a yes or no.** Should the gate accept a change whose
   only remaining problem is a **type error in a test file**, provided every test still *passes*?
   Measured 21 Sep: **14 of 15** such changes pass the project's own suite, 95 % `[0.681, 0.998]`,

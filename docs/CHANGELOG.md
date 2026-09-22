@@ -1,6 +1,33 @@
 # Changelog
 ## Unreleased
 
+**ADR-0084 — `D` is the suite's flake rate, not the gate's error rate.** Measured overnight: 50 runs of
+`project-a`'s unmodified suite, fresh clone each, no change applied, in a window crossing **no**
+calendar boundary of either kind. **11 tests in 6 suites each failed in exactly one of the 50 runs**,
+clustered into three runs (4, 6 and 1 tests short). That is the *harmful* direction — a test that passed
+becoming one that fails is a regression, and `tests_ok` is false.
+
+- **The rate a run carries at least one spurious failure is `3/50 = 0.060`, 95 % `[0.013, 0.165]`.**
+  `D`, the gate's measured error rate, is `2/19 = 0.105`, `[0.013, 0.331]`. **The intervals share a
+  lower bound and overlap over their whole length** — the two are not distinguishable on these samples.
+- **So the likeliest reading of `D` is that it was never the gate's error.** `verifyChange` compared a
+  suite result against a baseline and reported what it saw; the suite moved. ADR-0066 proposed memory
+  pressure, the 21 Sep instance excluded it with telemetry on both sides, and this supplies the
+  mechanism that was missing — with no defect in any code this project wrote.
+- **It does not explain `snc-27`'s 82.** The largest spurious failure seen here is 6, an order of
+  magnitude short. The same kind of event, not the same size.
+- **Every published survival rate is biased low** by roughly this, since each measured one evaluation
+  per candidate. **They are not being revised** — adjusting a number after seeing which way an error
+  points is what §4.0 precondition 4 forbids — and the bias is smaller than most intervals already
+  quoted.
+- **Proposed, and the owner's call: re-run the suite once before recording a failure that rests only on
+  regressions.** Free on the happy path, cannot rescue a candidate that genuinely breaks tests, and it
+  is the standard already applied by hand to `snc-27`. It is a contract change, so it needs a decision.
+
+**ADR-0083 is corrected by it.** That ADR said the floor in the candidate-failing direction was 0
+across 25 runs. True of those 25 and false in general — 25 runs simply caught none of these. The
+date-boundary finding stands; the reassurance did not, and both paragraphs now say so.
+
 **ADR-0083 — the stale-baseline guard watched local midnight, and the tests move at UTC midnight.**
 Found by measurement, overnight, on an idle machine. 25 runs of `project-a`'s **unmodified** suite,
 fresh clone each, no change applied: **three tests in three suites moved at 00:00 UTC** — runs 1–8
