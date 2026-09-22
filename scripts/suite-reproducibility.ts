@@ -40,7 +40,8 @@
 // file is the client's tree (CLAUDE.md #7). The payload carries counts and a histogram and no
 // identifiers at all.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { DEFAULT_CHANGE_TIMEOUTS, cloneSandbox, makeChangeSandbox, runSuite } from "../src/change.js";
 import { readMachineState } from "../src/doctor.js";
@@ -107,6 +108,20 @@ const suiteOf = new Map<string, string>();
 
 try {
   for (let i = 1; i <= runs; i += 1) {
+    // **Is the thing we are cloning still there?** A run that produces no report has two very
+    // different causes — the base sandbox went away under us, or the runner failed inside an intact
+    // one — and 47 identical 250 ms rows could not tell them apart. One `stat` separates them, and it
+    // is the question to ask first because the harness holds this directory for hours while anything
+    // else on the machine may be sweeping a shared temp dir.
+    const baseIntact = existsSync(join(base, "package.json")) && existsSync(join(base, "node_modules"));
+    if (!baseIntact) {
+      say(`  STOPPING at run ${i}: the base sandbox is gone or incomplete — package.json ` +
+          `${existsSync(join(base, "package.json")) ? "present" : "MISSING"}, node_modules ` +
+          `${existsSync(join(base, "node_modules")) ? "present" : "MISSING"}. Something outside this ` +
+          "process removed it; the runs already collected are reported as they stand.");
+      break;
+    }
+
     const machineBefore = await readMachineState();
     const startedAt = new Date().toISOString();
     const t0 = performance.now();
@@ -131,6 +146,26 @@ try {
       reported: suite.reported, ran: suite.ran, passed: suite.passed, failed: suite.failed,
       machine: { before: machineBefore, after: machineAfter },
     });
+
+    // **A run that produced no report has to say why, and the first version of this recorded
+    // nothing.** 47 consecutive non-reporting runs went past at 250 ms each, each one counted and
+    // discarded, and the result file could say only that they had happened. *Anything this tool
+    // truncates for display it also truncates for diagnosis* is a standing hazard here; recording
+    // `false` and dropping the reason is the same mistake with the volume at zero.
+    //
+    // To the log, never to the payload: the runner's output carries the client's file paths.
+    if (!suite.reported) {
+      say(`      no report — the runner said:\n${suite.message.slice(0, 1200).replace(/^/gm, "      | ")}`);
+    }
+
+    // **And it stops rather than running out the clock.** Three in a row is not a flaky suite, it is a
+    // broken setup, and 47 more samples of it are 47 more minutes of nothing.
+    const tail = rows.slice(-3);
+    if (tail.length === 3 && tail.every((r) => !r.reported)) {
+      say(`  STOPPING after ${i} runs: three consecutive runs produced no report. That is a broken`);
+      say("  setup rather than a flaky suite, and the runs already collected are reported as they stand.");
+      break;
+    }
     const spreadSoFar = Math.max(...rows.map((r) => r.passed)) - Math.min(...rows.map((r) => r.passed));
     say(`[${i}/${runs}] ${suite.passed}/${suite.ran} passing  ${(ms / 1000).toFixed(0)}s` +
         `  spread so far ${spreadSoFar}  ${machineAfter.pressure}`);
@@ -159,8 +194,13 @@ for (const id of flaky) {
 }
 const flakySuites = new Set(flaky.map((id) => suiteOf.get(id) ?? id)).size;
 
-const verdict = flaky.length === 0
-  ? "REPRODUCIBLE — snc-27 is not explained by the suite; the cause is in the gate or the machine"
+const shortfall = reported.length < runs;
+const verdict = shortfall && reported.length < 10
+  ? `INCONCLUSIVE — only ${reported.length} of ${runs} runs produced a report, which is too few to read `
+    + "the rule against. The setup broke; see the log for what the runner said."
+  : flaky.length === 0
+  ? `REPRODUCIBLE over ${reported.length} run(s) — snc-27 is not explained by the suite; the cause is `
+    + "in the gate or the machine"
   : spread >= 82
     ? "snc-27 IS INSIDE what this suite does unprompted — D's corpus needs re-reading before ADR-0077 B"
     : "A FLOOR EXISTS and is smaller than snc-27's flip — partial explanation, the remainder needs one";
@@ -173,6 +213,8 @@ const payload = {
   change_applied: false,
   runs_requested: runs,
   runs_reported: reported.length,
+  /** Loudly, because a rule read against a third of its intended sample is a different rule. */
+  short_of_plan: shortfall,
   project: { commit: project.commit, tree_clean: project.clean },
   runner,
   result: {
