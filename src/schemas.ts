@@ -931,20 +931,30 @@ export const changeSurvives = (v: z.infer<typeof ChangeVerdictFields>): boolean 
  * midnight is merely the most common one. "Older than N hours" is the wrong shape and needs a number
  * nobody has; "these fell on different days" needs none.
  *
- * Local time is the right frame because the baseline and the candidate ran on the same machine in the
- * same environment, so the suite's own notion of *today* is this process's. A project that pins `TZ`
- * itself is the case this cannot see, and the recorded timestamps are what make it findable.
+ * **Both frames, local and UTC, and ADR-0083 is why.** This compared local days only, on the reasoning
+ * that *"the baseline and the candidate ran on the same machine, so the suite's own notion of today is
+ * this process's"*. That reasoning is wrong and it was measured wrong: 25 runs of an unmodified real
+ * suite moved **three tests at 00:00 UTC**, while the machine's local clock read 01:55 → 02:02 and
+ * never changed day. The old comment named the blind spot as *"a project that pins `TZ` itself"*, which
+ * made it sound exotic. It is not — any code doing date arithmetic in UTC, which is most backend code
+ * and every `toISOString().slice(0, 10)`, has a UTC notion of *today* whatever the machine's clock says.
+ *
+ * So a run between 01:00 and 03:00 in a UTC+2 summer crosses the boundary the tests care about and not
+ * the one this watched. Either frame changing is now the warning. It is strictly more sensitive, it
+ * cannot make the gate refuse anything — this gates nothing — and a false warning costs a sentence.
  *
  * null when either timestamp is absent — a verdict written before ADR-0069 cannot answer, and saying
  * `false` there would be claiming it had.
  */
 export const crossesCalendarDay = (v: Pick<z.infer<typeof ChangeVerdictFields>, "baseline_captured_at" | "verified_at">): boolean | null => {
   if (v.baseline_captured_at === null || v.verified_at === null) return null;
-  const day = (iso: string): string => {
+  const localDay = (iso: string): string => {
     const d = new Date(iso);
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
   };
-  return day(v.baseline_captured_at) !== day(v.verified_at);
+  const utcDay = (iso: string): string => new Date(iso).toISOString().slice(0, 10);
+  return localDay(v.baseline_captured_at) !== localDay(v.verified_at)
+    || utcDay(v.baseline_captured_at) !== utcDay(v.verified_at);
 };
 
 /**

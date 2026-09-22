@@ -13,6 +13,12 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
+**Last updated: 22 Sep 2026** — overnight, on an idle machine the owner handed over. Measured that
+`project-a`'s **unmodified** suite moves three tests at **00:00 UTC**, which exposed **ADR-0083**:
+`crossesCalendarDay` watched local midnight only, and so did its Python copy and its own test. Fixed.
+A 55-run control across a boundary-free window is in §3 § *Start here*. **ADR-0082 option D could not
+be run — stryker is installed in neither tree**, and that is an owner decision.
+
 **Last updated: 21 Sep 2026.** That session, in order: re-ran the `v0.1.0` release and found three
 defects in the pipeline, then two more (**ADR-0080**); **published `0.1.2` to npm and the MCP
 Registry**, which is Phase 14 finished; found and fixed **a hole in the gate** — `*.e2e-spec.ts` was
@@ -40,7 +46,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0082**; start new ones at 0083. **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
+| ADRs | run to **0083**; start new ones at 0084. **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -425,8 +431,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 - **Anything this tool truncates for display, it also truncates for diagnosis** — five defects of that
   shape now (the 1 MB `run` cap, ADR-0072, ADR-0074, ADR-0071's blind spot, and the scanner's own
   silence).
-- **A run crossing local midnight against a stale baseline can lose the whole run**, not one task
-  (ADR-0069). The warning now fires; the verdict records both timestamps.
+- **A run crossing a calendar boundary against a stale baseline can lose the whole run**, not one task
+  (ADR-0069). The warning fires; the verdict records both timestamps. **It is LOCAL *or* UTC midnight
+  (ADR-0083)** — `project-a` was measured moving three tests at **00:00 UTC** with the local clock
+  reading 01:55 → 02:02 and the local day unchanged. The guard watched local only and stayed silent.
+  Any run between 01:00 and 03:00 local in a UTC+2 summer sits in that gap.
 
 ## 6. Where the local projects are
 

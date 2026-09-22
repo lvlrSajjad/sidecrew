@@ -1,6 +1,33 @@
 # Changelog
 ## Unreleased
 
+**ADR-0083 — the stale-baseline guard watched local midnight, and the tests move at UTC midnight.**
+Found by measurement, overnight, on an idle machine. 25 runs of `project-a`'s **unmodified** suite,
+fresh clone each, no change applied: **three tests in three suites moved at 00:00 UTC** — runs 1–8
+gave 6317 passing, run 9 straddled the boundary and gave 6319, runs 10–25 gave 6320 and never moved
+again. Strictly monotonic, machine `normal` and swap flat throughout. Local time was 01:55 → 02:02
+CEST, so the local day never changed.
+
+- **`crossesCalendarDay` compared local calendar days only.** Its docstring argued for that and named
+  the blind spot as *"a project that pins `TZ` itself"* — which makes it sound exotic. It is not: any
+  code doing date arithmetic in UTC has a UTC notion of *today*, and **any run between 01:00 and 03:00
+  local in a UTC+2 summer** crosses the boundary the tests care about and not the one the guard
+  watched. **Either frame changing is the warning now.** It gates nothing, so a false positive costs a
+  sentence.
+- **`scripts/results-14b.py` carries a deliberate reproduction of the same rule and had the same
+  hole** — ADR-0081's *"a fix to one copy is not a fix to the others"*, third time this week. Both
+  changed together.
+- **The test for it read the environment too.** It asserted an eleven-hour same-local-day gap does not
+  cross — true in CEST, true on CI's UTC runners, **false in `Pacific/Auckland`**. It now uses explicit
+  `Z` instants for the crossing case and a one-minute window at local noon for the non-crossing one,
+  the only shape safe in every timezone. Verified in all three.
+- **It does not explain `snc-27`**, whose verdict was taken at 12:26Z against an 11:35Z baseline,
+  nowhere near either boundary. Against the rule frozen before the run: `0 < spread < 82`, a floor
+  exists and is smaller than the flip; the remainder still needs one.
+- **New instrument, and worth keeping:** `scripts/suite-reproducibility.ts` asks *is this project's
+  suite deterministic* — no change applied, fresh clone per run, flips counted by the same
+  `passed_ids` the gate compares, reading rule frozen in the header, counts only in the payload.
+
 **ADR-0082 (proposed) — sidecrew writes the oracle it is judged by, before the change exists.** The
 owner's proposal, 21 Sep. Every step of it but two is already `VISION.md`'s loop; **the delta is that
 the oracle stops being borrowed and starts being manufactured** — the worker writes tests covering the

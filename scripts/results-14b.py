@@ -22,24 +22,31 @@ from datetime import datetime, timezone
 def crosses_calendar_day(v: dict) -> "bool | None":
     """`crossesCalendarDay` from src/schemas.ts, reproduced exactly rather than approximated.
 
-    Two details are the whole point and both are easy to get wrong. It compares **local** calendar
-    days, because the suite's notion of *today* is the running process's, not UTC's — and a UTC
-    comparison would have reported 0 crossings on a run that crossed at 02:00 local. And it answers
-    `None`, not `False`, when a timestamp is missing: a verdict written before ADR-0069 cannot
-    answer, and `False` would be claiming it had.
+    **Both frames, local and UTC — ADR-0083.** This compared local days only, and the docstring here
+    argued for it: *"a UTC comparison would have reported 0 crossings on a run that crossed at 02:00
+    local"*. True, and not the whole truth — the converse was measured on 22 Sep 2026, when 25 runs of
+    an unmodified real suite moved three tests at **00:00 UTC** while the local clock read 01:55 → 02:02
+    and never changed day. Neither frame alone is sufficient; each catches what the other misses.
+
+    It answers `None`, not `False`, when a timestamp is missing: a verdict written before ADR-0069
+    cannot answer, and `False` would be claiming it had.
 
     Re-deriving a writer's function instead of using it is how `safeName` produced a confident and
     completely wrong INCONCLUSIVE (HANDOFF § Standing hazards). This is a Python harness reading a
     TypeScript writer's output, so it cannot call the original; reproducing it under its own name,
-    with the reason, is the next best thing.
+    with the reason, is the next best thing — and this file is the reason ADR-0081's "a fix to one
+    copy is not a fix to the others" is a standing hazard rather than an anecdote.
     """
     a, b = v.get("baseline_captured_at"), v.get("verified_at")
     if a is None or b is None:
         return None
-    def day(iso: str) -> tuple:
+    def local_day(iso: str) -> tuple:
         d = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone()
         return (d.year, d.month, d.day)
-    return day(a) != day(b)
+    def utc_day(iso: str) -> tuple:
+        d = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return (d.year, d.month, d.day)
+    return local_day(a) != local_day(b) or utc_day(a) != utc_day(b)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # The interval function is Phase 11b's, validated there against a published figure. A second
@@ -164,9 +171,11 @@ def main() -> int:
         "missing_note": "Counted as non-survivors. The denominator is the declared 30 in every case.",
         "adr_0069_verdicts_crossing_midnight": crossed,
         "adr_0069_verdicts_cannot_answer": crossing_unknown,
-        "adr_0069_note": "Local calendar days, as src/schemas.ts crossesCalendarDay compares them. A "
-                         "crossing only threatens a verdict that reached the suite, which unlike §2.2 "
-                         "is the expected case for a probe that works.",
+        "adr_0069_note": "Local OR UTC calendar days, as src/schemas.ts crossesCalendarDay compares "
+                         "them since ADR-0083 — a real suite was measured moving three tests at 00:00 "
+                         "UTC with the local day unchanged. A crossing only threatens a verdict that "
+                         "reached the suite, which unlike §2.2 is the expected case for a probe that "
+                         "works.",
         # ADR-0066: the measurement destroying its own instrument. Reported from the fields rather
         # than asserted, because "the machine was quiet" is exactly the claim a contended run makes.
         "adr_0066_machine": {

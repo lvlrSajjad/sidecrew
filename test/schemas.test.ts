@@ -236,8 +236,23 @@ describe("the invariants the contracts are here to enforce", () => {
       crossesCalendarDay({ baseline_captured_at: b, verified_at: v });
     const iso = (h: number, m: number, d: number): string => new Date(2026, 8, d, h, m).toISOString();
     expect(day(iso(23, 26, 18), iso(0, 3, 19))).toBe(true);
-    // Eleven hours apart and on the same day: older, and not exposed to this defect at all.
-    expect(day(iso(9, 0, 19), iso(20, 0, 19))).toBe(false);
+
+    // **ADR-0083: the UTC boundary counts too, and it is the one that was measured.** 25 runs of a
+    // real suite moved three tests at 00:00 UTC while the machine's local clock read 01:55 → 02:02
+    // and never changed day. These are explicit `Z` instants, so the UTC days differ by construction
+    // and this holds in every timezone — including the UTC runners CI uses, where it would otherwise
+    // be indistinguishable from the local check above.
+    expect(day("2026-09-21T23:55:03.000Z", "2026-09-22T00:02:23.000Z")).toBe(true);
+
+    // Neither frame moves. **A one-minute window at local noon is the only shape that is safe in
+    // every timezone**, and that is a fact about the problem rather than about this test: local
+    // midnight is twelve hours away, and UTC midnight can coincide with an endpoint but never fall
+    // strictly inside. An eleven-hour same-local-day gap — what this line used to assert — *does*
+    // cross UTC in the far-eastern offsets, which is the defect, not a flaw in the assertion.
+    const noon = new Date(2026, 8, 19, 12, 0, 0);
+    const noonPlus = new Date(noon.getTime() + 60_000);
+    expect(day(noon.toISOString(), noonPlus.toISOString())).toBe(false);
+    expect(day(noon.toISOString(), noon.toISOString())).toBe(false);
     // A verdict written before ADR-0069 cannot answer, and `false` would be claiming that it had.
     expect(day(null as unknown as string, iso(9, 0, 19))).toBe(null);
     expect(crossesCalendarDay(ChangeVerdict.parse(specExamples().get("ChangeVerdict")))).toBe(false);

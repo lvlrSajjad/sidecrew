@@ -5904,3 +5904,87 @@ If sidecrew brings its own oracle, **ADR-0077 option B matters less** — the pr
 gaining type errors stops being the thing that decides whether work is possible. It does not go away:
 the project's suite still runs, and those errors still appear. **Neither ADR blocks the other**, and
 ADR-0077's `14/15` is the cheaper win and available now.
+
+## ADR-0083 — ADR-0069's guard watched local midnight, and the tests move at UTC midnight
+
+**Status:** accepted · 22 Sep 2026 · implemented the same day · **found by measurement, not by
+reading** · bears on ADR-0069, ADR-0066, ADR-0077 and ADR-0081
+
+### What was measured
+
+25 runs of `project-a`'s **unmodified** suite, each in a fresh clone of one sandbox — exactly as
+`verifyChange` clones per task — with no change applied. 92 minutes, machine `normal` and swap flat at
+0.008 GB for all 25. `experiments/gate-error-rate/results/suite-reproducibility-2026-09-21.json`.
+
+| run | started | passing |
+|---|---|---|
+| 1–8 | 23:27:55Z … 23:55:03Z | 6317 |
+| **9** | **23:58:42Z** — ran *through* 00:00Z | **6319** |
+| 10 | 00:02:23Z | **6320** |
+| 11–25 | … 00:59:49Z | 6320, stable for another hour |
+
+**Three tests, in three different suites, and the pattern is not flakiness.** It is strictly
+monotonic, never flips back, and the transition straddles **00:00 UTC** exactly. Local time was
+01:55 → 02:02 CEST and the local day never changed.
+
+So `project-a` has three UTC-date-dependent tests. That is a fact about a project rather than a defect
+in one, and it is the ordinary case: any code doing date arithmetic in UTC — every
+`toISOString().slice(0, 10)`, every UTC-stored timestamp — has a UTC notion of *today* whatever the
+machine's clock says.
+
+### The defect it exposes
+
+`crossesCalendarDay` compared `getFullYear`/`getMonth`/`getDate` — **local** components. Its own
+docstring argued for that:
+
+> *Local time is the right frame because the baseline and the candidate ran on the same machine in the
+> same environment, so the suite's own notion of today is this process's. A project that pins `TZ`
+> itself is the case this cannot see.*
+
+**The reasoning is wrong and the named blind spot understates it.** No `TZ` pin is required; UTC date
+arithmetic in ordinary application code is enough. And the window is not small: **any run between
+01:00 and 03:00 local in a UTC+2 summer crosses the boundary the tests care about and not the one the
+guard watched.** Last night's run sat exactly there.
+
+`scripts/results-14b.py` carries a deliberate Python reproduction of the same rule and had the same
+hole — ADR-0081's *"a fix to one copy is not a fix to the others"*, for the third time this week.
+
+### The decision
+
+**Either frame changing is the warning.** Local **or** UTC. Each catches what the other misses: the
+original 02:00-local case that ADR-0069 was written from, and this one. Strictly more sensitive; it
+**gates nothing** — ADR-0069 is a warning, not a clause — so the only cost of a false positive is a
+sentence. Both copies changed together, and the Python docstring now says why.
+
+**The test for it was also wrong, in the way this week keeps producing.** It asserted that an
+eleven-hour same-local-day gap does not cross — true in CEST, true on CI's UTC runners, and **false in
+Pacific/Auckland**, where those two instants fall on different UTC days. An assertion that reads the
+environment when it meant to read the artefact, for the fourth time. It now uses explicit `Z` instants
+for the crossing case and a one-minute window at local noon for the non-crossing one — **the only
+shape that is safe in every timezone**, because local midnight is twelve hours away and UTC midnight
+can coincide with an endpoint but never fall strictly inside. Verified in CEST, `Pacific/Auckland` and
+`UTC`.
+
+### What this explains, and what it does not
+
+**It does not explain `snc-27`.** That verdict was taken at 12:26Z against a baseline at 11:35Z —
+nowhere near either boundary — and its 82 regressions remain unexplained. Against the rule frozen
+before the run: `0 < spread < 82`, *a floor exists and is smaller than `snc-27`'s flip; the remainder
+still needs one.*
+
+**What it does explain is a class of false regression nobody had named**, and it bounds it: on this
+project, at this boundary, **three tests**. A verdict taken across 00:00Z against a baseline taken
+before it would record three regressions that no change caused. Small, real, and now warned about.
+
+**For ADR-0077 option B this is mildly reassuring rather than alarming.** B leans the gate on *the
+tests still passing*, and the measured floor under that clause is three tests at a known, warnable
+boundary — not a general instability. The control arm, 55 runs across a boundary-free window, is what
+turns that into a statement with a number under it.
+
+### The instrument that found it
+
+`scripts/suite-reproducibility.ts` — no change applied, fresh clone per run, flips counted by the same
+`passed_ids` the gate compares, reading rule frozen in the header before the number existed, and
+**counts only** in the payload because a test id carries a client file path. It is worth keeping: *is
+this project's suite deterministic* is a question worth asking of any project sidecrew is pointed at,
+and it costs one suite run per sample.
