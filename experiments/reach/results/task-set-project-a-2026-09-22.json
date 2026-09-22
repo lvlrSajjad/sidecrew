@@ -1,0 +1,67 @@
+{
+  "measured": true,
+  "kind": "reach-task-set",
+  "phase": "14c",
+  "declared_at": "2026-09-22T20:50:03.589Z",
+  "rule": "experiments/reach/README.md §3",
+  "compiler_flags": [
+    "--strictNullChecks"
+  ],
+  "retry_regressions": true,
+  "demote_test_type_errors": true,
+  "correction": false,
+  "refused_list_sha256": "6d35f3130939e1c2b36f828dfeaa069bd724924624da64e75122a7c0fb6dd4aa",
+  "pool": {
+    "big": 9,
+    "small": 232
+  },
+  "excluded": {
+    "more than 8 errors": 127,
+    "TS2417/TS2418": 146,
+    "not source under src/": 257
+  },
+  "n_requested": 20,
+  "error_cap": 8,
+  "selected": {
+    "big": 9,
+    "small": 18,
+    "big_symbols": 41,
+    "big_errors": 55,
+    "small_errors": 110,
+    "big_error_counts": [
+      8,
+      6,
+      6,
+      6,
+      4,
+      7,
+      2,
+      8,
+      8
+    ],
+    "small_error_counts": [
+      8,
+      8,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      4,
+      4,
+      7,
+      7,
+      2,
+      2,
+      8,
+      8,
+      8,
+      8
+    ]
+  },
+  "plan_sha256": "8a228fd7d6366f7300ccce8b38e40172d6cfe7b632c144346df39eb755ca9559",
+  "project_commit": "1d79d903f9c743aa58d2063e98055325a5ef7858",
+  "project_dirty": false,
+  "sidecrew_commit": "7e58b8331c36c6bf151e6b339a0594a71e204446"
+}

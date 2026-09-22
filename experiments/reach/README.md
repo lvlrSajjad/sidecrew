@@ -73,3 +73,31 @@ applied once per arm, so the arms differ **only** in which side of the §1 claus
 
 **At `n = 20` the two intervals will overlap.** A ratio between them is a direction, not a result, and
 it will be reported that way (prompt §3).
+
+### §3 amendment — 22 Sep 2026, 22:55, after seeing pool sizes and before any token
+
+**The 1–3 cap left `S_big` a pool of one.** The cap was 14b's, built so one whole-file ask could cover
+every error in its file. A refused file is thousands of lines long, and under `--strictNullChecks`
+almost none carry only 1–3 errors. Without any cap, 35 refused files qualify, but at **2–58 errors
+each** against the small arm's 1–3. That would compare big *changes* with small ones, which is the
+confound the frozen rule's `14c′` branch names, and it would decide that branch by construction.
+
+**Amended rule: one cap for both arms, the smallest that gives `S_big` at least 8 tasks, which is 8.**
+The cap was chosen from pool sizes, never from a verdict: no candidate existed. Everything else in §3
+stands. It is written down because a rule changed after looking at anything has to say what it looked
+at.
+
+**This is itself a finding about ADR-0086 §6 option A.** Under a strictness flag, a big file carries
+many errors, and option A demands every one of them cleared in the same task. So most of the new reach
+(`Reach` 0.911) is reachable for *this* shape only as tasks too big to be comparable. The cost of A is
+not small under flags, and the ADR estimated it would be small only without them.
+
+### §3 second amendment — 22 Sep 2026, 23:00, still before any token
+
+With the shared cap, the first 20 small files by path averaged **2.35 errors per task against
+`S_big`'s 6.1**, so the arms still differed in change size. **`S_small` is now matched:** for each big
+task in path order, take the first two unused small files with the same error count, or else the
+nearest count, ties going to the lower. That gives 9 big and 18 small tasks with the same error
+distribution by construction. What stays unmatched, and cannot be matched: a big task spans several
+**declarations** (41 over 9 tasks), and a small task spans one file. That difference is the phase's
+subject, not a confound.

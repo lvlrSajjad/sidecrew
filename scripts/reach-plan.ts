@@ -8,7 +8,7 @@
 // the two arms differ only in which side of the §1 clause their files are on.
 //
 // Pool, both arms: a non-test file under `src/`, in `tsc`'s program, with **1–3** errors under
-// `--strictNullChecks` and **no TS2417/TS2418** (a base-class fix, outside any task by construction).
+// `--strictNullChecks` (the cap is `--cap`, 8 by README §3's amendment) and **no TS2417/TS2418** (a base-class fix, outside any task by construction).
 //
 //   * `S_small` — the file is **not** in the refused list: one whole-file task, as 14b's were.
 //   * `S_big`   — the file **is** in the refused list (its sha256 must match the committed census), and
@@ -40,6 +40,8 @@ const flag = (n: string): string | undefined => { const i = args.indexOf(n); ret
 const project = resolve(args[0]!);
 const refusedPath = flag("--refused")!;
 const n = Number(flag("--n") ?? "20");
+/** README §3 amendment, 22 Sep 2026: one cap for both arms, the smallest that gives S_big at least 8. */
+const cap = Number(flag("--cap") ?? "8");
 const today = new Date().toISOString().slice(0, 10);
 const planOut = flag("--plan") ?? `experiments/reach/plans/project-a-${today}/change_plan.json`;
 const summaryOut = flag("--out") ?? `experiments/reach/results/task-set-project-a-${today}.json`;
@@ -95,7 +97,7 @@ for (const file of [...errs.keys()].sort()) {
   const list = errs.get(file)!;
   if (!file.startsWith("src/") || isTestArtefact(file)) { drop("not source under src/"); continue; }
   if (!program.has(file)) { drop("not in program"); continue; }
-  if (list.length > 3) { drop("more than 3 errors"); continue; }
+  if (list.length > cap) { drop(`more than ${cap} errors`); continue; }
   if (list.some((e) => e.code === "TS2417" || e.code === "TS2418")) { drop("TS2417/TS2418"); continue; }
   if (!refused.has(file)) { small.push({ file, errors: list.length }); continue; }
 
@@ -122,15 +124,31 @@ for (const file of [...errs.keys()].sort()) {
 }
 
 const pickBig = big.slice(0, n);
-const pickSmall = small.slice(0, n);
+// README §3 second amendment: S_small is **matched** to S_big on errors per task. For each big task in
+// path order, the first two unused small files with the same error count, else the nearest count (ties
+// to the lower). The two arms then have the same error distribution by construction.
+const used = new Set<string>();
+const pickSmall: typeof small = [];
+for (const b of pickBig) {
+  for (let k = 0; k < 2; k += 1) {
+    const free = small.filter((s) => !used.has(s.file));
+    const best = Math.min(...free.map((s) => Math.abs(s.errors - b.errors)));
+    const hit = free.filter((s) => Math.abs(s.errors - b.errors) === best).sort((x, y) => x.errors - y.errors)[0];
+    if (hit === undefined) break;
+    used.add(hit.file);
+    pickSmall.push(hit);
+  }
+}
 const pad = (i: number): string => String(i + 1).padStart(2, "0");
 const tasks: unknown[] = [];
 for (let i = 0; i < Math.max(pickBig.length, pickSmall.length); i += 1) {
   const b = pickBig[i];
-  const s = pickSmall[i];
+  // Interleaved one big to two small, so each big task sits between its own matches in the queue.
+  for (const s of [pickSmall[2 * i], pickSmall[2 * i + 1]]) {
+    if (s) tasks.push({ task_id: `small-${pad(pickSmall.indexOf(s))}`, ask: ASK_WHOLE, files: [s.file], max_deleted_lines: 0, blocking: false, shape: "null_guard" });
+  }
   if (b) tasks.push({ task_id: `big-${pad(i)}`, ask: ASK_SYMBOL, files: [b.file], max_deleted_lines: 0, blocking: false, shape: "null_guard",
     symbols: b.symbols.map((name) => ({ file: b.file, name })) });
-  if (s) tasks.push({ task_id: `small-${pad(i)}`, ask: ASK_WHOLE, files: [s.file], max_deleted_lines: 0, blocking: false, shape: "null_guard" });
 }
 
 const plan = {
@@ -158,9 +176,11 @@ const summary = {
   pool: { big: big.length, small: small.length },
   excluded,
   n_requested: n,
+  error_cap: cap,
   selected: { big: pickBig.length, small: pickSmall.length,
     big_symbols: pickBig.reduce((k, b) => k + b.symbols.length, 0),
-    big_errors: pickBig.reduce((k, b) => k + b.errors, 0), small_errors: pickSmall.reduce((k, s) => k + s.errors, 0) },
+    big_errors: pickBig.reduce((k, b) => k + b.errors, 0), small_errors: pickSmall.reduce((k, s) => k + s.errors, 0),
+    big_error_counts: pickBig.map((b) => b.errors), small_error_counts: pickSmall.map((s) => s.errors) },
   plan_sha256: createHash("sha256").update(planText, "utf8").digest("hex"),
   project_commit: execFileSync("git", ["-C", project, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
   project_dirty: execFileSync("git", ["-C", project, "status", "--porcelain"], { encoding: "utf8" }).trim().length > 0,
