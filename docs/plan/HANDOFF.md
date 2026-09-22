@@ -158,7 +158,7 @@ not a queue.** These are the live options:
 | | what | cost | needs |
 |---|---|---|---|
 | **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions · **one overnight run** | nothing. **Freeze its exit check before starting**, §PHASES |
-| **B** | **Decide ADR-0084's mitigation** — re-run the suite once before recording a regression-only failure | a decision, then a `ChangeVerdict` change | the owner. Measured: the suite fails 11 tests at **3/50** of runs, indistinguishable from `D` |
+| **B** | **Decide ADR-0084's mitigation** — re-run the suite once before recording a regression-only failure | a decision, then a `ChangeVerdict` change | the owner. Measured: project-a's suite fails 11 tests at **3/50** of runs, indistinguishable from `D`. project-b showed 0/15, which **cannot** distinguish 0 % from 6 % — that arm needs ~50 runs, ~3.5 h |
 | **C** | **Decide ADR-0077 option B** — the gate accepts a test file that no longer type-checks but still passes | a decision, then an implementation | the owner. Measured at **14/15** |
 | **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner |
 | **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **BLOCKED: stryker is installed in neither tree.** Adding `@stryker-mutator/core` is the owner's call — a devDependency in a client repo, or a new one here |
@@ -166,6 +166,10 @@ not a queue.** These are the live options:
 
 **If no one says otherwise, do A.** It is the largest capability gain available, it is unblocked, and
 it is the only item whose absence blocks anything else.
+
+**The one run worth doing unattended next:** 50 runs of project-b's suite (`scripts/suite-reproducibility.sh`
+with `PLAN` pointing at a project-b plan and `OUT` set), ~3.5 h, no worker and no model. It closes
+ADR-0084's only open caveat — whether the 6 % floor is project-a's or everyone's.
 
 **Three decisions (B, C, D) are stacked and none blocks another.** B is the cheapest and rests on the
 firmest number. C is measured and ready. D is the biggest idea and its measurement is E, which is the

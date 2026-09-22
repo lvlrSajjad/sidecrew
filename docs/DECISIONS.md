@@ -6102,6 +6102,29 @@ finding.
 collapsing them.** The alternative is publishing survival rates that are known to be biased low by a
 mechanism that is now measured and cheap to correct.
 
+### project-b, 15 runs — and why it settles nothing
+
+`experiments/gate-error-rate/results/suite-reproducibility-project-b-2026-09-22.json`. **9111/9118
+passing in every one of 15 runs. Spread 0, zero non-deterministic tests.**
+
+**That is not evidence that project-b is cleaner, and it must not be quoted as such.**
+
+| | k/n | 95 % exact |
+|---|---|---|
+| project-a | 3/50 | [0.013, 0.165] |
+| project-b | 0/15 | **[0.000, 0.218]** |
+
+The intervals overlap over almost their whole length. Worse for the inference: **if project-b had
+project-a's rate exactly, the chance of seeing zero bad runs in 15 is 0.395** — the modal outcome. So
+15 runs cannot tell 0 % from 6 %, and the caveat above — *a 6 % floor is a property of this project* —
+is **still open**, not answered.
+
+Establishing it needs the same ~50 runs project-a got, about three and a half hours. Written down
+rather than run because the machine was handed over for a night and the night ended.
+
+**What those 15 runs do establish** is ADR-0085's fix: both previous attempts died at run 9, and this
+one went to 15 without incident.
+
 ### What this says about ADR-0077 option B
 
 B gates on *the tests still passing*. The suite it would lean on fails 11 tests intermittently at

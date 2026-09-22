@@ -17,6 +17,15 @@ worker outliving its run — and **`force` suppresses `ENOENT` and nothing else*
   `maxRetries: 5, retryDelay: 200` for exactly this error class. Seven call sites had spelled the same
   options independently; ADR-0081 is what this project has to show for the last set of copies that
   agreed until they did not.
+- **Verified in the field:** a 15-run measurement on project-b went straight past run 9, where both
+  previous attempts died.
+
+**project-b's suite was measured too, and it settles nothing — which is the point of saying so.**
+9111/9118 passing in all 15 runs, spread 0, zero non-deterministic tests. But `0/15` is
+`[0.000, 0.218]` against project-a's `3/50` `[0.013, 0.165]`, and **if project-b had project-a's rate
+exactly, seeing zero bad runs in 15 happens 40 % of the time** — the modal outcome. ADR-0084's caveat,
+that a 6 % floor is a property of *this* project, is still open. It needs the same ~50 runs, about
+three and a half hours.
 
 **ADR-0084 — `D` is the suite's flake rate, not the gate's error rate.** Measured overnight: 50 runs of
 `project-a`'s unmodified suite, fresh clone each, no change applied, in a window crossing **no**
