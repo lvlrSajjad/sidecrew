@@ -6248,3 +6248,93 @@ wrong with the machine and a silent leak of half-gigabyte directories would be w
 And it does not explain the **first** failure's silence. That run produced no report from run 9 onward
 rather than throwing, which is a different symptom of the same family, and the harness now records the
 runner's message and stops after three so the next occurrence says which.
+
+---
+
+## ADR-0086 — Symbol-scoped return: what option C is, built, and the one choice it leaves the owner
+
+**Status:** **accepted** in its built shape, 22 Sep 2026 · **§6 is PROPOSED and needs the owner** ·
+builds ADR-0075 option C · Phase 14c
+
+ADR-0075 decided *what* (the worker returns a declaration and sidecrew splices it) and not *how*.
+Six sub-decisions follow. Five are below the size of an ADR one at a time, but taken together they
+are the contract, so they are written down in one place. §6 changes what the gate means and is the
+owner's call.
+
+### 1. The plan names a declaration, and the name has two forms
+
+`PlannedChange.symbols: [{ file, name }]`, optional. `name` is `f` for a top-level declaration
+(function, class, interface, type alias, enum, or a `const`/`let` statement declaring exactly one
+name) or `C.m` for a member of a top-level class (a method, property, accessor, or `C.constructor`).
+A task with `symbols` is **symbol-scoped**: every file it lists must carry at least one symbol, and it
+may change nothing outside those declarations.
+
+**A name that resolves to zero or to more than one declaration is refused by the validator**, not
+guessed at. That covers overloads and `get`/`set` pairs. Picking the implementation of an overloaded
+function would hand the worker a declaration whose signature it cannot see, so v1 refuses it. The
+cost is counted by the census, not assumed.
+
+### 2. Span = the node, decorators and modifiers included, leading JSDoc excluded
+
+`node.getStart(sf)` to `node.getEnd()`. Including decorators means a controller method's `@Get()` travels
+with it. **Excluding the JSDoc means the declaration's documentation cannot change by construction**,
+which is ADR-0054's rule enforced by the splice rather than checked after it.
+
+### 3. The answer is `--- SYMBOL: file#name ---` and the declaration's whole new text
+
+This is the same marker form as `--- FILE:` and the same concession: a bare answer is accepted when
+the task names exactly one symbol. **The splice happens before the gate.** `ChangeCandidate.edits`
+still holds whole files, produced by replacing each span in the task's own source, and the returned
+text is kept in `ChangeCandidate.symbol_edits`. So every gate stage after `generate` sees exactly what
+it saw before: confinement, the diff, `tsc`, the suite, and the documentation rule. None of them
+learns a new input shape.
+
+### 4. Two new confinement rules, both decided from the task and the candidate alone
+
+- **`edit_outside_symbol`**: re-parse the candidate's file, find each named declaration, and put the
+  original text back in its place. If the result is not the original file byte for byte, something
+  outside the declaration changed. The same check also judges a whole-file answer to a symbol task,
+  so answer form is not a way around it. A returned symbol the task does not name also fires this rule.
+- **`symbol_not_redeclared`**: in the candidate's file the name no longer resolves to exactly one
+  declaration. It was renamed, split, or deleted. **If the compiler cannot be loaded, the rule fails
+  closed.** A gate that cannot parse the answer has no business passing it.
+
+Returning two methods where one was asked for is the first rule's case: after the named one is
+reverted, the extra one is still there.
+
+**Still decidable before a byte is written**: both rules are a pure function of `ChangeTask` (which now
+carries each span's offsets) and `ChangeCandidate`, and a test asserts that neither one touches the
+filesystem.
+
+### 5. Size is the declaration's, and the prompt shows the declaration, not the file
+
+The validator's size clause becomes `symbols_too_large_to_rewrite` on a symbol task,
+`rewriteCost(symbol texts) > MAX_FIX_TOKENS`, and `files_too_large_to_rewrite` stops applying to it.
+`fixTokenBudget` follows the same rule. The prompt (`prompts/fixer-symbol.md`, **a separate template**,
+so the whole-file prompt stays byte-identical along with every cache key and ablation that depends on
+it) shows the file's imports, the enclosing class's header line, and each declaration with its line
+numbers. Diagnostics are filtered to lines inside the spans.
+
+**What this does not move:** the *prompt* now scales with the declaration. A 4,000-line service no longer
+has to fit the worker's context, which it would not have done even with the output ceiling removed.
+The worker also sees less. It gets no sibling signatures, which would be the next thing to try if
+`S_big` comes out low, and it is named here so nobody reaches for it silently.
+
+### 6. PROPOSED — does `compile_ok` count errors in the file, or in the declaration?
+
+ADR-0048's clause is *zero `tsc` errors in the task's **files***. On a symbol task in a large file that
+means an error in some *other* method makes the task unsatisfiable. The worker was not allowed to touch
+that method, so a symbol-scoped task on a large file with any pre-existing error is refused.
+
+- **A, built:** keep the clause exactly as it is, and have the validator refuse the unsatisfiable case
+  by name: `pre_existing_error_outside_symbol`. The gate means what it meant on 21 Sep, which keeps
+  `S_big` and `S_small` comparable under one gate. The cost is that under added strictness flags,
+  where large files carry many errors, most large-file tasks are refused.
+- **B:** the target becomes the declaration. Zero errors inside the (post-splice) spans, and outside
+  them no more than before. That is option C's own logic (*"the bound becomes the symbol"*), but it
+  is a change to non-negotiable #2's iff and to `ChangeVerdict`'s refinement.
+
+**Recommendation: A for 14c's measurement, B decided afterwards on its own number.** Measuring the
+reach and changing the gate in the same run would mean `S_big / S_small` measures two changes at once,
+which is the exact trap `prompts/phase-14c-the-reach.md` §2 names. Under `compiler_flags: []` the cost
+of A is expected to be small. That is an estimate, and the validator's refusal count will measure it.

@@ -17,6 +17,7 @@
 // partially-applied sandbox to reason about.
 import { basename } from "node:path";
 import type { ChangeCandidate, ChangeObservation, ChangeTask, ConfinementBreach, ConfinementRule } from "./schemas.js";
+import { symbolBreaches } from "./symbols.js";
 
 /**
  * Build configuration, in every spelling a JavaScript project uses. Editing one of these is *the*
@@ -177,7 +178,11 @@ export const codeLines = (text: string): number =>
  * All of them, never the first one: the Phase 11 funnel counts each rule by name, and a checker that
  * stopped at the first break would report the cheapest pass a worker tried rather than every one.
  */
-export function checkConfinement(task: ChangeTask, candidate: ChangeCandidate): ConfinementBreach[] {
+export function checkConfinement(
+  task: ChangeTask, candidate: ChangeCandidate,
+  /** Where `typescript` resolves from, for a symbol task's two rules (ADR-0086 §4). They fail closed without it. */
+  opts: { projectDir?: string } = {},
+): ConfinementBreach[] {
   const breaches: ConfinementBreach[] = [];
   const add = (rule: ConfinementRule, file: string, detail: string): void => {
     breaches.push({ rule, file, detail });
@@ -241,6 +246,10 @@ export function checkConfinement(task: ChangeTask, candidate: ChangeCandidate): 
         (task.max_deleted_lines === 0 ? " — deleting the offending line is not a fix" : ""));
     }
   }
+
+  // ADR-0086 §4. After the per-file rules, because it answers a narrower question: of the lines that
+  // changed, were they all inside the declarations the task names?
+  breaches.push(...symbolBreaches(task, candidate, opts.projectDir));
 
   return breaches;
 }

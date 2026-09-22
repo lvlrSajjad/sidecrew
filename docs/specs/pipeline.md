@@ -407,10 +407,39 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
         { "task_id": "report:0", "ask": "Fix every TypeScript error in these files without changing what the code does.",
           "files": ["src/report.ts", "src/format.ts"], "max_deleted_lines": 0, "blocking": false, "shape": "rename" }
       ]
+    },
+    {
+      "name": "guard one declaration inside a file",
+      "tasks": [
+        { "task_id": "rates:0", "ask": "Fix every TypeScript error in these declarations without changing what the code does.",
+          "files": ["src/rates.ts"], "max_deleted_lines": 0, "blocking": false, "shape": "null_guard",
+          "symbols": [{ "file": "src/rates.ts", "name": "rateFor" }] }
+      ]
     }
   ]
 }
 ```
+
+### `symbols` — a task may name declarations instead of files (ADR-0086)
+
+A worker returns whole files, so a whole-file task is bounded by what the worker can reproduce inside
+its completion ceiling. On a real Nest service that refused **3.3 % of the files and 48.1 % of the
+bytes**. The refused files are the big ones, which is where the work is (ADR-0075, measured). A task
+carrying `symbols` is **symbol-scoped** instead:
+
+- `name` is `f` for a top-level declaration (function, class, interface, type alias, enum, or a
+  `const`/`let` declaring one name) or `C.m` for a member of a top-level class (method, property,
+  accessor, `C.constructor`). A name matching zero or several declarations (an overload, a
+  `get`/`set` pair) is **refused, never guessed**: `symbol_missing`, `symbol_ambiguous`.
+- Every listed file carries at least one symbol (`file_without_symbol`), no two overlap
+  (`symbols_overlap`), and the size clause applies to the declarations' text instead of the files':
+  `symbols_too_large_to_rewrite`. **`files_too_large_to_rewrite` does not apply to a symbol task.**
+  That is the whole reach gain. A 60-line method inside a 4,000-line service is a 60-line task.
+- **The gate is unchanged** (ADR-0086 §6, option A). `compile_ok` still wants zero errors in the task's
+  *files*, and the task may change nothing else in them. So a pre-existing error outside the named
+  declarations makes the task unsatisfiable, and the validator refuses it:
+  `pre_existing_error_outside_symbol`. Whether the target should become the declaration is open, and
+  it is the owner's call.
 
 ### `demote_test_type_errors` — ADR-0077 option B, on by default
 
@@ -552,9 +581,17 @@ with pre-existing failures is normal — project-a has 23 suites failing on miss
   "retry_of": null,
   "previous_error": null,
   "correction": null,
-  "shape": "null_guard"
+  "shape": "null_guard",
+  "symbols": []
 }
 ```
+
+`symbols` is empty on a whole-file task. On a symbol task each entry is a declaration located by the
+compiler when the task was built. `start`/`end` are offsets into that file's `source` (the schema
+checks that `source.slice(start, end)` is the entry's own text), along with its lines, the `tsc` errors
+inside it at the baseline, and the read-only context the worker is shown: the file's imports and a
+member's class header. The worker is shown **only** that, from `prompts/fixer-symbol.md`, a separate
+template, so the whole-file prompt and every cache key built from it are byte-identical to before.
 
 `files` is the group — the dispatch unit (ADR-0044 §1) — and each entry carries the file's `tsc` error
 count at the step's baseline, which is what gives the verdict per-file reporting without a verifier run
@@ -577,6 +614,7 @@ easier thing to pass.
   "task_id": "totals:0",
   "worker": { "kind": "local", "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "revision": "abc123", "temperature": 0.0, "seed": 42 },
   "edits": [ { "path": "src/totals.ts", "contents": "export function roundTo(value: number | string, places = 2) { … }" } ],
+  "symbol_edits": [],
   "unparsed": null,
   "truncated": false,
   "refusal": null,
@@ -591,6 +629,14 @@ understood the change, and it adds a whole stage — *the patch did not apply* �
 represent. Whole contents apply mechanically, the diff is then computed exactly rather than trusted,
 and — the property that matters most — **confinement is decidable before a byte is written**, because
 it is a pure function of the task's sources and the candidate's.
+
+**On a symbol task the worker returns declarations** instead: `--- SYMBOL: path#name ---` and the
+declaration's whole new text, kept verbatim in `symbol_edits`. sidecrew splices each one into the
+task's own source by its span **before the gate**, so `edits` still holds whole files, and every stage
+after `generate` (confinement, the diff, `tsc`, the suite, the documentation rule) reads exactly the
+shape it always has. The model never writes a line number, which is the failure mode that made hunks a
+no. A returned name the task does not list, or one returned twice, is kept and not spliced, so the
+gate can refuse it by name.
 
 What that costs is recorded rather than discovered: `truncated` (the completion hit the ceiling) and
 `unparsed` (the answer could not be read as edits) are counted by name in `FixResult.stats`, so a funnel
@@ -802,6 +848,14 @@ reads; nothing gates on it.
 | `any_escape_added` | a new `as any`, `: any`, `<any>` |
 | `deletion_without_replacement` | more code lines removed than `max_deleted_lines` allows |
 | `no_edit_at_all` | a candidate that changed nothing |
+| `documentation_changed` | documentation the ask did not call for, removed or reworded (ADR-0054) |
+| `edit_outside_symbol` | on a symbol task, any change outside the named declarations: judged by putting them back and requiring the original file byte for byte, so a whole-file answer gets no way round it. Also a returned name the task does not list, or one returned twice (ADR-0086 §4) |
+| `symbol_not_redeclared` | on a symbol task, a named declaration that no longer resolves exactly once: renamed, split or deleted. **Fails closed** when the compiler cannot be loaded |
+
+Seven was the count when ADR-0048 was written. ADR-0054 added the eighth and ADR-0086 the last two.
+The two symbol rules are still a pure function of the task and the candidate, so confinement is still
+decided **before anything is written** — `test/symbols.test.ts` asserts it on a path that does not
+exist.
 
 ## FixResult
 ```json

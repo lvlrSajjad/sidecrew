@@ -654,7 +654,7 @@ export async function verifyChange(
     });
   }
 
-  const confinement: ConfinementBreach[] = checkConfinement(task, candidate);
+  const confinement: ConfinementBreach[] = checkConfinement(task, candidate, { projectDir: opts.projectDir });
   const confined = confinement.length === 0;
   const problems: string[] = [];
   /** ADR-0077 option B: test-file type errors, recorded instead of gating. */

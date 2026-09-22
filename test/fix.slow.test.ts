@@ -24,6 +24,7 @@ import {
 import { loadChangePlan, runFix } from "../src/fix.js";
 import { runReport } from "../src/report.js";
 import { ChangeCandidate, ChangeTask, ConfinementRule, FixResult } from "../src/schemas.js";
+import { locateSymbols, resolveSymbol } from "../src/symbols.js";
 import { startFake, type Fake } from "./fake-worker.js";
 
 const SLOW = process.env.SIDECREW_SLOW === "1";
@@ -142,7 +143,7 @@ describe.skipIf(!SLOW)("the 2a gate on fixtures/fix-fixture", () => {
   describe("the controls", () => {
     const controls = readdirSync(CONTROLS).filter((f) => f.endsWith(".json"))
       .map((f) => ({ name: basename(f, ".json"), ...JSON.parse(readFileSync(join(CONTROLS, f), "utf8")) as {
-        rule: string; why: string; edits: { path: string; contents: string }[];
+        rule: string; why: string; symbols?: string[]; edits: { path: string; contents: string }[];
       } }));
 
     it("has one for every rule the contract knows", () => {
@@ -151,7 +152,12 @@ describe.skipIf(!SLOW)("the 2a gate on fixtures/fix-fixture", () => {
 
     for (const control of controls) {
       it(`fails the real gate: ${control.name}`, { timeout: 5 * MINUTES }, async () => {
-        const verdict = await verifyChange(task(["src/rates.ts"]), candidate(control.edits), {
+        // ADR-0086: a symbol rule's control runs against a task scoped the way `buildChangeTask` scopes one.
+        const base = task(["src/rates.ts"]);
+        const located = control.symbols === undefined ? []
+          : locateSymbols(base.files, control.symbols.map((name) => ({ file: "src/rates.ts", name })), "", PROJECT);
+        if (!Array.isArray(located)) throw new Error(located.problem);
+        const verdict = await verifyChange(ChangeTask.parse({ ...base, symbols: located }), candidate(control.edits), {
           sandbox, baseline: captured.baseline, projectDir: PROJECT, runner: "vitest",
         });
         expect(verdict.survived, control.why).toBe(false);
@@ -193,6 +199,15 @@ describe.skipIf(!SLOW)("the 2a gate on fixtures/fix-fixture", () => {
 const answerFor = (body: Record<string, unknown>): string[] => {
   const messages = body.messages as { content?: string }[] | undefined;
   const prompt = messages?.[0]?.content ?? "";
+  // ADR-0086: a symbol task is answered with the fixed declaration alone, which is all it was shown.
+  const symbol = /--- SYMBOL: (src\/[\w.]+)#(\w+) ---/.exec(prompt);
+  if (symbol !== null) {
+    const [, file, name] = symbol as unknown as [string, string, string];
+    const fixed = FIXES[file]!(read(file));
+    const r = resolveSymbol(fixed, name, file);
+    if (!r.ok) return ["nothing to do"];
+    return [`--- SYMBOL: ${file}#${name} ---\n`, fixed.slice(r.span.start, r.span.end)];
+  }
   const path = Object.keys(FIXES).find((p) => prompt.includes(`--- FILE: ${p} ---`));
   if (path === undefined) return ["nothing to do"];
   return [`--- FILE: ${path} ---\n`, FIXES[path]!(read(path))];
@@ -524,6 +539,38 @@ describe.skipIf(!SLOW)("runFix over an ordered plan", () => {
         expect(stopped).toContain("money");
         // Nothing landed, so the project is exactly where it started.
         expect(result.project.errors_after).toBe(result.project.errors_before);
+      } finally {
+        await rm(dir2, { recursive: true, force: true });
+      }
+    },
+  );
+  it(
+    "carries a symbol-scoped task from the plan to a survivor, splicing the declaration back (ADR-0086)",
+    { timeout: 20 * MINUTES },
+    async () => {
+      const plan = JSON.parse(readFileSync(PLAN, "utf8")) as Record<string, unknown>;
+      const steps = plan.steps as Record<string, unknown>[];
+      plan.steps = [steps[0]];
+      steps[0]!.tasks = [{
+        task_id: "rateFor", ask: "Fix every TypeScript error in these declarations without changing what the code does.",
+        files: ["src/rates.ts"], max_deleted_lines: 0, blocking: false, shape: "null_guard",
+        symbols: [{ file: "src/rates.ts", name: "rateFor" }],
+      }];
+      const dir2 = await mkdtemp(join(tmpdir(), "sidecrew-fix-symbol-"));
+      const path = join(dir2, "change_plan.json");
+      await writeFile(path, JSON.stringify(plan, null, 2), "utf8");
+      try {
+        const result = await runFix(path, { dir: dir2, ports: [fake.port] });
+        expect(result.stats.survived).toBe(1);
+        expect(result.stats.confinement_breaks).toEqual({});
+        const runDir = join(dir2, "runs", result.run_id);
+        const cand = ChangeCandidate.parse(JSON.parse(await readFile(join(runDir, "candidates", "rateFor.json"), "utf8")));
+        expect(cand.symbol_edits.map((e) => e.name)).toEqual(["rateFor"]);
+        // The spliced file is the hand-written whole-file fix, byte for byte: nothing outside moved.
+        expect(cand.edits).toEqual([{ path: "src/rates.ts", contents: FIXES["src/rates.ts"]!(read("src/rates.ts")) }]);
+        // The worker was never shown the rest of the file.
+        const sent = fake.requests.at(-1) as { messages: { content: string }[] };
+        expect(sent.messages[0]!.content).not.toContain("export function convert(");
       } finally {
         await rm(dir2, { recursive: true, force: true });
       }

@@ -1,0 +1,13 @@
+{
+  "rule": "symbol_not_redeclared",
+  "why": "The named declaration has to survive the change under its own name, or there is nothing to splice back and no way to tell what the worker actually changed. Here `rateFor` comes back as `rateForCode`. The body is correct, but the name the task asked about no longer resolves.",
+  "symbols": [
+    "rateFor"
+  ],
+  "edits": [
+    {
+      "path": "src/rates.ts",
+      "contents": "import { roundTo } from \"./money\";\n\n/**\n * Planted error #1 — **TS2538**, `undefined` used as an index type.\n *\n * At runtime this is already correct: `rates[undefined]` is `undefined` and `?? 0` catches it, which is\n * exactly the behaviour `test/rates.test.ts` pins. Only the types are wrong, which is what makes it a\n * behaviour-preserving fix rather than a bug fix — see the fixture README.\n */\nexport function rateForCode(rates: Record<string, number>, code: string | undefined): number {\n  return code === undefined ? 0 : rates[code] ?? 0;\n}\n\nexport function convert(amount: number, rates: Record<string, number>, code: string | undefined): number {\n  return roundTo(amount * rateFor(rates, code), 2);\n}\n"
+    }
+  ]
+}

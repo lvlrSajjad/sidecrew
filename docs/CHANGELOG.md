@@ -1,6 +1,26 @@
 # Changelog
 ## Unreleased
 
+**Phase 14c's build: a task may name a declaration, and the worker returns only that (ADR-0086,
+building ADR-0075 option C).** A `PlannedChange` carrying `symbols: [{ file, name }]` is
+symbol-scoped. The worker is shown the declaration, the file's imports and its class header, and
+answers with `--- SYMBOL: file#name ---`. sidecrew splices the answer back by the compiler's own range
+**before the gate**, so every stage after `generate` still reads whole files. `files_too_large_to_rewrite`
+no longer applies to a symbol task. Its size clause is the declaration's
+(`symbols_too_large_to_rewrite`), which is what brings a method inside a 4,000-line service into reach.
+
+- **Two new confinement rules, each with a control**: `edit_outside_symbol` (put the named declarations
+  back and the file must be the original byte for byte, whatever form the answer took) and
+  `symbol_not_redeclared` (the name no longer resolves once; fails closed without a compiler). Both are
+  still a pure function of the task and the candidate, and a test asserts it on a path that does not
+  exist.
+- **The gate is unchanged** (ADR-0086 §6, option A, pending the owner): an error elsewhere in the file
+  makes a symbol task unsatisfiable, so the validator refuses it as `pre_existing_error_outside_symbol`.
+- **The refused set was recorded first**, on the untouched code: project-a refuses 72 of 2,174 source
+  files, **48.1 % of the bytes, `Reach` 0.519**. project-b refuses 76 of 2,136, 27.2 %, `Reach` 0.728.
+  Measured, `experiments/reach/results/census-before-*.json`.
+- Nothing about a whole-file task changed: the same prompt bytes, the same cache keys and the same rules.
+
 **ADR-0084's open caveat is closed — not by answering it, but by showing it does not bear on the
 decision.** 50 runs of project-b's unmodified suite: **9111/9118 passing every time, spread 0, zero
 non-deterministic tests**.

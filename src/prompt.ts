@@ -12,6 +12,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type { Message } from "./worker.js";
 import type { ChangeTask, WorkerTask } from "./schemas.js";
+import { indentAt } from "./symbols.js";
 
 const TEMPLATE_PATH = fileURLToPath(new URL("./prompts/worker.md", import.meta.url));
 const RETRY_TEMPLATE_PATH = fileURLToPath(new URL("./prompts/retry.md", import.meta.url));
@@ -160,6 +161,16 @@ export async function buildPrompt(task: WorkerTask, opts: PromptOpts = {}): Prom
 
 const FIXER_TEMPLATE_PATH = fileURLToPath(new URL("./prompts/fixer.md", import.meta.url));
 const FIX_RETRY_TEMPLATE_PATH = fileURLToPath(new URL("./prompts/fix-retry.md", import.meta.url));
+const SYMBOL_TEMPLATE_PATH = fileURLToPath(new URL("./prompts/fixer-symbol.md", import.meta.url));
+const SYMBOL_RETRY_TEMPLATE_PATH = fileURLToPath(new URL("./prompts/fix-symbol-retry.md", import.meta.url));
+
+/**
+ * ADR-0086 §5: a symbol-scoped task has its own template rather than a section inside `fixer.md`, so the
+ * whole-file prompt stays byte-identical and so does every candidate-cache key and measured number that
+ * depends on it. The retry is split for the reason `fix-retry.md` is: it asks for the answer's form.
+ */
+export const symbolFixerTemplate = async (): Promise<string> => readFile(SYMBOL_TEMPLATE_PATH, "utf8");
+export const symbolRetryTemplate = async (): Promise<string> => readFile(SYMBOL_RETRY_TEMPLATE_PATH, "utf8");
 
 export const fixerTemplate = async (): Promise<string> => readFile(FIXER_TEMPLATE_PATH, "utf8");
 
@@ -186,19 +197,50 @@ export const fixRetryTemplate = async (): Promise<string> => readFile(FIX_RETRY_
 export const filesBlock = (files: { path: string; source: string }[]): string =>
   files.map((f) => `--- FILE: ${f.path} ---\n${f.source}`).join("\n\n");
 
+/**
+ * What a symbol task's worker may read and not change: per file, its imports, and for each class a member
+ * belongs to, the class's header — with the line each declaration sits on, because the diagnostics
+ * speak in the file's line numbers and the worker is not shown the file.
+ */
+export const contextBlock = (task: ChangeTask): string => {
+  const out: string[] = [];
+  for (const file of task.files) {
+    const mine = task.symbols.filter((s) => s.path === file.path);
+    if (mine.length === 0) continue;
+    const parts = [`--- CONTEXT: ${file.path} ---`];
+    if (mine[0]!.imports !== "") parts.push(mine[0]!.imports, "");
+    for (const enclosing of [...new Set(mine.map((s) => s.enclosing).filter((e) => e !== ""))]) parts.push(`${enclosing}\n  …\n}`, "");
+    for (const s of mine) parts.push(`${s.name} is lines ${s.start_line}–${s.end_line} of ${file.path}.`);
+    out.push(parts.join("\n"));
+  }
+  return out.join("\n\n");
+};
+
+/** Each declaration in the `--- SYMBOL:` form the worker answers in, indented as it is in its file. */
+export const symbolsBlock = (task: ChangeTask): string =>
+  task.symbols.map((s) => {
+    const file = task.files.find((f) => f.path === s.path)!.source;
+    return `--- SYMBOL: ${s.path}#${s.name} ---\n${indentAt(file, s.start)}${s.source}`;
+  }).join("\n\n");
+
 export const changeVars = (task: ChangeTask): Vars => ({
   language: task.language,
   test_framework: task.test_framework,
   ask: task.ask,
   notes: task.notes,
   diagnostics: task.diagnostics,
-  files_block: filesBlock(task.files),
+  files_block: task.symbols.length === 0 ? filesBlock(task.files) : "",
+  context_block: task.symbols.length === 0 ? "" : contextBlock(task),
+  symbols_block: task.symbols.length === 0 ? "" : symbolsBlock(task),
   previous_error: task.previous_error,
   correction: task.correction,
 });
 
 export async function changePromptText(task: ChangeTask, opts: PromptOpts = {}): Promise<string> {
   const v = changeVars(task);
+  if (task.symbols.length > 0) {
+    return render(opts.template ?? await symbolFixerTemplate(), v) + render(opts.retry ?? await symbolRetryTemplate(), v);
+  }
   return render(opts.template ?? await fixerTemplate(), v) + render(opts.retry ?? await fixRetryTemplate(), v);
 }
 

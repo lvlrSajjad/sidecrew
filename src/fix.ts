@@ -42,8 +42,9 @@ import { appendChangeEscalation } from "./escalate.js";
 import { PlanError } from "./plan.js";
 import {
   ChangeCandidate, ChangePlan, ChangeTask, ChangeVerdict, crossesCalendarDay, FixResult,
-  type ChangeBaseline, type FileEdit, type PlannedChange,
+  type ChangeBaseline, type FileEdit, type PlannedChange, type SymbolEdit,
 } from "./schemas.js";
+import { locateSymbols, resolutionMessage, resolveSymbol, spliceSymbols } from "./symbols.js";
 import { sidecrewDir } from "./serve.js";
 import { benchBaseline, ThermalGuard } from "./throttle.js";
 import { complete, decodeTokensPerSecond } from "./worker.js";
@@ -58,7 +59,9 @@ export const MAX_FIX_TOKENS = 8192;
 export const MIN_FIX_TOKENS = 1024;
 
 export const fixTokenBudget = (task: ChangeTask): number => {
-  const needed = Math.ceil(task.files.reduce((n, f) => n + estimateTokens(f.source), 0) * 1.4) + 256;
+  // ADR-0086 §5: a symbol-scoped task returns its declarations, not its files, so it is budgeted by them.
+  const returned = task.symbols.length > 0 ? task.symbols.map((s) => s.source) : task.files.map((f) => f.source);
+  const needed = Math.ceil(returned.reduce((n, src) => n + estimateTokens(src), 0) * 1.4) + 256;
   return Math.max(MIN_FIX_TOKENS, Math.min(MAX_FIX_TOKENS, needed));
 };
 
@@ -68,6 +71,8 @@ export const FIX_GENERATE_TIMEOUT_MS = 600_000;
 // ── reading the worker's answer ───────────────────────────────────────────────────────────────────
 
 const FILE_MARKER = /^-{2,}\s*FILE:\s*(.+?)\s*-{2,}\s*$/;
+/** ADR-0086 §3: `--- SYMBOL: path#name ---`, the question's own form. */
+const SYMBOL_MARKER = /^-{2,}\s*SYMBOL:\s*(.+?)#([A-Za-z_$][\w$.]*)\s*-{2,}\s*$/;
 /** ADR-0044's "the other direction": a worker that cannot do the task says so instead of guessing. */
 const CANNOT_MARKER = /^-{2,}\s*CANNOT:\s*(.+?)\s*-{2,}\s*$/;
 const FENCE_OPEN = /^```[\w-]*\s*$/;
@@ -165,7 +170,8 @@ export function parseEdits(text: string, task: ChangeTask): ParsedEdits {
   // `refusals` would have been a constant zero rather than an observation.
   if (parseRefusal(clean) !== null) return { edits: [], unparsed: null };
 
-  const only = task.files.length === 1 ? task.files[0] : undefined;
+  // A symbol task's bare answer is a declaration, never a file — `parseSymbolEdits` owns that case.
+  const only = task.files.length === 1 && task.symbols.length === 0 ? task.files[0] : undefined;
   const bare = unfence(lines).join("\n").trim();
   if (only !== undefined && bare !== "") return { edits: [{ path: only.path, contents: `${bare}\n` }], unparsed: null };
 
@@ -175,6 +181,71 @@ export function parseEdits(text: string, task: ChangeTask): ParsedEdits {
       `the answer contained no \`--- FILE: path ---\` marker and the task has ${task.files.length} files, ` +
       `so there is no way to tell which file it is about:\n${clean}`,
     ),
+  };
+}
+
+export interface ParsedSymbolEdits {
+  symbol_edits: SymbolEdit[];
+  unparsed: string | null;
+}
+
+/**
+ * A symbol-scoped task's answer: `--- SYMBOL: path#name ---` then the declaration's new text (ADR-0086 §3).
+ *
+ * The same rules as `parseEdits`: a symbol the task does not name is **kept** so the gate can refuse it
+ * by name, and a bare answer is accepted only when there is exactly one symbol it could be. A `--- FILE:`
+ * section ends a symbol's text; `parseEdits` reads that section separately.
+ */
+export function parseSymbolEdits(text: string, task: ChangeTask): ParsedSymbolEdits {
+  const clean = text.replace(END_OF_TURN, "").trimEnd();
+  const lines = clean.split("\n");
+  const symbol_edits: SymbolEdit[] = [];
+  let at: { path: string; name: string } | null = null;
+  let body: string[] = [];
+  let sawFile = false;
+
+  const flush = (): void => {
+    if (at !== null) symbol_edits.push({ ...at, text: unfence(body).join("\n") });
+    at = null;
+    body = [];
+  };
+  for (const line of lines) {
+    const m = SYMBOL_MARKER.exec(line);
+    if (m) { flush(); at = { path: normalisePath(m[1]!), name: m[2]! }; continue; }
+    if (FILE_MARKER.test(line)) { flush(); sawFile = true; continue; }
+    if (at !== null) body.push(line);
+  }
+  flush();
+
+  if (symbol_edits.length > 0 || sawFile) return { symbol_edits, unparsed: null };
+  if (parseRefusal(clean) !== null) return { symbol_edits: [], unparsed: null };
+
+  const only = task.symbols.length === 1 ? task.symbols[0] : undefined;
+  const bare = unfence(lines).join("\n").trim();
+  if (only !== undefined && bare !== "") return { symbol_edits: [{ path: only.path, name: only.name, text: bare }], unparsed: null };
+
+  return {
+    symbol_edits: [],
+    unparsed: truncateError(
+      `the answer contained no \`--- SYMBOL: path#name ---\` marker and the task names ${task.symbols.length} ` +
+      `declarations, so there is no way to tell which one it is about:\n${clean}`,
+    ),
+  };
+}
+
+/**
+ * The whole answer, in the shape a candidate carries: whole-file edits (spliced, on a symbol task), the
+ * returned declarations, and what could not be read. One function for both tiers, so the local and api
+ * arms cannot read the same answer two ways.
+ */
+export function readAnswer(text: string, task: ChangeTask): { edits: FileEdit[]; symbol_edits: SymbolEdit[]; unparsed: string | null } {
+  if (task.symbols.length === 0) return { ...parseEdits(text, task), symbol_edits: [] };
+  const files = parseEdits(text, task);
+  const symbols = parseSymbolEdits(text, task);
+  return {
+    edits: spliceSymbols(task, symbols.symbol_edits, files.edits),
+    symbol_edits: symbols.symbol_edits,
+    unparsed: symbols.symbol_edits.length > 0 || files.edits.length > 0 ? null : symbols.unparsed,
   };
 }
 
@@ -205,7 +276,7 @@ export async function generateChange(task: ChangeTask, worker: WorkerEndpoint): 
     );
   }
 
-  const { edits, unparsed } = parseEdits(completion.text, task);
+  const { edits, symbol_edits, unparsed } = readAnswer(completion.text, task);
   // A refusal only counts when the worker returned *nothing else*. A model that emits both a refusal and
   // a file has not refused; it has hedged, and taking the refusal at face value there would discard a
   // candidate the gate could have judged for free.
@@ -214,6 +285,7 @@ export async function generateChange(task: ChangeTask, worker: WorkerEndpoint): 
     task_id: task.task_id,
     worker: { kind: "local", model: worker.model, revision: worker.revision, temperature: 0, seed: RUN_SEED },
     edits,
+    symbol_edits,
     unparsed: refusal === null ? unparsed : null,
     refusal,
     // `length` is the server saying it stopped because it ran out, which is the one truncation signal
@@ -248,7 +320,7 @@ export async function generateApiChange(task: ChangeTask, api: ApiTierContext): 
   });
   assertMeasuredUsage(completion, completion.text.length);
 
-  const { edits, unparsed } = parseEdits(completion.text, task);
+  const { edits, symbol_edits, unparsed } = readAnswer(completion.text, task);
   const refusal = edits.length === 0 ? parseRefusal(completion.text) : null;
   return ChangeCandidate.parse({
     task_id: task.task_id,
@@ -256,6 +328,7 @@ export async function generateApiChange(task: ChangeTask, api: ApiTierContext): 
     // untrue. `WorkerStamp` requires a seed only on `local` (ADR-0009).
     worker: { kind: "api", model: api.model, revision: "", temperature: 0, seed: null },
     edits,
+    symbol_edits,
     unparsed: refusal === null ? unparsed : null,
     refusal,
     truncated: completion.finish_reason === "length",
@@ -332,6 +405,19 @@ export async function loadChangePlan(planPath: string, tsconfig = "tsconfig.json
           || /^(tsconfig|jsconfig)([.-][\w.-]+)?\.json$/.test(basename(f))
           || /^(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|\.eslintrc.*|\.babelrc.*|\.swcrc)$/.test(basename(f))
           || /^[\w.-]+\.(config|conf)\.[\w.]+$/.test(basename(f)));
+      // ADR-0086 §1: a symbol-scoped task is refused here as well as in the validator, for the reason the
+      // two rules above are — a run must not start on a task it cannot build.
+      if (task.symbols !== undefined) {
+        const listed = new Set(task.files.map(toPosix));
+        const named = new Set(task.symbols.map((s) => toPosix(s.file)));
+        for (const s of task.symbols) {
+          if (!listed.has(toPosix(s.file))) { problems.push(`${task.task_id} names ${s.file}#${s.name}, and ${s.file} is not in its files`); continue; }
+          if (!existsSync(join(projectDir, s.file))) continue;
+          const r = resolveSymbol(readFileSync(join(projectDir, s.file), "utf8"), s.name, s.file, projectDir);
+          if (!r.ok) problems.push(`${task.task_id}: ${resolutionMessage(s.file, s.name, r)}`);
+        }
+        for (const f of listed) if (!named.has(f)) problems.push(`${task.task_id} lists ${f} and names no declaration in it — a symbol task changes only what it names`);
+      }
       for (const f of forbidden) {
         problems.push(
           `${task.task_id} lists ${f}, and a behaviour-preserving change may never edit a test file or a ` +
@@ -373,13 +459,18 @@ export function buildChangeTask(
     return { path: toPosix(path), source, source_sha: sha256(source), errors: baseline.errors.by_file[toPosix(path)] ?? 0 };
   });
   const wanted = new Set(files.map((f) => f.path));
+  // `loadChangePlan` resolved these against the project; a step before this one can still have moved one.
+  const located = locateSymbols(files, planned.symbols ?? [], captured.diagnostics, loaded.projectDir);
+  if (!Array.isArray(located)) throw new PlanError(`${planned.task_id}: ${located.problem}`);
+  const symbols = located;
+  const ranges = symbols.length === 0 ? undefined : symbols.map((s) => ({ path: s.path, from: s.start_line, to: s.end_line }));
   return {
     task_id: attempt === 0 ? planned.task_id : `${planned.task_id}#${attempt}`,
     language: loaded.plan.language,
     test_framework: loaded.plan.test_framework,
     ask: planned.ask,
     files,
-    diagnostics: diagnosticsFor(captured.diagnostics, wanted),
+    diagnostics: diagnosticsFor(captured.diagnostics, wanted, ranges),
     max_deleted_lines: planned.max_deleted_lines,
     notes: planned.notes ?? null,
     attempt,
@@ -390,6 +481,7 @@ export function buildChangeTask(
     // than remembered (rule 3).
     correction: extra.correction ?? null,
     shape: planned.shape,
+    symbols,
   };
 }
 
@@ -401,13 +493,22 @@ export function buildChangeTask(
  * compiler's, and `previous_error` already proves that the tool's own sentence is the useful one
  * (ADR-0022).
  */
-export const diagnosticsFor = (diagnostics: string, files: Set<string>): string => {
+export const diagnosticsFor = (
+  diagnostics: string, files: Set<string>,
+  /** ADR-0086 §5: on a symbol task, only what the compiler says *inside* the named declarations. */
+  ranges?: { path: string; from: number; to: number }[],
+): string => {
   const lines = diagnostics.split("\n").filter((line) => {
     const at = line.indexOf("(");
-    return at > 0 && files.has(toPosix(line.slice(0, at)));
+    if (!(at > 0 && files.has(toPosix(line.slice(0, at))))) return false;
+    if (ranges === undefined) return true;
+    const path = toPosix(line.slice(0, at));
+    const n = Number(/^\((\d+),/.exec(line.slice(at))?.[1] ?? NaN);
+    return ranges.some((r) => r.path === path && n >= r.from && n <= r.to);
   });
   return truncateError(lines.join("\n"));
 };
+
 
 // ── the retry rule ────────────────────────────────────────────────────────────────────────────────
 

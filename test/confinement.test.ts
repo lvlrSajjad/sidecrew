@@ -10,6 +10,7 @@ import { basename, join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { isTestArtefact, isToolConfig, checkConfinement, codeLines, confinementMessage, observe } from "../src/confinement.js";
 import { ChangeCandidate, ChangeTask, ConfinementRule, type ConfinementBreach } from "../src/schemas.js";
+import { locateSymbols } from "../src/symbols.js";
 
 const FIXTURE = "fixtures/fix-fixture";
 const CONTROLS = join(FIXTURE, "controls");
@@ -50,8 +51,18 @@ const rules = (breaches: ConfinementBreach[]): string[] => breaches.map((b) => b
 interface Control {
   rule: string;
   why: string;
+  /** ADR-0086: a control for a symbol task's rules names the declarations its task is scoped to. */
+  symbols?: string[];
   edits: { path: string; contents: string }[];
 }
+
+/** The same task, scoped to declarations in `src/rates.ts` the way `buildChangeTask` scopes one. */
+const scoped = (t: ChangeTask, names: string[] | undefined): ChangeTask => {
+  if (names === undefined) return t;
+  const located = locateSymbols(t.files, names.map((name) => ({ file: "src/rates.ts", name })), "");
+  if (!Array.isArray(located)) throw new Error(located.problem);
+  return ChangeTask.parse({ ...t, symbols: located });
+};
 
 const controls = (): Map<string, Control> => new Map(
   readdirSync(CONTROLS).filter((f) => f.endsWith(".json")).map((f) => {
@@ -77,7 +88,7 @@ describe("the controls in fixtures/fix-fixture/controls", () => {
     it(`refuses the ${name} control, and names that rule`, () => {
       // The task is always about `src/rates.ts`: every control is a way of *not* fixing its planted
       // TS2538, which is what makes them comparable.
-      const breaches = checkConfinement(task(["src/rates.ts"]), candidate(control.edits));
+      const breaches = checkConfinement(scoped(task(["src/rates.ts"]), control.symbols), candidate(control.edits));
       expect(rules(breaches), control.why).toContain(name);
       expect(confinementMessage(breaches)).toContain(name);
     });

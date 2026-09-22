@@ -28,6 +28,7 @@ import { isTestArtefact, isToolConfig } from "./confinement.js";
 import { removeSandbox } from "./verifier/shared.js";
 import { estimateTokens } from "./prompt.js";
 import { MAX_FIX_TOKENS } from "./fix.js";
+import { errorLines, lineAt, resolutionMessage, resolveSymbol } from "./symbols.js";
 import { ChangeValidationReport, ChangePlan, type ChangeShape, type ValidationIssue } from "./schemas.js";
 
 export interface ValidateChangeOpts {
@@ -141,6 +142,8 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
   const seen = new Set<string>();
   const allFiles = new Set<string>();
   let tasks = 0;
+  /** Each symbol task's resolved declarations, by line, for the compile pass below (ADR-0086 §6). */
+  const symbolLines = new Map<string, { path: string; from: number; to: number }[]>();
 
   for (const step of plan.steps) {
     // Tasks inside a step run in **parallel against one baseline** (ADR-0044 §2), each in its own clone.
@@ -213,9 +216,57 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
         ));
       }
 
-      // Whole-file rewriting: can the worker physically return these files? (ADR-0047 §2, Phase 11 §5.)
+      // ADR-0086: a symbol-scoped task. Every refusal is by name, and none is a guess — a name that
+      // resolves to zero or several declarations is refused rather than picked for the worker.
       const present = task.files.filter((f) => existsSync(join(projectDir, f)));
-      if (present.length === task.files.length) {
+      if (task.symbols !== undefined) {
+        const listed = new Set(task.files.map(toPosix));
+        const named = new Set(task.symbols.map((s) => toPosix(s.file)));
+        for (const f of listed) {
+          if (!named.has(f)) {
+            errors.push(issue("file_without_symbol",
+              `${f} is listed and no declaration in it is named — a symbol task changes only what it names, ` +
+              "so either name one or move the file to a whole-file task (ADR-0086 §1)", task.task_id));
+          }
+        }
+        const spans: { path: string; name: string; start: number; end: number; text: string; from: number; to: number }[] = [];
+        for (const sym of task.symbols) {
+          const path = toPosix(sym.file);
+          if (!listed.has(path)) {
+            errors.push(issue("symbol_file_not_listed", `${sym.file}#${sym.name} is in a file the task does not list`, task.task_id));
+            continue;
+          }
+          if (!existsSync(join(projectDir, path))) continue; // file_missing, above
+          const source = readFileSync(join(projectDir, path), "utf8");
+          const r = resolveSymbol(source, sym.name, path, projectDir);
+          if (!r.ok) {
+            const code = r.reason === "ambiguous" ? "symbol_ambiguous" : r.reason === "missing" || r.reason === "bad_name" ? "symbol_missing" : "symbol_unlocatable";
+            refuse(task.task_id, code, resolutionMessage(path, sym.name, r));
+            continue;
+          }
+          spans.push({ path, name: sym.name, ...r.span, text: source.slice(r.span.start, r.span.end),
+            from: lineAt(source, r.span.start), to: lineAt(source, r.span.end - 1) });
+        }
+        for (const a of spans) {
+          for (const b of spans) {
+            if (a !== b && a.path === b.path && a.start < b.end && b.start < a.end && a.name < b.name) {
+              refuse(task.task_id, "symbols_overlap",
+                `${a.name} and ${b.name} overlap in ${a.path} — one is inside the other, so there is no single ` +
+                "text to splice for either. Name the outer one, or only the inner ones (ADR-0086 §1)");
+            }
+          }
+        }
+        symbolLines.set(task.task_id, spans.map((x) => ({ path: x.path, from: x.from, to: x.to })));
+        if (spans.length === task.symbols.length) {
+          const cost = rewriteCost(spans.map((x) => x.text));
+          if (cost > MAX_FIX_TOKENS) {
+            refuse(task.task_id, "symbols_too_large_to_rewrite",
+              `returning these ${spans.length} declaration(s) needs about ${cost} completion tokens and the ceiling ` +
+              `is ${MAX_FIX_TOKENS} — the change is big, not the file (ADR-0075). Name fewer or smaller declarations`);
+          }
+        }
+      } else if (present.length === task.files.length) {
+        // Whole-file rewriting: can the worker physically return these files? (ADR-0047 §2, Phase 11 §5.)
         const cost = rewriteCost(present.map((f) => readFileSync(join(projectDir, f), "utf8")));
         if (cost > MAX_FIX_TOKENS) {
           refuse(task.task_id, "files_too_large_to_rewrite",
@@ -306,7 +357,33 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
           }
 
           const errorful = task.files.map(toPosix).filter((f) => (byFile[f] ?? 0) > 0);
-          if (task.shape === "rename" || task.shape === "unused_import" || task.shape === "dead_code") {
+          const lines = symbolLines.get(task.task_id);
+          const easy = task.shape === "rename" || task.shape === "unused_import" || task.shape === "dead_code";
+          if (lines !== undefined && !easy) {
+            // ADR-0086 §6, option A: `compile_ok` still counts errors in the task's *files*, and a symbol
+            // task may not touch the rest of its file. So an error outside the named declarations is a
+            // wall no worker can climb, and it is refused here rather than discovered at 262 s a try.
+            let inside = 0;
+            for (const f of errorful) {
+              const at = errorLines(run.message, f);
+              const mine = lines.filter((l) => l.path === f);
+              const within = at.filter((n) => mine.some((l) => n >= l.from && n <= l.to)).length;
+              inside += within;
+              if (at.length - within > 0) {
+                refuse(task.task_id, "pre_existing_error_outside_symbol",
+                  `${f} has ${at.length - within} tsc error(s) outside the named declaration(s), and compile_ok ` +
+                  "requires zero in the task's files while a symbol task may change nothing else in them — no " +
+                  "worker can pass this. Name the declarations those errors are in too (ADR-0086 §6)");
+              }
+            }
+            if (inside === 0) {
+              warnings.push(issue("nothing_to_fix",
+                `no named declaration has a tsc error, and a ${task.shape} ask usually exists to clear one — ` +
+                "the only candidate that can survive is no_edit_at_all, which the gate refuses", task.task_id));
+            }
+            continue;
+          }
+          if (easy) {
             // These three do not exist to clear an error, so a pre-existing one in the task's own files
             // is a wall: `compile_ok` requires **zero** there, and the ask does not cover it.
             // ADR-0050 option C, and it is the refusal Phase 11 nearly needed.

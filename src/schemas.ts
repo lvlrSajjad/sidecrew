@@ -464,6 +464,19 @@ export const ConfinementRule = z.enum([
    * budget field of its own.
    */
   "documentation_changed",
+  /**
+   * A symbol-scoped task's answer changed something outside the declarations it names (ADR-0086 §4).
+   *
+   * Decided by a revert: put the named declarations back as they were, and the file must be the
+   * original byte for byte. A whole-file answer is judged the same way, so the answer form is no way
+   * around it. It also fires on a returned symbol the task does not name, or one returned twice.
+   */
+  "edit_outside_symbol",
+  /**
+   * A symbol-scoped task's answer no longer declares a name the task names exactly once. It was renamed,
+   * split, deleted, or the compiler that would find it could not be loaded (fails closed, ADR-0086 §4).
+   */
+  "symbol_not_redeclared",
 ]);
 export type ConfinementRule = z.infer<typeof ConfinementRule>;
 
@@ -634,6 +647,17 @@ export const PlannedChange = z.object({
    */
   shape: ChangeShape,
   notes: z.string().optional(),
+  /**
+   * ADR-0086: the declarations this task may change, and nothing else. Absent means the task is
+   * whole-file, as every task was before Phase 14c. Present means every listed file carries at least one,
+   * the worker returns each declaration's new text, and the size clause is the declarations' rather than
+   * the files' — which is what brings a method inside a 4,000-line service into reach (ADR-0075 option C).
+   */
+  symbols: z.array(z.object({
+    file: z.string().min(1),
+    /** `f` for a top-level declaration, `C.m` for a member of a top-level class. */
+    name: z.string().regex(/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)?$/, "a symbol is `f` or `C.m`"),
+  }).strict()).min(1).optional(),
 }).strict();
 export type PlannedChange = z.infer<typeof PlannedChange>;
 
@@ -769,7 +793,37 @@ export const ChangeTask = z.object({
   correction: ErrorText.nullable(),
   /** What kind of change this is, carried through from the plan so the verdict can be read by shape. */
   shape: ChangeShape,
+  /**
+   * ADR-0086: the declarations a symbol-scoped task may change, located by the compiler when the task was
+   * built. Empty on a whole-file task. The offsets index into the matching `files[].source`, and the
+   * refinement below checks that they do, which is what lets confinement trust them without reparsing
+   * the original.
+   */
+  symbols: z.array(z.object({
+    path: z.string().min(1),
+    name: z.string().min(1),
+    start: NonNegInt,
+    end: NonNegInt,
+    start_line: z.number().int().positive(),
+    end_line: z.number().int().positive(),
+    /** The declaration's text, exactly `files[path].source.slice(start, end)`. */
+    source: z.string().min(1),
+    /** `tsc` errors inside the span at the step's baseline. */
+    errors: NonNegInt,
+    /** What the worker is shown and may not change: the file's imports, and a member's class header. */
+    imports: z.string(),
+    enclosing: z.string(),
+  }).strict()).default([]),
 }).superRefine((t, ctx) => {
+  const sources = new Map(t.files.map((f) => [f.path, f.source]));
+  for (const [i, s] of t.symbols.entries()) {
+    const source = sources.get(s.path);
+    if (source === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["symbols", i, "path"], message: `${s.path} is not one of this task's files` });
+    } else if (s.end <= s.start || source.slice(s.start, s.end) !== s.source) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["symbols", i], message: `${s.name}'s span does not index its own text in ${s.path}` });
+    }
+  }
   // ADR-0044 §4 rule 3: the correction round is spent only after the mechanical retry has failed, so a
   // note can only ride on `attempt: 2`. Enforced rather than intended, because the whole measurement is
   // "what does a correction buy over the free retry" and an early note silently changes the question.
@@ -794,11 +848,22 @@ export type ChangeTask = z.infer<typeof ChangeTask>;
 export const FileEdit = z.object({ path: z.string().min(1), contents: z.string() });
 export type FileEdit = z.infer<typeof FileEdit>;
 
+/** One declaration a worker returned for a symbol-scoped task, exactly as it returned it (ADR-0086 §3). */
+export const SymbolEdit = z.object({ path: z.string().min(1), name: z.string().min(1), text: z.string() });
+export type SymbolEdit = z.infer<typeof SymbolEdit>;
+
 const ChangeCandidateFields = z.object({
   task_id: z.string().min(1),
   worker: WorkerStamp,
-  /** Empty when the worker answered with nothing usable — which is `no_edit_at_all`, not a crash. */
+  /**
+   * Empty when the worker answered with nothing usable — which is `no_edit_at_all`, not a crash.
+   *
+   * On a symbol-scoped task these are the files **after the splice** (ADR-0086 §3). They are still whole
+   * files, so every gate stage after `generate` reads the same shape it always has.
+   */
   edits: z.array(FileEdit),
+  /** A symbol-scoped task's answer before the splice. Empty on a whole-file task. */
+  symbol_edits: z.array(SymbolEdit).default([]),
   /** What the parser could not read as an edit. null when the whole answer parsed. */
   unparsed: ErrorText.nullable(),
   /**
