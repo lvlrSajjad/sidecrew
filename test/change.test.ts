@@ -229,11 +229,55 @@ describe("ChangeVerdict enforces the gate as an iff (ADR-0048)", () => {
     expect(() => ChangeVerdict.parse(verdict({ tests }))).toThrow(/passed before now fails/);
   });
 
-  it("refuses compile_ok with errors left in the task's files or introduced anywhere", () => {
+  it("refuses compile_ok with errors left in the task's files, or introduced in non-test source", () => {
     const errors = { ...(verdict().errors as Record<string, unknown>), remaining_in_target: { "src/rates.ts": 1 } };
     expect(() => ChangeVerdict.parse(verdict({ errors }))).toThrow(/zero errors in the task's files/);
-    const introduced = { ...(verdict().errors as Record<string, unknown>), introduced: { "test/report.test.ts": 1 } };
-    expect(() => ChangeVerdict.parse(verdict({ errors: introduced }))).toThrow(/none introduced anywhere else/);
+
+    // ADR-0077 option B moved this line, and the direction is the whole decision: a type error in
+    // NON-test source still refuses, because nothing forbids fixing that file.
+    const inSource = { ...(verdict().errors as Record<string, unknown>), introduced: { "src/report.ts": 1 } };
+    expect(() => ChangeVerdict.parse(verdict({ errors: inSource, compiler_flags: ["--strictNullChecks"] })))
+      .toThrow(/non-test source/);
+
+    // **And with no added flags, a test file refuses too.** The baseline and the verdict are then both
+    // under the project's OWN tsconfig, so an introduced error is a real break of a build that was
+    // working — `fixtures/fix-fixture` has exactly that case, retyping `places: string` to `number`.
+    const noFlags = { ...(verdict().errors as Record<string, unknown>), introduced: { "test/report.test.ts": 1 } };
+    expect(() => ChangeVerdict.parse(verdict({ errors: noFlags }))).toThrow(/only under added strictness flags/);
+  });
+
+  it("lets compile_ok stand when the only new errors are in a test file — ADR-0077 option B", () => {
+    // A candidate may not edit a test file (ADR-0046, ADR-0048), so when narrowing a type pushes an
+    // error into a fixture there is no legal edit that avoids it. Measured on probe 1: the errors that
+    // sank its tasks were in a test file in 21 of 21 cases and in non-test source in 0. Re-gated with
+    // this demotion, 14 of those 15 survived the project's own suite.
+    const errors = { ...(verdict().errors as Record<string, unknown>), introduced: { "test/report.test.ts": 2 } };
+    const parsed = ChangeVerdict.parse(verdict({
+      errors,
+      // Only under added strictness: the error exists because the experiment asked for more than the
+      // project does, so the project's own build is unaffected by it.
+      compiler_flags: ["--strictNullChecks"],
+      observations: [{
+        kind: "test_type_error_demoted",
+        file: "test/report.test.ts",
+        detail: "2 type error(s) introduced here",
+      }],
+    }));
+    expect(parsed.compile_ok).toBe(true);
+    expect(parsed.survived).toBe(true);
+    // Recorded, never ignored: the count is still in `errors.introduced` and named in observations.
+    expect(parsed.errors.introduced).toEqual({ "test/report.test.ts": 2 });
+    expect(parsed.observations.map((o) => o.kind)).toContain("test_type_error_demoted");
+  });
+
+  it("still refuses when a test file AND non-test source both gained errors", () => {
+    // The demotion is per file, not a blanket pass for the whole compile stage.
+    const errors = {
+      ...(verdict().errors as Record<string, unknown>),
+      introduced: { "test/report.test.ts": 1, "src/report.ts": 1 },
+    };
+    expect(() => ChangeVerdict.parse(verdict({ errors, compiler_flags: ["--strictNullChecks"] })))
+      .toThrow(/non-test source/);
   });
 
   it("refuses a confined flag that disagrees with its own list", () => {

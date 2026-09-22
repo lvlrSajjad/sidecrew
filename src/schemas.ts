@@ -2,6 +2,11 @@
 // test/schemas.test.ts parses every ```json block of that file with the schemas below, so the two
 // cannot drift: change one and the other fails.
 import { z } from "zod";
+// ADR-0077 option B needs the gate's own answer to "is this a test file" inside the refinement, so
+// that `compile_ok`'s rule stays enforced by the schema rather than by convention (CLAUDE.md #2).
+// Safe against the import-cycle hazard: `confinement.ts` imports `node:path` and a **type** from this
+// file, and a type import is erased — so there is no runtime edge back.
+import { isTestArtefact } from "./confinement.js";
 
 export const ShapeKind = z.enum(["happy_path", "boundary", "error_or_throw", "async", "stateful_sequence", "property_like"]);
 export type ShapeKind = z.infer<typeof ShapeKind>;
@@ -517,6 +522,19 @@ export const ObservationKind = z.enum([
   "comment_text_changed",
   /** Blank lines added or removed beyond the edit itself — project-b's stray line. */
   "whitespace_churn",
+  /**
+   * **A type error the change introduced into a test file — ADR-0077 option B.**
+   *
+   * Demoted from a `compile_ok` failure to this. The measured case: adding the null guard
+   * `--strictNullChecks` demands narrows a type, the narrowed type propagates into a fixture or a
+   * mock, and the gate forbids editing test files because tests **are** the gate (ADR-0046,
+   * ADR-0048). There was no legal edit that passed, whatever wrote it — the errors that sank probe 1's
+   * tasks were in a test file in **21 of 21** cases and in non-test source in **0**.
+   *
+   * **Recorded rather than ignored.** `compile_ok` stops depending on it; nothing else does. A reader,
+   * a correction and every analysis script still see exactly which files gained what.
+   */
+  "test_type_error_demoted",
 ]);
 export type ObservationKind = z.infer<typeof ObservationKind>;
 
@@ -708,6 +726,16 @@ export const ChangePlan = z.object({
    * this removes. That is the only reason to turn it off; it is not a strictness dial.
    */
   retry_regressions: z.boolean().default(true),
+  /**
+   * **ADR-0077 option B, and it defaults to `true`.** A type error the change introduced into a test
+   * file is recorded as an observation instead of failing `compile_ok`.
+   *
+   * Measured before it was accepted: on the 15 tasks whose target compiled clean and whose only
+   * introduced errors were in test files, **14 survived the project's own suite** — 95 %
+   * `[0.681, 0.998]` against `S₁₄`'s `[0.008, 0.221]`, intervals that do not overlap. Set it `false`
+   * to reproduce `S₁₄ = 2/30` and every #2a rate taken before 22 Sep 2026.
+   */
+  demote_test_type_errors: z.boolean().default(true),
   steps: z.array(ChangeStep).min(1),
 }).strict();
 export type ChangePlan = z.infer<typeof ChangePlan>;
@@ -942,6 +970,22 @@ const ChangeVerdictFields = z.object({
    * that one is a present `VerdictMachine` with null members.
    */
   machine: VerdictMachine.nullable().default(null),
+  /**
+   * **The strictness this verdict was judged under — ADR-0063 condition 2, made checkable.**
+   *
+   * It was already true that a baseline and its verdicts must share these flags, or the two error
+   * counts are not comparable. It was not recorded, so nothing could check it and no reader could tell
+   * which configuration a number came from.
+   *
+   * **ADR-0077 option B is what forced it.** A test-file type error is demoted only under added flags,
+   * because with none the baseline and the verdict are both under the *project's own* tsconfig and an
+   * introduced error is a real break of a build that was working. The refinement below enforces that,
+   * and it needs this field to do it — otherwise the rule would live only in `verifyChange` and be a
+   * convention rather than a gate (CLAUDE.md #2).
+   *
+   * Empty by default, which is both the ordinary case and what a verdict written before this parses as.
+   */
+  compiler_flags: z.array(StrictnessFlag).default([]),
 });
 
 /**
@@ -1002,8 +1046,24 @@ export const ChangeVerdict = ChangeVerdictFields.superRefine((v, ctx) => {
   if (v.confined !== (v.confinement.length === 0)) {
     fail(["confined"], `confined must equal confinement.length === 0 (here: ${v.confinement.length === 0})`);
   }
-  if (v.compile_ok && (Object.keys(v.errors.remaining_in_target).length > 0 || Object.keys(v.errors.introduced).length > 0)) {
-    fail(["compile_ok"], "compile_ok requires zero errors in the task's files and none introduced anywhere else");
+  // **ADR-0077 option B.** `compile_ok` requires the task's own files clean and nothing introduced in
+  // **non-test** source. A type error introduced into a test file is an observation instead — see
+  // `ObservationKind.test_type_error_demoted` for why there was no legal edit that avoided it.
+  //
+  // The iff stays checkable, which is the whole point of asserting it here rather than trusting
+  // `verifyChange` (CLAUDE.md #2): the demotion is written into the rule the schema enforces, so a
+  // verdict claiming `compile_ok` with a *non-test* file broken still does not serialise.
+  //
+  // **The demotion applies only under added strictness flags.** With none, the baseline and this
+  // verdict are both under the project's own tsconfig, so an introduced error is a real break of a
+  // build that was working — and `compile_ok` is the clause that promised otherwise.
+  const demotable = v.compiler_flags.length > 0;
+  const blockingIntroduced = Object.keys(v.errors.introduced)
+    .filter((f) => !(demotable && isTestArtefact(f)));
+  if (v.compile_ok && (Object.keys(v.errors.remaining_in_target).length > 0 || blockingIntroduced.length > 0)) {
+    fail(["compile_ok"], demotable
+      ? "compile_ok requires zero errors in the task's files and none introduced in non-test source"
+      : "compile_ok requires zero errors in the task's files and none introduced anywhere — a test-file error is demoted only under added strictness flags (ADR-0077 option B)");
   }
   if (v.tests_ok) {
     if (v.tests === null) fail(["tests_ok"], "tests_ok cannot be true when the tests stage never ran");

@@ -391,6 +391,7 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   "correction": { "enabled": false, "max_corrections": 0, "max_tokens": 0, "on_observations": false },
   "compiler_flags": [],
   "retry_regressions": true,
+  "demote_test_type_errors": true,
   "steps": [
     {
       "name": "widen the accepted input types",
@@ -410,6 +411,33 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   ]
 }
 ```
+
+### `demote_test_type_errors` — ADR-0077 option B, on by default
+
+A type error the change introduced into a **test file** is recorded as an observation
+(`test_type_error_demoted`) instead of failing `compile_ok`. Errors in non-test source still fail, and
+the tests themselves must still **pass** — only their *type* errors are demoted, never a failure.
+
+**It applies only under added strictness flags**, and the verdict records which — `compiler_flags` on
+`ChangeVerdict` is what makes the rule checkable rather than a convention. With no flags, the baseline
+and the verdict are both under the project's **own** tsconfig, so an introduced error is a real break
+of a build that was working, and `compile_ok` is the clause that promised otherwise.
+`fixtures/fix-fixture` has that case: retyping `places: string` to `number` pushes an error into
+`test/report.test.ts` under the project's own config, and it is **still refused**.
+
+**Why there is no legal edit that avoided them.** Adding the null guard `--strictNullChecks` demands
+narrows a type; the narrowed type propagates into a fixture or a mock; and a candidate may not edit a
+test file, because tests **are** the gate (ADR-0046, ADR-0048). Measured on probe 1: the errors that
+sank its tasks were in a test file in **21 of 21** cases and in non-test source in **0**. Re-gating
+those 15 with the demotion, **14 survived the project's own suite** — 95 % `[0.681, 0.998]` against
+`S₁₄`'s `[0.008, 0.221]`, intervals that do not overlap.
+
+**What stops it being a hole.** The candidate cannot edit a test file, cannot add `any` or a
+suppression — each of those is a `ConfinementRule` with a control fixture that is asserted to be
+refused — and the suite must still be green. `compile_ok`'s rule is enforced by `ChangeVerdict`'s own
+refinement, so a verdict claiming it with a *non-test* file broken still does not serialise.
+
+Set it `false` to reproduce `S₁₄ = 2/30` and every #2a rate taken before 22 Sep 2026.
 
 ### `retry_regressions` — on by default, and the only reason to turn it off
 
@@ -606,6 +634,7 @@ survival rate that quietly stopped having a denominator.
   "refused": null,
   "error": null,
   "timing_ms": { "compile": 2300, "tests": 5000 },
+  "compiler_flags": [],
   "baseline_captured_at": "2026-09-19T09:14:02.000Z",
   "verified_at": "2026-09-19T09:18:29.000Z",
   "machine": {

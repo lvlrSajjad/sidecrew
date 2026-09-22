@@ -24,10 +24,12 @@ import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { run, wasTruncated } from "./exec.js";
 import { readMachineState } from "./doctor.js";
-import { checkConfinement, confinementMessage, observe } from "./confinement.js";
+import { checkConfinement, confinementMessage, isTestArtefact, observe } from "./confinement.js";
 import {
   ChangeBaseline, ChangeVerdict, changeSurvives,
-  type ChangeCandidate, type ChangeStage, type ChangeTask, type ConfinementBreach, type ErrorCounts,
+  type ChangeCandidate, type ChangeObservation, type ChangeStage, type ChangeTask, type ConfinementBreach,
+  type StrictnessFlag,
+  type ErrorCounts,
 } from "./schemas.js";
 import { binary, skipFromSandbox, stageEnv, stripFileList } from "./verifier/ts.js";
 import {
@@ -427,7 +429,7 @@ export interface BaselineOpts {
   /** Every file any task in this step may touch. Checked against `tsc`'s program before anything runs. */
   files?: string[];
   /** ADR-0063 condition 2: the baseline is captured under the same strictness the verdicts use. */
-  compilerFlags?: readonly string[];
+  compilerFlags?: readonly StrictnessFlag[];
 }
 
 export interface CapturedBaseline {
@@ -498,7 +500,7 @@ export interface VerifyChangeOpts {
   /** Leave the task's sandbox on disk and print its path. For debugging a verdict you do not believe. */
   keepSandbox?: boolean;
   /** ADR-0063. Must match the flags the baseline was captured with, or the two error counts are not comparable. */
-  compilerFlags?: readonly string[];
+  compilerFlags?: readonly StrictnessFlag[];
   /**
    * **ADR-0084, and it defaults ON.** Re-read the suite once when a verdict is failing *only* on
    * regressions, and let the second reading decide.
@@ -513,6 +515,14 @@ export interface VerifyChangeOpts {
    * away. Off is for reproducing a number measured before this existed.
    */
   retryRegressions?: boolean;
+  /**
+   * **ADR-0077 option B, and it defaults ON.** Demote a type error the change introduced into a test
+   * file to an observation, rather than failing `compile_ok` on it.
+   *
+   * Off reproduces a number measured before this existed — `S₁₄ = 2/30` and every #2a rate before
+   * 22 Sep 2026 were taken without it. That is the only reason to turn it off.
+   */
+  demoteTestTypeErrors?: boolean;
 }
 
 /**
@@ -637,7 +647,8 @@ export async function verifyChange(
       // A refusal stops here, so the two samples bracket nothing and are deliberately the same
       // reading. Recording it anyway keeps `machine: null` meaning exactly one thing — *this verdict
       // predates ADR-0069/0066* — rather than also meaning *no gate ran*.
-      baseline_captured_at: opts.baseline.captured_at,
+      compiler_flags: [...(opts.compilerFlags ?? [])],
+    baseline_captured_at: opts.baseline.captured_at,
       verified_at: new Date().toISOString(),
       machine: { before: machineBefore, after: machineBefore },
     });
@@ -646,6 +657,8 @@ export async function verifyChange(
   const confinement: ConfinementBreach[] = checkConfinement(task, candidate);
   const confined = confinement.length === 0;
   const problems: string[] = [];
+  /** ADR-0077 option B: test-file type errors, recorded instead of gating. */
+  const demoted: ChangeObservation[] = [];
   if (!confined) problems.push(confinementMessage(confinement));
 
   // The stage a candidate stopped in, and `generate` is not the same as `confinement`: an answer that
@@ -693,7 +706,55 @@ export async function verifyChange(
 
       const remaining = pick(after, targets);
       const introduced = introducedBy(before, after);
-      compile_ok = Object.keys(remaining).length === 0 && Object.keys(introduced).length === 0;
+
+      /**
+       * **ADR-0077 option B, and it defaults on.** A type error the change introduced into a **test
+       * file** is demoted to an observation instead of failing `compile_ok`.
+       *
+       * Measured, and it is the whole reason this exists: adding the null guard `--strictNullChecks`
+       * demands narrows a type, the narrowed type propagates into a fixture or a mock, and the gate
+       * forbids editing test files because tests **are** the gate. The errors that sank probe 1's
+       * tasks were in a test file in **21 of 21** cases and in non-test source in **0** — there was no
+       * legal edit that passed, whatever wrote it. Re-gating those 15 with the demotion: **14 survived
+       * the project's own suite**, 95 % `[0.681, 0.998]`, against `S₁₄`'s `[0.008, 0.221]`.
+       *
+       * **What stops it being a hole**, which ADR-0077 required a proof of before B could ship: the
+       * candidate **cannot edit a test file** (ADR-0048, and `test_file_edited` has a control
+       * fixture), **cannot add `any` or a suppression** (`any_escape_added`, `suppression_added`, both
+       * with controls), and the tests themselves must still **pass** — only their *type* errors are
+       * demoted, never a failure. What is left after those three is a legitimate narrowing whose only
+       * consequence is in a fixture, which is exactly the case B exists to allow.
+       *
+       * Nothing is ignored: every demoted error is an observation, and `errors.introduced` still lists
+       * the file and the count.
+       *
+       * **And it applies only under added strictness flags, which the fixture forced.** With no
+       * `compilerFlags`, the baseline and this run are both under the *project's own* tsconfig, so an
+       * introduced error is a real break of a build that was working — demoting it would let a change
+       * survive while leaving the project not type-checking, and `compile_ok` is the clause that
+       * promised otherwise. `fixtures/fix-fixture` has the case: retyping `places: string` to
+       * `number` pushes an error into `test/report.test.ts` under the project's own config, and that
+       * is still refused.
+       *
+       * Under ADR-0063 flags the situation is the one that was measured: the error exists only because
+       * the experiment added strictness the project does not use, the project's own build is unaffected,
+       * and a test file the candidate may not edit is where it lands.
+       */
+      const demoteTestTypeErrors = (opts.demoteTestTypeErrors ?? true)
+        && (opts.compilerFlags ?? []).length > 0;
+      const introducedInTests = Object.entries(introduced).filter(([f]) => isTestArtefact(f));
+      const blocking = demoteTestTypeErrors
+        ? Object.entries(introduced).filter(([f]) => !isTestArtefact(f))
+        : Object.entries(introduced);
+      for (const [file, n] of (demoteTestTypeErrors ? introducedInTests : [])) {
+        demoted.push({
+          kind: "test_type_error_demoted",
+          file,
+          detail: `${n} type error(s) introduced here; a test file may not be edited (ADR-0046), so this is recorded rather than gating (ADR-0077 option B)`,
+        });
+      }
+
+      compile_ok = Object.keys(remaining).length === 0 && blocking.length === 0;
       if (!compile_ok) {
         // ADR-0072: the task's own files and the ones that just gained an error — not the project's.
         // `tsc.message` is every diagnostic the compiler produced, and `truncateError` cuts it at
@@ -706,8 +767,11 @@ export async function verifyChange(
           `tsc is not satisfied: ${Object.keys(remaining).length > 0
             ? `${Object.entries(remaining).map(([f, n]) => `${n} error(s) left in ${f}`).join(", ")}`
             : "no errors left in the task's files"}` +
-          `${Object.keys(introduced).length > 0
-            ? `; ${Object.entries(introduced).map(([f, n]) => `${n} new error(s) in ${f}`).join(", ")}`
+          `${blocking.length > 0
+            ? `; ${blocking.map(([f, n]) => `${n} new error(s) in ${f}`).join(", ")}`
+            : ""}` +
+          `${demoteTestTypeErrors && introducedInTests.length > 0
+            ? `; ${introducedInTests.map(([f, n]) => `${n} in ${f}`).join(", ")} demoted, test files (ADR-0077 B)`
             : ""}\n${tsc.message}`,
         );
       }
@@ -864,13 +928,14 @@ export async function verifyChange(
     tests,
     confinement,
     // Nothing below gates. `changeSurvives` does not read it and `ChangeVerdict` asserts that (ADR-0057).
-    observations: observe(task, candidate),
+    observations: [...observe(task, candidate), ...demoted],
     refused: null,
     error: problems.length > 0 ? truncateError(problems.join("\n\n")) : null,
     timing_ms,
     // ADR-0069 option A and ADR-0066 option C, both *record and gate nothing*. The two timestamps are
     // the gap a stale baseline hides in; the two samples are the swap delta that separated the one
     // measured false negative from two passes of identical bytes.
+    compiler_flags: [...(opts.compilerFlags ?? [])],
     baseline_captured_at: opts.baseline.captured_at,
     verified_at: new Date().toISOString(),
     machine: { before: machineBefore, after: await readMachineState() },

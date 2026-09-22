@@ -1,6 +1,31 @@
 # Changelog
 ## Unreleased
 
+**ADR-0077 option B is built: a type error a change pushes into a test file is recorded, not fatal.**
+Owner's decision, 22 Sep — accepted with the scope that was *measured* (any test file, by the gate's own
+`isTestArtefact`) rather than B's narrower "a plan declares them", which was never the rule behind the
+14/15.
+
+- **Why there was no legal edit that avoided them.** Narrowing a type propagates into a fixture or a
+  mock, and a candidate may not edit a test file because tests **are** the gate (ADR-0046, ADR-0048).
+  Probe 1's sinking errors were in a test file in **21 of 21** cases, non-test source in **0**. Re-gated
+  with the demotion, **14 of those 15 survived the project's own suite** — `[0.681, 0.998]` against
+  `S₁₄`'s `[0.008, 0.221]`, non-overlapping.
+- **It applies only under added strictness flags, and the fixture is what forced that.**
+  `fixtures/fix-fixture` has a test built for precisely this clause: retyping `places: string` to
+  `number` pushes an error into `test/report.test.ts`. With no added flags the baseline and the verdict
+  are both under the project's **own** tsconfig, so that is a real break of a working build — demoting
+  it would let a change survive while leaving the project not type-checking. It is **still refused**,
+  and the slow test asserting so still passes.
+- **`ChangeVerdict` now records `compiler_flags`.** Without it the narrowing would live only in
+  `verifyChange` and be a convention rather than a gate — the refinement enforces it (CLAUDE.md #2).
+  ADR-0063 condition 2 wanted this recorded anyway and nobody had.
+- **What stops it being a hole**, which ADR-0077 required a proof of: the candidate cannot edit a test
+  file, cannot add `any` or a suppression — each a `ConfinementRule` with a control fixture asserted to
+  be refused — and the suite must still be **green**. Only *type* errors are demoted, never a failure.
+- `demote_test_type_errors` on `ChangePlan` turns it off, to reproduce `S₁₄ = 2/30` and every #2a rate
+  taken before 22 Sep 2026. Contract change, so `docs/specs/pipeline.md` moves in the same commit.
+
 **ADR-0084's mitigation is decided and built: a regression must reproduce to count.** Owner's decision,
 22 Sep — accepted behind a flag defaulting **on**, and sequenced **before Phase 14c**, because 14c ends
 in an overnight measurement and every later number is taken with this instrument. ADR-0077 option B is

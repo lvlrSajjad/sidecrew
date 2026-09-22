@@ -43,7 +43,7 @@ import {
 import { checkConfinement, isTestArtefact } from "../src/confinement.js";
 import { readMachineState } from "../src/doctor.js";
 import { run } from "../src/exec.js";
-import { ChangeCandidate, ChangeTask, type ErrorCounts } from "../src/schemas.js";
+import { ChangeCandidate, ChangeTask, type ErrorCounts, type StrictnessFlag } from "../src/schemas.js";
 import { safeName } from "../src/verifier/shared.js";
 import type { TestRunner } from "../src/verifier/shared.js";
 
@@ -139,7 +139,8 @@ const corpus = selected.slice(0, limit === Infinity ? undefined : limit);
 // ── the plan supplies the strictness the whole experiment is about ────────────────────────────────
 
 const plan = JSON.parse(await readFile(planPath, "utf8")) as {
-  project: string; test_framework: string; compiler_flags?: string[]; steps: { tasks: { task_id: string }[] }[];
+  project: string; test_framework: string; compiler_flags?: StrictnessFlag[];
+  steps: { tasks: { task_id: string }[] }[];
 };
 const projectDir = plan.project;
 const runner = plan.test_framework as TestRunner;
