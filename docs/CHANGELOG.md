@@ -1,6 +1,21 @@
 # Changelog
 ## Unreleased
 
+**ADR-0084's open caveat is closed — not by answering it, but by showing it does not bear on the
+decision.** 50 runs of project-b's unmodified suite: **9111/9118 passing every time, spread 0, zero
+non-deterministic tests**.
+
+- **The difference from project-a is still not established.** `0/50` `[0.000, 0.071]` against
+  project-a's `3/50` `[0.013, 0.165]`; Fisher's exact gives **p = 0.24**. Fifty runs each cannot tell
+  6 % from 0 %, and separating them would need order 100–130 runs per project — six to eight hours
+  each, which is not worth buying.
+- **What did move** is project-b's ceiling: **21.8 % → 7.1 %**. It is not measurably flaky.
+- **And the caveat is harmless by construction.** *"A 6 % floor is a property of this project, so the
+  retry buys nothing elsewhere"* — true, and on a suite that does not flake **the retry never fires**,
+  because nothing fails spuriously to trigger it. It costs a second suite run only where it changes an
+  answer. Free exactly where it is useless.
+- `snc-27` remains unexplained by either project's suite.
+
 **ADR-0077 option B is built: a type error a change pushes into a test file is recorded, not fatal.**
 Owner's decision, 22 Sep — accepted with the scope that was *measured* (any test file, by the gate's own
 `isTestArtefact`) rather than B's narrower "a plan declares them", which was never the rule behind the

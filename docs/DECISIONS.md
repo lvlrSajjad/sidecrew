@@ -6123,6 +6123,34 @@ reading is kept in `tests.first_reading`, so a verdict that was rescued says so 
 what it was rescued from. **Nothing is collapsed and nothing is hidden**, which is ADR-0066's rule
 applied to a gate rather than to a measurement.
 
+### project-b, 50 runs — the caveat is unresolved, and costless anyway (22 Sep, afternoon)
+
+`experiments/gate-error-rate/results/suite-reproducibility-project-b-50-2026-09-22.json`. **9111/9118
+passing in every one of 50 runs. Spread 0, zero non-deterministic tests.**
+
+| | k/n | 95 % exact |
+|---|---|---|
+| project-a | 3/50 | [0.013, 0.165] |
+| project-b | **0/50** | **[0.000, 0.071]** |
+| project-b, 15 runs (last night) | 0/15 | [0.000, 0.218] |
+
+**The difference is still not established.** Fisher's exact on 3/50 against 0/50 gives **p = 0.24**, and
+the intervals overlap on `[0.013, 0.071]`. Fifty runs each is not enough to tell 6 % from 0 %;
+separating them at conventional power needs order 100–130 runs *per project*, six to eight hours each,
+and that is not worth buying.
+
+**What did move** is project-b's ceiling: from **21.8 %** on 15 runs to **7.1 %** on 50. So project-b is
+**not measurably flaky**, and whatever its rate is, it is below project-a's point estimate.
+
+**And the caveat this was run to settle turns out not to matter.** The "against" above says *a 6 % floor
+is a property of this project; another may be clean, in which case this buys nothing there*. True — and
+**harmless by construction**: on a project whose suite does not flake, the retry **never fires**,
+because nothing fails spuriously to trigger it. It costs a second suite run only where it changes an
+answer. The mitigation is free exactly where it is useless, which is the shape a caveat wants to have.
+
+**So this arm is closed.** Not by answering the question, but by showing the question does not bear on
+the decision. `snc-27` remains unexplained by either project's suite.
+
 ### project-b, 15 runs — and why it settles nothing
 
 `experiments/gate-error-rate/results/suite-reproducibility-project-b-2026-09-22.json`. **9111/9118

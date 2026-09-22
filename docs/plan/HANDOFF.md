@@ -182,9 +182,10 @@ and not to span **02:00 local** (ADR-0083).
 **B and C are both done.** What is left on this board is **A (Phase 14c)**, the two open decisions
 (D and E), and the passive exit check.
 
-**The one run worth doing unattended next:** 50 runs of project-b's suite (`scripts/suite-reproducibility.sh`
-with `PLAN` pointing at a project-b plan and `OUT` set), ~3.5 h, no worker and no model. It closes
-ADR-0084's only open caveat — whether the 6 % floor is project-a's or everyone's.
+**ADR-0084's caveat is closed, 22 Sep** — 50 runs of project-b: `0/50` `[0.000, 0.071]` against
+project-a's `3/50` `[0.013, 0.165]`, Fisher p = 0.24. The *difference* is not established and would
+need ~100–130 runs per project to be. It does not matter: on a suite that does not flake **the retry
+never fires**, so it is free exactly where it is useless.
 
 **Three decisions (B, C, D) are stacked and none blocks another.** B is the cheapest and rests on the
 firmest number. C is measured and ready. D is the biggest idea and its measurement is E, which is the
