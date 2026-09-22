@@ -13,29 +13,21 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 22 Sep 2026, late — Phase 14c is BUILT, not measured.** Three commits:
+**Last updated: 22 Sep 2026, 23:00 — Phase 14c's measurement is RUNNING unattended.**
 
-1. **`cc1a71a` — the refused set, recorded before anything changed** (prompt §1). project-a: 72 of
-   2,174 source files, **48.1 % of bytes, `Reach` 0.519**. project-b: 76 of 2,136, 27.2 %, 0.728.
-   The lists name client files and live only in `experiments/reach/local/` (gitignored); their sha256
-   is in the committed census. **`S_big` must be drawn from that list.**
-2. **`79d2ce5` — ADR-0086, symbol-scoped return, with the spec in the same commit.** `symbols:
-   [{file, name}]` on a task; the worker answers `--- SYMBOL: file#name ---`; the answer is spliced
-   before the gate, so everything after `generate` still reads whole files. Two new rules, each with a
-   control (`edit_outside_symbol`, `symbol_not_redeclared`). 805 fast + 34 slow passing.
-3. **`20af03e` — how `Reach` is counted after 14c, declared before the number**
-   (`experiments/reach/README.md` §2). `reach-census.ts --after` implements it and **has not been run
-   on either project.**
-
-**Open, and it is the owner's: ADR-0086 §6.** Should `compile_ok` count errors in the *file* (built,
-option A: an error elsewhere in the file refuses the task up front) or in the *declaration* (B)? The
-recommendation is A for the measurement and B decided afterwards on its own number. Otherwise the ratio
-measures two changes at once.
-
-**Next, in order:** (1) the owner answers §6, or accepts A; (2) run `--after` on project-a, which takes
-seconds, **and if `Reach < 0.85` the frozen rule says STOP and no 2–4 h run is needed**; (3) declare the
-task set (`S_big` drawn from the refused list, `S_small` from files always in reach, same project, same
-gate settings) into a gitignored plan with its counts committed; (4) the quiet 2–4 h run.
+- **`Reach` is measured: project-a 0.519 → 0.911** (≥ 0.85, so not STOP); project-b 0.728 → 0.788
+  (`experiments/reach/results/census-after-*.json`). **ADR-0086 §6 decided by the owner: option A.**
+- **The task set is declared and committed before any token**: 9 `S_big` symbol tasks matched to 18
+  `S_small` whole-file tasks on errors per task, `null_guard` under `--strictNullChecks`, gate at its
+  defaults. `experiments/reach/README.md` §3 and its two dated amendments say why: the 1–3 cap left
+  `S_big` a pool of one, which is itself a finding about option A under flags. Plan sha256 `8a228fd7…`.
+- **The run:** `scripts/reach-run.sh` was launched at 22:58 and sleeps until **02:05** (ADR-0083), then
+  runs two 7B workers at concurrency 2. Log: `experiments/reach/results/run.log`.
+- **When it finishes:** `python3 scripts/results-14c.py <run_dir> <plan>`, where the run dir is the
+  newest under `.sidecrew/runs/`. Never paste its path into a tracked file (§5). The script applies §3 as
+  written and says whether the intervals overlap.
+- **If the run died:** `sidecrew fix <plan> --resume <run id>` is legitimate only if the baseline
+  day has not changed. Otherwise restart the whole run after the next 02:00 (ADR-0069). Never re-plan.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
