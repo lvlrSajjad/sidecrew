@@ -195,9 +195,17 @@ for (const id of flaky) {
 const flakySuites = new Set(flaky.map((id) => suiteOf.get(id) ?? id)).size;
 
 const shortfall = reported.length < runs;
-const verdict = shortfall && reported.length < 10
-  ? `INCONCLUSIVE — only ${reported.length} of ${runs} runs produced a report, which is too few to read `
-    + "the rule against. The setup broke; see the log for what the runner said."
+/**
+ * **A sample too small to read the rule against, however it got that way.** Tying this to `shortfall`
+ * alone let `--runs 1` report "REPRODUCIBLE over 1 run(s)" — it had asked for one and got one, so
+ * nothing was short. One run cannot establish reproducibility, and a timing probe should not come back
+ * sounding like a result. Ten is the floor for saying anything, and it is the same floor whether the
+ * run was planned small or broke.
+ */
+const tooFew = reported.length < 10;
+const verdict = tooFew
+  ? `INCONCLUSIVE — ${reported.length} reporting run(s) of ${runs} requested is too few to read the rule `
+    + `against.${shortfall ? " The setup broke; see the log for what the runner said." : ""}`
   : flaky.length === 0
   ? `REPRODUCIBLE over ${reported.length} run(s) — snc-27 is not explained by the suite; the cause is `
     + "in the gate or the machine"
@@ -215,6 +223,8 @@ const payload = {
   runs_reported: reported.length,
   /** Loudly, because a rule read against a third of its intended sample is a different rule. */
   short_of_plan: shortfall,
+  /** True when the sample is below the floor for saying anything at all, planned small or broken. */
+  below_reading_floor: tooFew,
   project: { commit: project.commit, tree_clean: project.clean },
   runner,
   result: {
