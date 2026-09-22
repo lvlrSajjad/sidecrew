@@ -39,13 +39,14 @@
 // **Counts, never names.** A test id is `<file>::<full name>` (`src/change.ts`, `passed_ids`) and the
 // file is the client's tree (CLAUDE.md #7). The payload carries counts and a histogram and no
 // identifiers at all.
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { DEFAULT_CHANGE_TIMEOUTS, cloneSandbox, makeChangeSandbox, runSuite } from "../src/change.js";
 import { readMachineState } from "../src/doctor.js";
 import { run } from "../src/exec.js";
+import { removeSandbox } from "../src/verifier/shared.js";
 import type { TestRunner } from "../src/verifier/shared.js";
 
 const [planPath] = process.argv.slice(2);
@@ -130,7 +131,10 @@ try {
     try {
       suite = await runSuite(clone, projectDir, runner, DEFAULT_CHANGE_TIMEOUTS.tests);
     } finally {
-      await rm(clone, { recursive: true, force: true });
+      // Retrying, because a jest worker outliving its run makes this throw ENOTEMPTY and an
+      // exception in a `finally` replaces the result it was cleaning up after. It killed two 25-run
+      // measurements at run 9 before it was understood.
+      await removeSandbox(clone);
     }
     const ms = Math.round(performance.now() - t0);
     const machineAfter = await readMachineState();
@@ -171,7 +175,7 @@ try {
         `  spread so far ${spreadSoFar}  ${machineAfter.pressure}`);
   }
 } finally {
-  await rm(base, { recursive: true, force: true });
+  await removeSandbox(base);
 }
 
 // ── the reading ───────────────────────────────────────────────────────────────────────────────────

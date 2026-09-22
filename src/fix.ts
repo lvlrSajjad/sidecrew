@@ -47,7 +47,7 @@ import {
 import { sidecrewDir } from "./serve.js";
 import { benchBaseline, ThermalGuard } from "./throttle.js";
 import { complete, decodeTokensPerSecond } from "./worker.js";
-import { isTestRunner, safeName, truncateError, VerifierSetupError, type TestRunner } from "./verifier/shared.js";
+import { isTestRunner, removeSandbox, safeName, truncateError, VerifierSetupError, type TestRunner } from "./verifier/shared.js";
 
 /**
  * Whole files cost completion tokens in proportion to the files, so the ceiling is derived from the
@@ -1110,7 +1110,7 @@ export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<F
     }
   } finally {
     if (opts.keepSandbox) process.stderr.write(`sidecrew: step sandbox kept at ${sandbox}\n`);
-    else await rm(sandbox, { recursive: true, force: true });
+    else await removeSandbox(sandbox);
   }
 
   const verdicts = outcomes.flatMap((o) => o.attempts.map((a) => a.verdict));

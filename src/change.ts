@@ -31,7 +31,7 @@ import {
 } from "./schemas.js";
 import { binary, skipFromSandbox, stageEnv, stripFileList } from "./verifier/ts.js";
 import {
-  looksLikeOom, output, resolveNodeModules, truncateError, VerifierSetupError, type TestRunner,
+  looksLikeOom, output, removeSandbox, resolveNodeModules, truncateError, VerifierSetupError, type TestRunner,
 } from "./verifier/shared.js";
 
 /**
@@ -771,7 +771,7 @@ export async function verifyChange(
       }
     } finally {
       if (opts.keepSandbox) process.stderr.write(`sidecrew: task sandbox kept at ${sandbox}\n`);
-      else await rm(sandbox, { recursive: true, force: true });
+      else await removeSandbox(sandbox);
     }
   }
 
@@ -890,7 +890,7 @@ export async function sweepOrphanSandboxes(orphans: Orphan[]): Promise<Orphan[]>
     // wrong path once is unbounded.
     if (!SANDBOX_PREFIXES.some((p) => basename(o.path).startsWith(p))) continue;
     try {
-      await rm(o.path, { recursive: true, force: true });
+      await removeSandbox(o.path);
       removed.push(o);
     } catch { /* ADR-0056: a sandbox that will not delete is the machine's problem, not a failure */ }
   }

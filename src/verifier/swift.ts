@@ -29,7 +29,7 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { run, type RunResult } from "../exec.js";
 import { MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
 import { analyseTautology, type TautologyReport } from "./tautology.js";
-import { deriveLineRange, output, safeName, truncateError, VerifierSetupError } from "./shared.js";
+import { deriveLineRange, output, removeSandbox, safeName, truncateError, VerifierSetupError } from "./shared.js";
 
 export { VerifierSetupError };
 
@@ -532,7 +532,7 @@ export async function verifySwift(candidate: Candidate, opts: VerifySwiftOpts): 
       process.stderr.write(`sidecrew: sandbox kept at ${sandbox} (build at ${scratch}, muter copy at ${mutatedPath(sandbox)})\n`);
     } else {
       // Three directories, because Muter and SwiftPM each put one beside the sandbox rather than in it.
-      await Promise.all([sandbox, scratch, mutatedPath(sandbox)].map((d) => rm(d, { recursive: true, force: true })));
+      await Promise.all([sandbox, scratch, mutatedPath(sandbox)].map((d) => removeSandbox(d)));
     }
   }
 

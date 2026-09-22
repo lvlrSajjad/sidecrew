@@ -44,13 +44,13 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | | |
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
-| tests | `npm run lint && npm test` → **773 passing**, 1 skipped |
+| tests | `npm run lint && npm test` → **774 passing**, 1 skipped |
 | version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0084**; start new ones at 0085. **0084's mitigation needs the owner.** **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
+| ADRs | run to **0085**; start new ones at 0086. **0084's mitigation needs the owner.** **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -418,6 +418,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   set it explicitly** or `gh` reports "not authenticated".
 - **Scan every diff for the client's names before committing**, including context lines. The names to
   scan for are in this project's memory directory, never in a tracked file.
+- **An exception in a `finally` replaces the value the block was returning**, so a sandbox teardown
+  that throws destroys a verdict that was already computed (ADR-0085). `rm`'s `force` covers `ENOENT`
+  and **not** `ENOTEMPTY`, which is what a jest worker outliving its run produces. Two measurements on
+  two projects both died at run 9 on it. Every teardown goes through `removeSandbox` now; do not spell
+  the options again at a new call site.
 - **An import cycle here is a wrong number, not a crash.** `doctor` reaching into `plan.ts` closed
   `concurrency → serve → doctor → plan → verifier/ts → concurrency`, which under ESM made
   `DEFAULT_STRYKER_CONCURRENCY` **`undefined`**. One assertion written for a different reason caught

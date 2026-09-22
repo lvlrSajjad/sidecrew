@@ -25,6 +25,7 @@ import {
   DEFAULT_CHANGE_TIMEOUTS, makeChangeSandbox, toPosix, typecheck, type ChangeTimeouts,
 } from "./change.js";
 import { isTestArtefact, isToolConfig } from "./confinement.js";
+import { removeSandbox } from "./verifier/shared.js";
 import { estimateTokens } from "./prompt.js";
 import { MAX_FIX_TOKENS } from "./fix.js";
 import { ChangeValidationReport, ChangePlan, type ChangeShape, type ValidationIssue } from "./schemas.js";
@@ -328,7 +329,7 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
         }
       }
     } finally {
-      await rm(sandbox, { recursive: true, force: true });
+      await removeSandbox(sandbox);
     }
   } else if (!structural_only) {
     structural_only = true;

@@ -2,6 +2,7 @@
 // and the brace matcher are the same code in TypeScript and in Swift, and the one thing that must never
 // differ between two verifiers is the shape of what they return.
 import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import type { RunResult } from "../exec.js";
@@ -149,6 +150,31 @@ export const output = (r: RunResult): string =>
   r.timedOut ? `timed out after ${r.ms} ms\n${r.stdout}\n${r.stderr}` : `${r.stdout}\n${r.stderr}`;
 
 /** A task_id is worker-supplied and ends up as a filename. This is the part of it that may. */
+/**
+ * Remove a sandbox, and **survive the teardown race that costs a finished verdict**.
+ *
+ * `rm(dir, { recursive: true, force: true })` throws `ENOTEMPTY` when something is still writing into
+ * the tree as it is being unlinked — a jest worker that outlived the run it belonged to is the case
+ * measured here. `force` suppresses `ENOENT` and nothing else, so this is not covered by it.
+ *
+ * **It is not hypothetical and it is not rare.** Two independent 25-run measurements, on two different
+ * projects, both died **at run 9** — the first silently (every later run produced no report), the
+ * second with the error above. That reproducibility is the point: after eight suite runs something is
+ * reliably still holding the ninth sandbox.
+ *
+ * **Why it matters beyond a harness.** `verifyChange` removes its per-task sandbox in a `finally`. An
+ * exception there propagates *instead of* the verdict that was already computed, so a throw at this
+ * line turns a completed evaluation into *"the gate could not run at all"* and escalates the task for a
+ * machine reason. The gate was right; the cleanup lost it.
+ *
+ * `maxRetries` with a linear backoff is Node's own answer for exactly `EBUSY`/`EMFILE`/`ENFILE`/
+ * `ENOTEMPTY`/`EPERM`. One definition, used by every sandbox teardown, because ADR-0081 is what this
+ * project has to show for seven copies of a rule that agreed until they did not.
+ */
+export const removeSandbox = async (dir: string): Promise<void> => {
+  await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+};
+
 export const safeName = (taskId: string): string =>
   taskId.replace(/[^\w.-]+/g, ".").replace(/^\.+|\.+$/g, "") || "candidate";
 

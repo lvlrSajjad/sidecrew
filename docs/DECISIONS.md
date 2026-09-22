@@ -6108,3 +6108,71 @@ B gates on *the tests still passing*. The suite it would lean on fails 11 tests 
 roughly 6 % of runs. **That is an argument for the mitigation above, not against B** — because today's
 gate already rests on exactly the same suite for every candidate that reaches it, so B adds no exposure
 that is not already there. What changed is that the exposure now has a number.
+
+## ADR-0085 — A sandbox teardown race throws away the verdict it was cleaning up after
+
+**Status:** accepted · 22 Sep 2026 · implemented the same day · **found by two measurements dying at
+the same run number** · bears on ADR-0025 (escalations) and on how past "the gate could not run"
+counts should be read
+
+### What happened
+
+Two 25-run reproducibility measurements, on **two different projects**, both died **at run 9**. The
+first silently — every run from the ninth produced no report and the harness dutifully counted 47 of
+them. The second said why:
+
+```
+Error: ENOTEMPTY: directory not empty, rmdir '…/sidecrew-task-M4fu5n'
+```
+
+`rm(dir, { recursive: true, force: true })` throws `ENOTEMPTY` when something is still writing into the
+tree as it is unlinked. **`force` suppresses `ENOENT` and nothing else**, so it does not cover this. The
+something is a jest worker outliving the run it belonged to; after eight suite runs one is reliably
+still there.
+
+**The reproducibility at run 9 across two unrelated codebases is what makes this a defect rather than
+bad luck.**
+
+### Why it matters beyond a harness
+
+`verifyChange` removes its per-task sandbox in a **`finally`**:
+
+```ts
+} finally {
+  if (opts.keepSandbox) …
+  else await rm(sandbox, { recursive: true, force: true });
+}
+```
+
+**An exception in a `finally` propagates instead of the value the block was returning.** So a throw on
+that line does not merely fail to clean up — it **replaces a verdict that had already been computed**.
+`runFix` catches it as *"the gate could not run at all"* and escalates the task for a machine reason.
+The gate was right, the suite had run, the answer existed, and the cleanup lost it.
+
+**How to read past runs in light of this:** any task escalated with a gate-could-not-run reason may
+have been a completed verdict discarded at teardown. Nothing is being revised — there is no way to
+recover which, and inventing a correction is worse than carrying the caveat — but an escalation of that
+shape is no longer evidence that the gate failed to evaluate.
+
+### The decision
+
+**One `removeSandbox` in `verifier/shared.ts`, used by all seven teardowns**, with Node's own answer for
+this class: `maxRetries: 5, retryDelay: 200`, which `fs.rm` applies with linear backoff to exactly
+`EBUSY`/`EMFILE`/`ENFILE`/`ENOTEMPTY`/`EPERM`.
+
+Seven call sites — `change.ts` ×2, `fix.ts`, `fix-validate.ts`, `verifier/ts.ts` ×2, `verifier/swift.ts`
+— spelled the same options independently. **One definition rather than seven, because ADR-0081 is what
+this project has to show for the last set of copies that agreed until they did not**, and because a
+retry policy is precisely the kind of thing that gets fixed in one place and left in six.
+
+`shared.ts` is the home for the reason the import-cycle hazard records: it imports nothing of ours.
+
+### What this does not claim
+
+It does not make teardown infallible; it makes it survive a transient. If a sandbox genuinely cannot be
+removed after five attempts the error still propagates, which is correct — at that point something is
+wrong with the machine and a silent leak of half-gigabyte directories would be worse.
+
+And it does not explain the **first** failure's silence. That run produced no report from run 9 onward
+rather than throwing, which is a different symptom of the same family, and the harness now records the
+runner's message and stops after three so the next occurrence says which.

@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { findOrphanSandboxes, sweepOrphanSandboxes } from "../src/change.js";
+import { removeSandbox } from "../src/verifier/shared.js";
 
 const scratch: string[] = [];
 afterAll(async () => { for (const d of scratch) await rm(d, { recursive: true, force: true }); });
@@ -119,5 +120,22 @@ describe("sweepOrphanSandboxes", () => {
     const removed = await sweepOrphanSandboxes([{ path: gone, ageHours: 48, bytes: 1 }]);
     // `rm --force` treats a missing path as done; what matters is that it did not throw.
     expect(removed.map((o) => o.path)).toEqual([gone]);
+  });
+});
+
+describe("removeSandbox — the teardown that must not throw away a finished verdict", () => {
+  it("removes a populated tree, and is silent about one that is already gone", async () => {
+    // The contract, not the race. `verifyChange` removes its per-task sandbox in a `finally`, so an
+    // exception here propagates INSTEAD of the verdict already computed — a completed evaluation
+    // becomes "the gate could not run at all". Two 25-run measurements died at run 9 on ENOTEMPTY
+    // before that was understood, on two different projects.
+    const dir = await mkdtemp(join(tmpdir(), "sidecrew-fix-removal-"));
+    await mkdir(join(dir, "a", "b"), { recursive: true });
+    await writeFile(join(dir, "a", "b", "f.txt"), "x", "utf8");
+    await removeSandbox(dir);
+    expect(existsSync(dir)).toBe(false);
+
+    // `force` already covers ENOENT; asserted so that a future rewrite cannot quietly drop it.
+    await expect(removeSandbox(join(tmpdir(), "sidecrew-fix-never-existed"))).resolves.toBeUndefined();
   });
 });

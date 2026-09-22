@@ -24,8 +24,8 @@ import { MutationResult, survives, Verdict, type Candidate, type Stage } from ".
 import { TEST_FILE_PATTERN } from "../confinement.js";
 import { analyseTautology, type TautologyReport } from "./tautology.js";
 import {
-  deriveLineRange, isResolvable, isTestRunner, jestConfigEntry, looksLikeOom, output, resolveNodeModules, safeName,
-  STRYKER_PLUGIN, TEST_RUNNERS, truncateError, VerifierSetupError, type TestRunner,
+  deriveLineRange, isResolvable, isTestRunner, jestConfigEntry, looksLikeOom, output, removeSandbox,
+  resolveNodeModules, safeName, STRYKER_PLUGIN, TEST_RUNNERS, truncateError, VerifierSetupError, type TestRunner,
 } from "./shared.js";
 
 // Re-exported so this module stays the one place a caller has to know about to verify TypeScript.
@@ -690,7 +690,7 @@ const TS_SYMLINK_ERROR = /\bTS2883\b/;
  */
 async function cloneNodeModules(from: string, to: string): Promise<boolean> {
   if (process.platform !== "darwin") return false;
-  await rm(to, { recursive: true, force: true });
+  await removeSandbox(to);
   // `-c` is the clone flag: on APFS it shares blocks, so this is cheap in space and close to cheap in
   // time. Anywhere it is unavailable the symlink goes back and the verdict stands as it was.
   const cloned = await run("cp", ["-Rc", from, to], { timeoutMs: 300_000 });
@@ -992,7 +992,7 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
     }
   } finally {
     if (opts.keepSandbox) process.stderr.write(`sidecrew: sandbox kept at ${sandbox}\n`);
-    else await rm(sandbox, { recursive: true, force: true });
+    else await removeSandbox(sandbox);
   }
 
   const fields = {

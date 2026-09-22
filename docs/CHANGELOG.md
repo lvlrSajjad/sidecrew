@@ -1,6 +1,23 @@
 # Changelog
 ## Unreleased
 
+**ADR-0085 — a sandbox teardown race throws away the verdict it was cleaning up after.** Two 25-run
+measurements, on **two different projects**, both died **at run 9**. `rm(dir, { recursive: true, force:
+true })` throws `ENOTEMPTY` when something is still writing into the tree as it is unlinked — a jest
+worker outliving its run — and **`force` suppresses `ENOENT` and nothing else**.
+
+- **`verifyChange` removes its per-task sandbox in a `finally`, and an exception there propagates
+  instead of the value the block was returning.** So a throw on that line replaces a verdict that had
+  already been computed, and `runFix` records *"the gate could not run at all"* and escalates for a
+  machine reason. The gate was right, the suite had run, the answer existed, and the cleanup lost it.
+- **How to read past runs:** an escalation of that shape is no longer evidence the gate failed to
+  evaluate. Nothing is revised — there is no way to recover which were which, and inventing a
+  correction is worse than carrying the caveat.
+- **One `removeSandbox` in `verifier/shared.ts`, used by all seven teardowns**, with Node's own
+  `maxRetries: 5, retryDelay: 200` for exactly this error class. Seven call sites had spelled the same
+  options independently; ADR-0081 is what this project has to show for the last set of copies that
+  agreed until they did not.
+
 **ADR-0084 — `D` is the suite's flake rate, not the gate's error rate.** Measured overnight: 50 runs of
 `project-a`'s unmodified suite, fresh clone each, no change applied, in a window crossing **no**
 calendar boundary of either kind. **11 tests in 6 suites each failed in exactly one of the 50 runs**,
