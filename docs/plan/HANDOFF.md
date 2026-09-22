@@ -152,24 +152,28 @@ now fixed, and neither of which the gate would ever have caught:**
 ### Start here — everything live, in cost order
 
 **Nothing is blocked and nothing is half-finished.** Phase 14 is published, CI is green, the tree is
-clean, no run is in flight. Items **0 → 2** below are this week's completed work, kept because each
-cost a finding; **they are history, not a queue.** These are the live options:
+clean. Items **0 → 2** below are completed work, kept because each cost a finding; **they are history,
+not a queue.** These are the live options:
 
 | | what | cost | needs |
 |---|---|---|---|
 | **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions · **one overnight run** | nothing. **Freeze its exit check before starting**, §PHASES |
-| **B** | **ADR-0082 option D** — the yield of asking a worker for tests that kill a mutant **inside a named line range** | **one short run**, no overnight | **freeze D's rule first.** The number every version of ADR-0082 rests on, and nobody has it |
-| **C** | **Decide ADR-0077 option B** — the gate accepts a test file that no longer type-checks but still passes | a decision, then an implementation | the owner. Already measured at **14/15** |
-| **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner. B above is its measurement |
-| **E** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
+| **B** | **Decide ADR-0084's mitigation** — re-run the suite once before recording a regression-only failure | a decision, then a `ChangeVerdict` change | the owner. Measured: the suite fails 11 tests at **3/50** of runs, indistinguishable from `D` |
+| **C** | **Decide ADR-0077 option B** — the gate accepts a test file that no longer type-checks but still passes | a decision, then an implementation | the owner. Measured at **14/15** |
+| **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner |
+| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **BLOCKED: stryker is installed in neither tree.** Adding `@stryker-mutator/core` is the owner's call — a devDependency in a client repo, or a new one here |
+| **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
 
 **If no one says otherwise, do A.** It is the largest capability gain available, it is unblocked, and
-it is the only item whose absence blocks anything else. **B is the cheapest thing with a number at the
-end of it** and is a good half-session if the machine is free.
+it is the only item whose absence blocks anything else.
 
-**Do not start 14c and 14d against a stale plan** — `PHASES.md` § *The framework these phases are
-building toward* is the table of which phase makes which step of the vision true, and it now has a row
-for ADR-0082.
+**Three decisions (B, C, D) are stacked and none blocks another.** B is the cheapest and rests on the
+firmest number. C is measured and ready. D is the biggest idea and its measurement is E, which is the
+one thing here that needs a dependency decision before it can run at all.
+
+**Do not start 14c or 14d against a stale plan** — `PHASES.md` § *The framework these phases are
+building toward* is the table of which phase makes which step of the vision true, and it has a row for
+ADR-0082.
 
 ---
 
