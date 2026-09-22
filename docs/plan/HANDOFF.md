@@ -13,25 +13,29 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 22 Sep 2026** — overnight, on an idle machine the owner handed over. **The headline is
-ADR-0084: `D` is the suite's flake rate, not the gate's.** 50 runs of an unmodified suite found 11
-tests each failing once, and `3/50 = 0.060 [0.013, 0.165]` against `D`'s `2/19 = 0.105 [0.013, 0.331]`
-— indistinguishable. The mitigation (re-run once before recording a regression-only failure) is
-**proposed and needs the owner**. Measured that
-`project-a`'s **unmodified** suite moves three tests at **00:00 UTC**, which exposed **ADR-0083**:
-`crossesCalendarDay` watched local midnight only, and so did its Python copy and its own test. Fixed.
-A 55-run control across a boundary-free window is in §3 § *Start here*. **ADR-0082 option D could not
-be run — stryker is installed in neither tree**, and that is an owner decision.
+**Last updated: 22 Sep 2026, end of day.** Four things happened and all of them are landed:
 
-**Last updated: 21 Sep 2026.** That session, in order: re-ran the `v0.1.0` release and found three
-defects in the pipeline, then two more (**ADR-0080**); **published `0.1.2` to npm and the MCP
-Registry**, which is Phase 14 finished; found and fixed **a hole in the gate** — `*.e2e-spec.ts` was
-not a test file to any of the four copies of the rule that says what one is (**ADR-0081**); **measured
-ADR-0077's option D at `14/15`**, retiring A and C and putting **B in front of the owner**; and wrote
-**ADR-0082** from the owner's proposal, *sidecrew writes the oracle it is judged by*.
+1. **ADR-0084 — `D` was never the gate's error rate; it is the suite's flake rate.** 50 runs of
+   `project-a`'s *unmodified* suite found 11 tests each failing in exactly one run, and a run carries
+   at least one at **3/50 = 0.060 `[0.013, 0.165]`** — indistinguishable from `D = 2/19 = 0.105`
+   `[0.013, 0.331]`. **Decided and built:** a regression-only failure is re-read once and the second
+   reading decides. `project-b` at **0/50 `[0.000, 0.071]`** does not settle whether the floor is
+   project-a's (Fisher p = 0.24), and does not need to: on a suite that does not flake the retry never
+   fires, so it is free exactly where it is useless.
+2. **ADR-0083 — three of `project-a`'s tests move at 00:00 *UTC*, and the guard watched *local*
+   midnight.** So did its Python copy and its own test, which passed here and on CI and would have
+   failed in Auckland. All three fixed.
+3. **ADR-0085 — a sandbox teardown race threw away the verdict it was cleaning up after.** An exception
+   in `verifyChange`'s `finally` replaces the value the block was returning; `rm`'s `force` covers
+   `ENOENT`, not the `ENOTEMPTY` a lingering jest worker causes. Two measurements on two projects both
+   died at run 9 on it. One `removeSandbox` across all seven teardowns.
+4. **ADR-0077 option B — decided and built**, with the scope that was *measured* (any test file) and a
+   narrowing the fixture forced: **only under added strictness flags**, because with none an introduced
+   error is a real break of a working build. `ChangeVerdict` records `compiler_flags` so the schema can
+   enforce that rather than trusting `verifyChange`.
 
-The session before it got `main` green for the first time since 18 Sep, took three owner decisions
-(**ADR-0075** option C, **ADR-0078**, the ADR-0064 discussion) and wrote **ADR-0079**.
+**Nothing is half-done and nothing is running.** The next thing is **Phase 14c**, whose exit check was
+frozen the same day — §3 § *Start here*.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -50,7 +54,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0085**; start new ones at 0086. **0084's mitigation needs the owner.** **Four need the owner: 0082, 0077-B, 0079, 0064** — §4, in that order. 0077's option D is **measured** (14/15), so A and C are retired and **B is the live question**; 0082 is the owner's own proposal and its option D is one short run. 0079 largely retires 0064. Accepted this week: 0075 (option C), 0078, 0080, 0081 |
+| ADRs | run to **0085**; start new ones at 0086. **Two need the owner: 0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -148,6 +152,29 @@ now fixed, and neither of which the gate would ever have caught:**
   now.
 
 ## 3. What to do next
+
+### Starting Phase 14c in a fresh session — paste this, then read nothing else first
+
+> Start phase 14c of sidecrew. Read `CLAUDE.md`, `docs/plan/HANDOFF.md`,
+> `docs/plan/prompts/phase-14c-the-reach.md` (the exit check is **frozen** — do not restate it, do not
+> amend §3 or §4), **ADR-0075** (the design, option C) and `docs/specs/pipeline.md`. Then `git status`
+> and `git log -5`. Build first; the measurement is the last thing and its rule already exists.
+
+**The four numbers it will otherwise go hunting for**, all from ADR-0075, measured on `project-a`:
+
+| | |
+|---|---|
+| TypeScript files under `src/` | 2,160 |
+| over the whole-file ceiling (~22,674 chars) | **71 — 3.3 %** |
+| what those 71 are **by bytes** | **48.1 %** |
+| so `Reach` **before** 14c | **≈ 0.519** — and the exit check demands **≥ 0.85** |
+
+**The prerequisite is already built**: ADR-0076's `deriveLineRange` reads the TypeScript AST, which is
+what option C splices by. It shipped in Phase 14.
+
+**The trap, in one line:** `S_small` may **not** come from Phase 11 or the go/no-go — the gate changed
+twice on 22 Sep and an old baseline against a new `S_big` measures this phase *plus* those two
+decisions. Re-measure it in the same run. `prompts/phase-14c-the-reach.md` §2 is the long version.
 
 ### Start here — everything live, in cost order
 
