@@ -157,7 +157,7 @@ not a queue.** These are the live options:
 
 | | what | cost | needs |
 |---|---|---|---|
-| **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions · **one overnight run** | nothing. **Freeze its exit check before starting**, §PHASES |
+| **A** | **Phase 14c — symbol-scoped return** (ADR-0075, accepted). Half a codebase is unaddressable and it is the half the work is in | 2–3 sessions building, **attended** · then **one quiet 2–4 h run**, not a whole night | nothing. **Exit check FROZEN 22 Sep** — `prompts/phase-14c-the-reach.md` |
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
 | **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
 | **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner. Its measurement is **E**, still blocked |
@@ -168,6 +168,16 @@ not a queue.** These are the live options:
 The reasoning is worth keeping: every item here ends in a measurement, and all of them are taken with
 an instrument that had a known ~6 % false-failure rate. Fixing that first makes every later number
 cleaner, which is why it went ahead of the bigger prize.
+
+**14c's exit check is frozen** (`prompts/phase-14c-the-reach.md`, 22 Sep, before the phase started).
+Its §2 is the one to read first: **`S_small` may not come from Phase 11 or the go/no-go**, because
+ADR-0084 and ADR-0077 option B both changed the gate on 22 Sep and an old baseline against a new
+`S_big` would measure this phase plus those two decisions.
+
+**The run is 2–4 hours, not a night** — derived from probe 1: the suite is ~225 s and is paid only by
+candidates that compile, so a *successful* 14c run costs more than a failed one, and ADR-0084's retry
+adds a second suite run per regression-only failure. What it needs is a **quiet** machine (ADR-0066)
+and not to span **02:00 local** (ADR-0083).
 
 **B and C are both done.** What is left on this board is **A (Phase 14c)**, the two open decisions
 (D and E), and the passive exit check.

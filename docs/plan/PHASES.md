@@ -1201,7 +1201,25 @@ follows 14 rather than replacing part of it.
 **Why cut a version here.** It roughly doubles what the tool can touch, which is the first change
 since publication that a user would feel without reading the changelog.
 
-### Exit check — to be frozen **before** 14c starts, in this shape
+### Exit check — **FROZEN 22 Sep 2026**, before the phase started and before any number existed
+
+`docs/plan/prompts/phase-14c-the-reach.md` is the frozen document; its §3 and §4 are the rule. Amend
+below it, dated, never in place. Three things it settles that this shape left open:
+
+- **"Previously refused" is `files_too_large_to_rewrite`** — `rewriteCost(sources) > MAX_FIX_TOKENS`,
+  and `MAX_FIX_TOKENS` is 8192. Not "1000+ lines", which is the description. **The refused set is
+  recorded before the phase changes anything**, because it cannot be re-derived afterwards: the whole
+  point is that the clause stops firing.
+- **`S_small` is re-measured in the same run and may NOT come from Phase 11 or the go/no-go.** The gate
+  changed twice on 22 Sep — ADR-0084's retry and ADR-0077 option B — so an old `S_small` against a new
+  `S_big` would measure this phase *plus* those two decisions. This is `PHASES.md`'s own "same project,
+  same declared task set" clause one level deeper than it was written, and it is the trap most likely
+  to be walked into.
+- **The gate's settings go in the result** — `retry_regressions`, `demote_test_type_errors` and
+  `compiler_flags`, all of which `ChangeVerdict` now carries. A number whose gate is not recorded
+  cannot be compared with anything later.
+
+The shape below is unchanged and is what the prompt copies:
 
 Two numbers, and the second is the one people forget: reach is worthless if what it reaches cannot be
 changed. Let `Reach` be the addressable share by bytes, and `S_big` survival on tasks in files that
