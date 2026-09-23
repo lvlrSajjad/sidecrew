@@ -1,5 +1,5 @@
 // The whole pipeline against the real fixture: tsc, vitest and Stryker all actually run.
-// SIDECREW_SLOW=1 to include. Needs `npm i` in fixtures/ts-fixture.
+// SIDECREW_SLOW=1 to include. Needs `sidecrew tools install` (ADR-0088); the fixture itself needs nothing beyond the repo root's vitest and typescript.
 import { readFile } from "node:fs/promises";
 import { describe, it, expect } from "vitest";
 import { verifyTs, VerifierSetupError } from "../src/verifier/ts.js";

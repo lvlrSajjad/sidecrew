@@ -24,6 +24,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename, join, resolve } from "node:path";
 import { RESULTS_DIR } from "./bench.js";
+import { withIntactProject } from "./integrity.js";
 import {
   captureBaseline, assertChangeToolchain, makeChangeSandbox, runSuite, toPosix, typecheck, verifyChange,
   DEFAULT_CHANGE_TIMEOUTS, type CapturedBaseline, type ChangeTimeouts,
@@ -746,7 +747,16 @@ const modelOfRun = (workers: WorkerEndpoint[], mem: Memory | null): ModelEntry =
 const writeJson = async (path: string, value: unknown): Promise<void> =>
   writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 
+/**
+ * Workload #2a over a whole plan — and the project is intact afterwards, checked rather than promised
+ * (ADR-0088). Every change is made in a sandbox; this is what proves none of them escaped it.
+ */
 export async function runFix(planPath: string, opts: RunFixOpts = {}): Promise<FixResult> {
+  const { projectDir } = await loadChangePlan(planPath, opts.tsconfig ?? "tsconfig.json");
+  return withIntactProject(projectDir, () => runFixUnchecked(planPath, opts), opts.onEvent);
+}
+
+async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixResult> {
   const say = opts.onEvent ?? (() => {});
   // ADR-0069 option A. Once per run rather than once per verdict, because the condition is not a
   // property of one candidate: the moment the clock crosses the boundary the baseline encodes, every

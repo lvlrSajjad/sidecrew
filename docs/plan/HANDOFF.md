@@ -30,7 +30,7 @@ decomposed); **`v0.2.0` is held**; the 10 commits are **pushed**, and the parent
 tracked files and a redaction regex carried is redacted from the tree. It stays in the pushed history,
 which cannot be retracted (ADR-0051).
 
-**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) waits on **ADR-0088**: sidecrew brings its own pinned Stryker and leaves the project intact (owner's rule, 23 Sep).
+**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
 **Next: Phase 14c′.** Freeze its exit check first, in `prompts/phase-14c-prime.md`, before
 decomposing a single task. Then decompose the 27 declared tasks mechanically, one `tsc` error per
@@ -51,7 +51,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | | |
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
-| tests | `npm run lint && npm test` → **805 passing**, 1 skipped · slow set: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **34 passing**, **run it before a phase ends** |
+| tests | `npm run lint && npm test` → **819 passing**, 1 skipped · slow sets: `fix.slow` **34**, `verifier-ts.slow` **10** (needs `sidecrew tools install`, not a fixture install) · **run them before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture` |
 | version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
@@ -191,7 +191,7 @@ not a queue.** These are the live options:
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
 | **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
 | **D** | ~~Decide ADR-0082 in principle~~ **ACCEPTED 23 Sep, as test-first development** (ADR-0082 addendum) | done | — |
-| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **ADR-0088 first**: sidecrew provides its own pinned Stryker from a tool cache and leaves the project intact (owner's rule, 23 Sep). A devDependency in a client repo is **off the table**. **Spike DONE 23 Sep: works (7 killed, 0 NoCoverage, checkout identical)**; build it, then D |
+| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **ADR-0088 first**: sidecrew provides its own pinned Stryker from a tool cache and leaves the project intact (owner's rule, 23 Sep). A devDependency in a client repo is **off the table**. **BUILT 23 Sep** (`src/tools.ts`, `src/integrity.ts`, `sidecrew tools install`). **Next: freeze D's rule, then run it on a clone of project-a** |
 | **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
 
 **The owner's sequencing, 22 Sep: ADR-0084 first, then 14c — done, so 14c (A) is the next build.**

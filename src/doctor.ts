@@ -6,7 +6,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { run, ok as exited0, firstLine, pythonBin, MLX_SERVER_MODULE } from "./exec.js";
-import { isResolvable, jestConfigEntry, STRYKER_PLUGIN, testDirFor } from "./verifier/shared.js";
+import { isResolvable, jestConfigEntry, testDirFor, type TestRunner } from "./verifier/shared.js";
+import { projectPackageDir, STRYKER_RUNNER_PLUGIN, strykerStatus, toolStatusMessage } from "./tools.js";
 import { tsconfigProgramFiles, typeScriptAvailable } from "./verifier/ast.js";
 import { CapabilityStatus, type MachineSample, type StatusReport } from "./schemas.js";
 import { apiModel, apiTierOptIn, defaultKey, entry, SUPPORTED_MIN_RAM_GB, tierFor, type Tier } from "./models.js";
@@ -359,30 +360,30 @@ const NPM_PACKAGE: Record<string, string> = {
   tsc: "typescript",
   vitest: "vitest",
   jest: "jest",
-  stryker: "@stryker-mutator/core",
 };
 
 /**
- * Which runners Stryker can actually drive in this project (ADR-0028).
+ * Stryker is sidecrew's, from its own pinned cache — never the project's (ADR-0088). So this row is about
+ * this machine, not this project, and a project that happens to have its own Stryker changes nothing.
+ */
+const strykerCacheCheck = (): Check => {
+  const status = strykerStatus();
+  return { name: "stryker", status: status.ok ? "ok" : "missing", detail: toolStatusMessage(status) };
+};
+
+/**
+ * Which runners the project itself can supply for mutation testing (ADR-0028, ADR-0088).
  *
- * `stryker` being installed is not enough: the runner is a separate plugin package, and without the
- * right one a mutation run fails several minutes in with a Stryker error that says nothing about the
- * candidate. `verifyTs` refuses up front for the same reason; this is the pre-flight version, so that
- * `doctor` can say it before a plan is written rather than after a run is started.
+ * The runner *plugin* is sidecrew's now; the *runner* is the project's, because a verdict is about this
+ * project only if its own tests run under its own jest or vitest.
  */
 const strykerRunnersCheck = (cwd: string | undefined): Check => {
   const root = cwd ?? process.cwd();
-  const found = (Object.entries(STRYKER_PLUGIN) as [string, string][])
-    .filter(([, pkg]) => isResolvable(pkg, root))
-    .map(([runner]) => runner);
+  const found = (Object.keys(STRYKER_RUNNER_PLUGIN) as TestRunner[]).filter((r) => projectPackageDir(root, r) !== null);
   const where = cwd === undefined ? "this project" : cwd;
   return found.length > 0
-    ? { name: "stryker-runner", status: "ok", detail: `${found.join(", ")} — ${where} can be mutated under ${found.length === 1 ? "that runner" : "either"}` }
-    : {
-      name: "stryker-runner",
-      status: "missing",
-      detail: `neither runner plugin resolves from ${where} — npm i -D ${Object.values(STRYKER_PLUGIN).join(" or ")}`,
-    };
+    ? { name: "stryker-runner", status: "ok", detail: `${found.join(", ")} — ${where} can be mutated under ${found.length === 1 ? "that runner" : "either"}, with sidecrew's own Stryker` }
+    : { name: "stryker-runner", status: "missing", detail: `${where} has neither jest nor vitest of its own, so its tests cannot be run for mutation` };
 };
 
 // ── the pre-flight questions, which are facts about a project's layout ────────────────────────────
@@ -596,7 +597,7 @@ export async function collect(opts: DoctorOpts = {}): Promise<{ checks: Check[];
     localBinCheck("tsc", opts.cwd),
     localBinCheck("vitest", opts.cwd),
     localBinCheck("jest", opts.cwd),
-    localBinCheck("stryker", opts.cwd),
+    Promise.resolve(strykerCacheCheck()),
     binCheck("swift", ["--version"], "no Swift toolchain — the Swift verifier is unavailable"),
     binCheck("muter", ["--version"], "not installed — brew install muter-mutation-testing/formulae/muter"),
     jestTestsCheck(opts.cwd),

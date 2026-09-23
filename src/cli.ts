@@ -8,11 +8,16 @@ import { serve, stop, status } from "./serve.js";
 import { bench, benchDeterminism } from "./bench.js";
 import { escalateCommand, fixCommand, fixReportCommand, fixSweepCommand, fixValidateCommand, generateCommand, planCommand, reviewCommand, runCommand, verifyCommand } from "./run.js";
 
+import { installStryker, strykerStatus, toolStatusMessage } from "./tools.js";
+
 const [cmd = "help", ...rest] = process.argv.slice(2);
 const usage = `sidecrew — local workers behind a verifier, for Claude Code
 
   sidecrew doctor [--port 8000] [--project DIR] [--json]  what this machine can do
   sidecrew models [--pin [KEY]] [--json]       pinned models, what is downloaded, this machine's tier
+  sidecrew tools [--json]                      sidecrew's own pinned tools (Stryker), and whether they are installed
+  sidecrew tools install [--force]             download the pinned Stryker (~62 MB) into ~/.sidecrew/tools —
+                                       never into a project (ADR-0088)
   sidecrew serve [--model KEY] [--port 8000] [--force] [--wait SECONDS] [--allow-unpinned]
                                        start a pinned mlx_lm worker; refuses an unpinned revision,
                                        and --wait queues for free RAM instead of refusing
@@ -90,6 +95,21 @@ const main = async () => {
       const pin = has(rest, "--pin") ? (value(rest, "--pin") ?? true) : undefined;
       const mem = await readMemory();
       return modelsCommand({ pin, json: has(rest, "--json"), totalGb: mem?.total_gb ?? null });
+    }
+
+    case "tools": {
+      // ADR-0088: the one command that downloads a tool. The verifier never does — it refuses and says
+      // to run this, so a download is always something the user asked for.
+      if (rest[0] === "install") {
+        const status = await installStryker({ force: has(rest, "--force"), onEvent: (l) => process.stdout.write(`${l}\n`) });
+        if (!status.ok) process.exitCode = 1;
+        return;
+      }
+      const status = strykerStatus();
+      if (has(rest, "--json")) process.stdout.write(`${JSON.stringify({ stryker: status }, null, 2)}\n`);
+      else process.stdout.write(`${status.ok ? "ok      " : "MISSING "} ${toolStatusMessage(status)}\n`);
+      if (!status.ok) process.exitCode = 1;
+      return;
     }
 
     case "serve": {

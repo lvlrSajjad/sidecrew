@@ -962,7 +962,8 @@ export async function verifyChange(
  */
 export interface Orphan { path: string; ageHours: number; bytes: number }
 
-const SANDBOX_PREFIXES = ["sidecrew-fix-", "sidecrew-task-"];
+// `sidecrew-tool-` is ADR-0088's per-run Stryker copy: a run killed mid-mutation leaves one behind.
+const SANDBOX_PREFIXES = ["sidecrew-fix-", "sidecrew-task-", "sidecrew-tool-"];
 
 /** Bytes under a directory. Best-effort: an unreadable entry contributes nothing rather than throwing. */
 async function sizeOf(dir: string): Promise<number> {

@@ -28,7 +28,6 @@ import {
   looksLikeOom,
   runArgs,
   skipFromSandbox,
-  strykerPluginPaths,
   strykerConfig,
   truncateError,
 } from "../src/verifier/ts.js";
@@ -255,24 +254,14 @@ describe("jestConfigEntry — ADR-0036's two fixes have to compose, ADR-0038", (
   });
 });
 
-describe("strykerPluginPaths — Stryker's glob looks in its own directory, ADR-0036", () => {
-  it("says nothing for a hoisted project, where the glob already works", () => {
-    // The layout that already worked must produce a byte-identical config. Both fixtures are hoisted.
-    expect(strykerPluginPaths("fixtures/jest-fixture", "jest")).toEqual([]);
-    expect(strykerPluginPaths("fixtures/ts-fixture", "vitest")).toEqual([]);
+describe("strykerConfig's plugins — exactly sidecrew's own, ADR-0088", () => {
+  it("names exactly the plugins it is given, with no glob to load the other runner's", () => {
+    const config = strykerConfig({ plugins: ["/cache/jest-runner/dist/src/index.js", "/cache/typescript-checker/dist/src/index.js"] });
+    expect(config).toContain('plugins: ["/cache/jest-runner/dist/src/index.js","/cache/typescript-checker/dist/src/index.js"]');
+    expect(config).not.toContain("@stryker-mutator/*");
   });
 
-  it("says nothing rather than throwing when Stryker is not installed at all", () => {
-    // `verifyTs` refuses for that by name, before this is reached. This must not be the thing that fails.
-    expect(strykerPluginPaths(".", "vitest")).toEqual([]);
-  });
-
-  it("puts the glob first so a project's other plugins still load", () => {
-    const config = strykerConfig({ plugins: ["/abs/jest-runner/dist/src/index.js"] });
-    expect(config).toContain('plugins: ["@stryker-mutator/*","/abs/jest-runner/dist/src/index.js"]');
-  });
-
-  it("writes no plugins line when there is nothing the glob cannot see", () => {
+  it("writes no plugins line when given none, so the fixture's checked-in config still matches", () => {
     expect(strykerConfig()).not.toContain("plugins");
     expect(strykerConfig({ plugins: [] })).not.toContain("plugins");
   });

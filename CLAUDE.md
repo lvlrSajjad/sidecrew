@@ -49,7 +49,7 @@ progress** — a workload a machine cannot check does not belong here at any pri
      time this was caught at the push itself, with 448 mentions across 59 files already committed.
 
 ## Shape (copy simframe)
-- One package, `bin: sidecrew`, subcommands (`run` is workload #1, `fix` is #2a), `sidecrew mcp` for stdio. Only runtime dependency: `@modelcontextprotocol/sdk` (+ `zod`). External capabilities (`mlx_lm`, `muter`, `stryker`, `swift`) are shelled out and reported by `doctor`, never bundled.
+- One package, `bin: sidecrew`, subcommands (`run` is workload #1, `fix` is #2a), `sidecrew mcp` for stdio. Only runtime dependency: `@modelcontextprotocol/sdk` (+ `zod`). External capabilities (`mlx_lm`, `muter`, `stryker`, `swift`) are shelled out and reported by `doctor`, never bundled in the npm package. **A tool the gate needs is sidecrew's to provide, never the project's** (ADR-0088): Stryker is pinned in sidecrew's own cache (`sidecrew tools install`, `src/tools.ts`), and **a project is byte-for-byte intact after every job**, checked by `src/integrity.ts` rather than promised.
 - `server.json` and `package.json` versions move together; `release.yml` enforces it.
 - README leads with measured numbers. Every number in docs is labelled measured or estimated.
 - Files are the IPC where possible: runs go to `.sidecrew/runs/<id>/`, one JSON per candidate/verdict.

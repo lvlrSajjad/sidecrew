@@ -6416,8 +6416,8 @@ open.
 
 ## ADR-0088 — sidecrew brings its own tools, and leaves the project exactly as it found it
 
-**Status:** **the principle is decided by the owner, 23 Sep 2026** · the mechanism is **decided by the spike** (23 Sep,
-below) and not yet built · amends `CLAUDE.md` § *Shape* · supersedes the *"a devDependency
+**Status:** **the principle is decided by the owner, 23 Sep 2026** · the mechanism is **decided by the spike and BUILT** (23 Sep,
+below) · amends `CLAUDE.md` § *Shape* · supersedes the *"a devDependency
 in a client repo"* option in HANDOFF
 
 ### The owner's rule
@@ -6524,3 +6524,24 @@ the mechanism:
 The pin stays **8.7.1** (ADR-0030: 10.x fails to load with `ERR_REQUIRE_ESM`). **The mechanism is
 decided by this measurement; building it into `verifier/ts.ts`, `doctor` and a `sidecrew tools` install
 step is the next piece of work.**
+
+### Built, 23 Sep 2026
+
+`src/tools.ts` (the pinned cache, `strykerStatus`, `installStryker`, `prepareStryker`), `src/integrity.ts`
+(the fingerprint, and `withIntactProject` around `runBatch` and `runFix`), and `sidecrew tools
+[install]`. The verifier always uses the cache, and a project's own Stryker is never used (§ *Proposed
+mechanism*). `doctor`'s `stryker` row reports the cache; its `stryker-runner` row reports whether the
+project has jest or vitest of its own. The ADR-0036 glob workaround and `strykerPluginPaths` are gone.
+The plugins are named by absolute path, and no glob loads the other runner.
+
+**Measured:** `test/verifier-ts.slow.test.ts`, **10/10**, against `fixtures/ts-fixture` with **no
+Stryker anywhere in its resolution path**. This is the first time that suite has run on this machine
+since the fixtures stopped being installed, and it runs now *because* the project no longer has to
+supply the tool.
+
+**The check caught a false alarm on its first run, and it was the check's fault.** The fixtures sit
+inside this repository, so `git status` from a fixture reported every file a parallel test wrote
+anywhere in the repo. Status is now scoped to the project's own directory (`-- .`), with a test for
+exactly that case. The fixtures' own `package.json` files still list Stryker as a devDependency. The
+verifier no longer reads it, and removing it would rewrite their lockfiles, which is left for the owner.
+

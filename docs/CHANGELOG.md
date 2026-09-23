@@ -1,6 +1,16 @@
 # Changelog
 ## Unreleased
 
+**ADR-0088 is built: sidecrew brings its own Stryker, and a project is byte-for-byte intact after every
+job.** `sidecrew tools install` puts a pinned Stryker 8.7.1 (~62 MB) into `~/.sidecrew/tools`, never into
+a project. Each mutation run uses a throwaway copy-on-write copy of it, linked to the project's own
+`typescript` and jest or vitest. `run` and `fix` fingerprint the project before and after (git status
+scoped to the project, `package.json`, every lockfile format, `node_modules`) and fail loudly on any
+difference. The first spike caught npm silently installing `typescript` 7.0.2 and `vitest` 4.1.11 into
+the cache, so the cache now refuses to hold any project-owned tool. Measured: the vitest verifier suite
+passes 10/10 against a fixture with no Stryker at all; on a clone of project-a, 7 mutants were killed
+and the working checkout was identical before and after.
+
 **ADR-0082 accepted in principle, as test-first development (owner, 23 Sep).** Tests always come first, are frozen, and are written by a
 different invocation from the change. For a behaviour change they must go red → green; for a behaviour-preserving one they are pinned green → green. The
 order D → B → C stands; D is blocked on Stryker.

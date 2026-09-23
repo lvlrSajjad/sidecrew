@@ -300,7 +300,7 @@ MISSING  worker           nothing on http://localhost:8000/v1 — start one with
 ok       memory           32.0 GB total · 12.5 GB free
 ok       tsc              Version 5.9.3
 ok       vitest           vitest/2.1.9 darwin-arm64 node-v20.20.0
-MISSING  stryker          @stryker-mutator/core is not resolvable from this project — npm i -D @stryker-mutator/core
+MISSING  stryker          stryker 8.7.1 is not in sidecrew's tool cache — run: sidecrew tools install (~62 MB, never into a project)
 ok       swift            Apple Swift version 6.3.3
 MISSING  muter            not installed — brew install muter-mutation-testing/formulae/muter
 ok       line-ranges      from the TypeScript compiler's own tree (ADR-0076)
@@ -349,7 +349,7 @@ many words (ADR-0001).
 
 | Capability | Needs | Without it |
 |---|---|---|
-| Plan, validate, verify TypeScript | node, `tsc`, **`vitest` or `jest`**, `stryker` + its runner plugin | — |
+| Plan, validate, verify TypeScript | node, and the project's own `tsc` and **`vitest` or `jest`**. Stryker is sidecrew's: `sidecrew tools install` | — |
 | Verify Swift | Xcode CLT, `muter` | TS only |
 | Local workers | `pip install mlx-lm` (Apple Silicon) | verify-only; Claude writes tests itself |
 
@@ -357,12 +357,15 @@ many words (ADR-0001).
 pip install mlx-lm                                          # workers
 brew install muter-mutation-testing/formulae/muter          # Swift mutation
 
-# in the project being tested — Stryker drives the runner through a plugin
-npm i -D @stryker-mutator/core @stryker-mutator/vitest-runner   # or @stryker-mutator/jest-runner
+sidecrew tools install                                      # sidecrew's own pinned Stryker, once per machine
 ```
 
-`sidecrew doctor --project <dir>` reports which of the two runner plugins that project has, because
-`stryker` alone cannot mutate anything.
+**Nothing is installed into the project being tested.** Stryker is sidecrew's, pinned at 8.7.1 in
+`~/.sidecrew/tools`, and each run uses a throwaway copy of it wired to the project's own compiler and
+test runner. Every `run` and `fix` fingerprints the project before and after (git status,
+`package.json`, every lockfile, `node_modules`) and fails loudly if anything changed (ADR-0088).
+`sidecrew doctor --project <dir>` reports whether the project has a runner of its own — jest or vitest —
+since that part is the project's.
 
 ## The tools
 

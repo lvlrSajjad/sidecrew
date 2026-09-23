@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, posix, relative, resolve, sep } from "node:path";
 import { DEFAULT_VERIFIER_CONCURRENCY } from "../concurrency.js";
 import { run } from "../exec.js";
+import { prepareStryker, projectPackageDir, strykerStatus, toolStatusMessage } from "../tools.js";
 import { MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
 import { TEST_FILE_PATTERN } from "../confinement.js";
 import { analyseTautology, type TautologyReport } from "./tautology.js";
@@ -298,88 +299,10 @@ export interface StrykerConfigOpts {
  */
 const TS_JEST_INSTRUMENTATION = /\bstry(?:MutAct|Cov|NS)_[0-9a-f]+\b/;
 
-/**
- * The Stryker plugins the verifier depends on, as absolute paths, **only when Stryker cannot find them
- * itself** (ADR-0036).
- *
- * Stryker's plugin glob resolves against **its own install directory**, not the project's:
- *
- * ```js
- * const pluginDirectory = path.resolve(fileURLToPath(new URL('../../../../../', import.meta.url)), org);
- * ```
- *
- * Under npm or yarn that lands on the project's `node_modules/@stryker-mutator/`, which holds everything.
- * Under **pnpm** it lands on `.pnpm/@stryker-mutator+core@8.7.1/node_modules/@stryker-mutator/`, which
- * holds `api`, `core`, `instrumenter`, `util` — and not the runner or the checker, because those are the
- * *project's* dependencies and not core's. Stryker then reports:
- *
- * ```
- * WARN OptionsValidator Unknown stryker config option "jest" … Stryker loaded plugins from: ["@stryker-mutator/*"]
- * ERROR Stryker Cannot find Checker plugin "typescript". In fact, no Checker plugins were loaded.
- * ```
- *
- * This is the project-b blocker, reproduced here in a six-file pnpm project with sidecrew's sandbox out
- * of the picture. It also explains the thing that made no sense about it: the trial added
- * `public-hoist-pattern[]=@stryker-mutator/*` and reinstalled, the plugins appeared in the project's
- * `node_modules/@stryker-mutator/`, and Stryker still loaded none — because the glob never looks there.
- *
- * Naming the plugins as bare specifiers does **not** work either: `importModule` is a plain
- * `import(name)` from inside core, so pnpm refuses a package core does not declare. The one branch that
- * escapes is an absolute path, which Stryker turns into a `file://` URL and imports directly.
- *
- * Returns `[]` when the glob can already see everything, so a hoisted project's config is byte-identical
- * to what it was and this carries no risk for the layout that already worked.
- */
-export function strykerPluginPaths(projectDir: string, runner: TestRunner): string[] {
-  const needed = [STRYKER_PLUGIN[runner], "@stryker-mutator/typescript-checker"];
-  const require_ = createRequire(join(resolve(projectDir), "package.json"));
-  let globDir: string;
-  try {
-    // Stryker globs the directory its own package sits in, which is the parent of core's directory.
-    globDir = dirname(dirname(require_.resolve("@stryker-mutator/core/package.json")));
-  } catch {
-    return [];
-  }
-  const invisible = needed.filter((pkg) => !existsSync(join(globDir, pkg.slice(pkg.indexOf("/") + 1))));
-  if (invisible.length === 0) return [];
-
-  const paths: string[] = [];
-  for (const pkg of needed) {
-    try {
-      // `require.resolve(pkg)` is the wrong entry point and sometimes no entry point at all: both of
-      // these packages are ESM-only, `jest-runner` maps `require` to a CJS jest-environment shim, and
-      // `typescript-checker` declares only `import`, so CJS resolution throws. Only `<pkg>/package.json`
-      // is reliably resolvable, and the entry is read from there.
-      const manifest = require_.resolve(`${pkg}/package.json`);
-      const entry = esmEntry(JSON.parse(readFileSync(manifest, "utf8")) as Record<string, unknown>);
-      if (entry !== null) paths.push(join(dirname(manifest), entry));
-    } catch {
-      // Not installed is a different failure, and `verifyTs` already refuses for it by name.
-    }
-  }
-  return paths;
-}
-
-/** The path a `import "<pkg>"` would load, from the package's own manifest. */
-function esmEntry(manifest: Record<string, unknown>): string | null {
-  const pick = (node: unknown, depth = 0): string | null => {
-    if (typeof node === "string") return node;
-    if (depth > 4 || node === null || typeof node !== "object") return null;
-    const conditions = node as Record<string, unknown>;
-    for (const key of ["import", "module", "default"]) {
-      if (key in conditions) {
-        const found = pick(conditions[key], depth + 1);
-        if (found !== null) return found;
-      }
-    }
-    return null;
-  };
-  const exports_ = manifest.exports;
-  const root = typeof exports_ === "object" && exports_ !== null && "." in (exports_ as Record<string, unknown>)
-    ? (exports_ as Record<string, unknown>)["."]
-    : exports_;
-  return pick(root) ?? pick(manifest.module) ?? pick(manifest.main);
-}
+// Stryker itself — its binary and its plugins — comes from sidecrew's own pinned cache, never from the
+// project (ADR-0088). `prepareStryker` in `src/tools.ts` builds a per-run copy of it whose `typescript`
+// and runner are the project's own. The glob-versus-pnpm workaround that lived here (ADR-0036) is gone
+// with the reason for it: the plugins are always named by absolute path now.
 
 /** Written into the sandbox only when the project's own tsconfig does not cover the candidate. */
 export const SIDECREW_TSCONFIG = ".sidecrew-tsconfig.json";
@@ -537,12 +460,12 @@ export function strykerConfig(opts: StrykerConfigOpts = {}): string {
 `;
 
   /**
-   * The default glob stays first, so any other plugin the project has still loads; the absolute paths
-   * are added only where the glob cannot see them — see `strykerPluginPaths` (ADR-0036).
+   * Exactly the plugins given, and **no glob** (ADR-0088 §3). They come from sidecrew's own cache by
+   * absolute path, which Stryker imports directly. A glob would also load the other runner's plugin,
+   * which then complains it cannot find a framework the project does not use.
    */
-  const plugins = (opts.plugins ?? []).length === 0 ? "" : `  // Stryker's plugin glob resolves against its own install directory, which under pnpm does not
-  // contain the runner or the checker. Absolute paths are the one form it imports directly (ADR-0036).
-  plugins: ${JSON.stringify(["@stryker-mutator/*", ...(opts.plugins ?? [])])},
+  const plugins = (opts.plugins ?? []).length === 0 ? "" : `  // From sidecrew's own pinned Stryker cache, by absolute path (ADR-0088).
+  plugins: ${JSON.stringify(opts.plugins)},
 `;
 
   /**
@@ -816,14 +739,13 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
     throw new VerifierSetupError(`no node_modules at or above ${projectDir} — run npm i`);
   }
 
-  // Stryker's runner plugins are separate packages, and the failure without one is a Stryker error
-  // several minutes into a mutation run rather than anything about the candidate. Checked here, where
-  // it is a setup error and the retry loop will not spend an attempt on it.
-  const plugin = STRYKER_PLUGIN[runner];
-  if (!isResolvable(plugin, projectDir)) {
-    throw new VerifierSetupError(
-      `${plugin} is not resolvable from ${projectDir}, and Stryker needs it to drive ${runner} — npm i -D ${plugin}`,
-    );
+  // Stryker is sidecrew's, from its pinned cache (ADR-0088); the runner is the project's. Either one
+  // missing is a Stryker error several minutes into a mutation run rather than anything about the
+  // candidate, so both are checked here, where they are setup errors the retry will not spend an attempt on.
+  const tools = strykerStatus();
+  if (!tools.ok) throw new VerifierSetupError(toolStatusMessage(tools));
+  if (projectPackageDir(projectDir, runner) === null) {
+    throw new VerifierSetupError(`${projectDir} has no ${runner} of its own — the project's tests are run by the project's runner (ADR-0088)`);
   }
 
   // Free, and the most useful thing the retry can be told, so it is computed before anything is spawned.
@@ -838,6 +760,8 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
   let pass_ok = false;
   let mutation: MutationResult | null = null;
   let stage_reached: Stage = "compile";
+  /** ADR-0088's per-run Stryker copy, if the mutation stage made one. Removed with the sandbox. */
+  let toolCleanup: (() => Promise<void>) | null = null;
 
   try {
     const candidatePath = join(sandbox, testFile);
@@ -947,13 +871,17 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
       const jestConfigPath = runner === "jest" && isResolvable("ts-jest", projectDir) ? jestConfigEntry(projectDir) : null;
       const shim = jestConfigPath !== null;
       if (shim) await writeFile(join(sandbox, SIDECREW_JEST_CONFIG), jestConfigShim(jestConfig, jestConfigPath), "utf8");
+      // ADR-0088: a per-run copy of sidecrew's pinned Stryker, linked to the project's own compiler and
+      // runner. Created outside the project and the sandbox, and removed however this stage ends.
+      const tool = await prepareStryker(projectDir, runner, { root: opts.sandboxRoot });
+      toolCleanup = tool.cleanup;
       await writeFile(join(sandbox, STRYKER_CONFIG), strykerConfig({
         tsconfig, concurrency: opts.concurrency, runner,
         jestConfig: shim ? SIDECREW_JEST_CONFIG : jestConfig,
         ignorePatterns,
-        plugins: strykerPluginPaths(projectDir, runner),
+        plugins: tool.plugins,
       }), "utf8");
-      const stryker = binary(projectDir, "stryker");
+      const stryker = { cmd: tool.bin, args: [] as string[] };
       const range = target.lineRange === undefined
         ? deriveLineRange(
           await readFile(join(projectDir, target.sourceFile), "utf8"), target.functionName, "typescript",
@@ -991,6 +919,7 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
       }
     }
   } finally {
+    if (toolCleanup !== null) await toolCleanup();
     if (opts.keepSandbox) process.stderr.write(`sidecrew: sandbox kept at ${sandbox}\n`);
     else await removeSandbox(sandbox);
   }

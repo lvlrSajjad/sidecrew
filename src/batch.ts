@@ -26,6 +26,7 @@
 //   * **A task that throws does not take the run with it.** A worker that goes away or a verifier that
 //     crashes is recorded as that task's last attempt and the queue keeps moving; a `VerifierSetupError`
 //     or a `PlanError` still stops everything, because those are true of every remaining task too.
+import { withIntactProject } from "./integrity.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { RESULTS_DIR } from "./bench.js";
@@ -444,7 +445,16 @@ const modelOfRun = (workers: WorkerEndpoint[], mem: Memory | null): ModelEntry =
   return modelForMachine(mem?.total_gb ?? 0) ?? entry(defaultKey());
 };
 
+/**
+ * Workload #1 over a whole plan — and the project is intact afterwards, checked rather than promised
+ * (ADR-0088). The fingerprint is taken before the first token and compared after the last verdict.
+ */
 export async function runBatch(planPath: string, opts: RunBatchOpts = {}): Promise<BatchResult> {
+  const { projectDir } = await loadPlan(planPath);
+  return withIntactProject(projectDir, () => runBatchUnchecked(planPath, opts), opts.onEvent);
+}
+
+async function runBatchUnchecked(planPath: string, opts: RunBatchOpts): Promise<BatchResult> {
   const say = opts.onEvent ?? (() => {});
   const loaded = await loadPlan(planPath);
 

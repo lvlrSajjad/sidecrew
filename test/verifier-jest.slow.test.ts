@@ -1,5 +1,5 @@
 // The Jest runner, for real: Stryker's jest-runner mutating the fixture. ADR-0028.
-// SIDECREW_SLOW=1 to include. Needs `npm install` in fixtures/jest-fixture.
+// SIDECREW_SLOW=1 to include. Needs `npm install` in fixtures/jest-fixture, for the project's own jest, and `sidecrew tools install` (ADR-0088).
 //
 // The fast tests cover the command and the config; what only a real run can answer is whether Stryker
 // can drive Jest at all on this project shape — which is the question the whole ADR exists for, and
@@ -76,11 +76,12 @@ describe("verifyTs with the jest runner", () => {
     },
   );
 
-  it("refuses a project with no runner plugin, as a setup error rather than a verdict", async () => {
+  it("refuses a project with no runner of its own, as a setup error rather than a verdict", async () => {
     // "your toolchain is missing" and "your test is bad" must never reach the retry loop wearing the
-    // same clothes. ts-fixture has the vitest plugin and not the jest one.
+    // same clothes. ts-fixture runs vitest and has no jest. The runner *plugin* is sidecrew's own now
+    // (ADR-0088), so what is missing is the project's jest, and that is what the refusal names.
     await expect(verifyTs(candidate("commonPrefix:boundary:0", "legitimate/boundary.test.ts"), {
       target: { projectDir: "fixtures/ts-fixture", sourceFile: "src/strings.ts", functionName: "commonPrefix", runner: "jest" },
-    })).rejects.toThrow(/@stryker-mutator\/jest-runner/);
+    })).rejects.toThrow(/no jest of its own/);
   });
 });
