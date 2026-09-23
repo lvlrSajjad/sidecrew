@@ -760,6 +760,14 @@ export const ChangePlan = z.object({
    * to reproduce `S₁₄ = 2/30` and every #2a rate taken before 22 Sep 2026.
    */
   demote_test_type_errors: z.boolean().default(true),
+  /**
+   * **ADR-0086 §6 option B, decided by the owner 23 Sep 2026, and the default.** On a symbol-scoped task,
+   * `compile_ok` asks about the **named declarations**: zero errors inside them after the change, and no
+   * more errors *outside* them in the same file than before. `"file"` is option A, the rule 14c was
+   * measured under: zero errors anywhere in the task's files. Set it to reproduce 14c's numbers.
+   * A whole-file task is always judged by the file, whatever this says.
+   */
+  symbol_gate: z.enum(["declaration", "file"]).default("declaration"),
   steps: z.array(ChangeStep).min(1),
 }).strict();
 export type ChangePlan = z.infer<typeof ChangePlan>;
@@ -945,14 +953,30 @@ const ChangeVerdictFields = z.object({
   compile_ok: z.boolean(),
   tests_ok: z.boolean(),
   confined: z.boolean(),
+  /**
+   * What `compile_ok` judged: the task's **file**s (the rule since ADR-0048), or, on a symbol task under
+   * ADR-0086 §6 option B, its named **declaration**s. Recorded so the schema can enforce whichever rule
+   * applied, and so two survival rates taken under different scopes cannot share a table cell unnoticed.
+   */
+  target_scope: z.enum(["file", "declaration"]).default("file"),
   files_touched: z.array(z.string()),
   errors: z.object({
     before: ErrorCounts,
     after: ErrorCounts,
     /** Files that have more errors after than before, and by how many. Empty is what `compile_ok` needs. */
     introduced: z.record(z.string(), NonNegInt),
-    /** The task's own files that still have errors, and how many. */
+    /**
+     * The task's own files that still have errors, and how many. Under `target_scope: "declaration"`
+     * these are errors **inside the named declarations** only (ADR-0086 §6 option B).
+     */
     remaining_in_target: z.record(z.string(), NonNegInt),
+    /**
+     * ADR-0086 §6 option B: per task file, the errors **outside** the named declarations, before and
+     * after. `compile_ok` needs `after <= before` for every entry. Comparing the file's total instead
+     * would pass a change that fixed two errors inside and broke one outside. Empty on a file-scoped
+     * verdict.
+     */
+    outside_target: z.record(z.string(), z.object({ before: NonNegInt, after: NonNegInt })).default({}),
     /** The compiler's own words, truncated. What a correction quotes (ADR-0044 §4 rule 1). */
     message: ErrorText.nullable(),
   }),
@@ -1125,7 +1149,17 @@ export const ChangeVerdict = ChangeVerdictFields.superRefine((v, ctx) => {
   const demotable = v.compiler_flags.length > 0;
   const blockingIntroduced = Object.keys(v.errors.introduced)
     .filter((f) => !(demotable && isTestArtefact(f)));
-  if (v.compile_ok && (Object.keys(v.errors.remaining_in_target).length > 0 || blockingIntroduced.length > 0)) {
+  // ADR-0086 §6 option B. Under a declaration scope, a task file is judged by what is *outside* its named
+  // declarations rather than by its total, so it is taken out of the `introduced` rule and checked here.
+  const scoped = v.target_scope === "declaration";
+  if (scoped && v.compile_ok) {
+    for (const [file, o] of Object.entries(v.errors.outside_target)) {
+      if (o.after > o.before) fail(["compile_ok"], `compile_ok requires no more errors outside the named declarations in ${file} than before (${o.after} > ${o.before})`);
+    }
+  }
+  const judgedOutside = new Set(scoped ? Object.keys(v.errors.outside_target) : []);
+  if (v.compile_ok && (Object.keys(v.errors.remaining_in_target).length > 0
+    || blockingIntroduced.filter((f) => !judgedOutside.has(f)).length > 0)) {
     fail(["compile_ok"], demotable
       ? "compile_ok requires zero errors in the task's files and none introduced in non-test source"
       : "compile_ok requires zero errors in the task's files and none introduced anywhere — a test-file error is demoted only under added strictness flags (ADR-0077 option B)");

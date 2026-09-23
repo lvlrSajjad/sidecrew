@@ -25,6 +25,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { run, wasTruncated } from "./exec.js";
 import { readMachineState } from "./doctor.js";
 import { checkConfinement, confinementMessage, isTestArtefact, observe } from "./confinement.js";
+import { declarationScope } from "./symbols.js";
 import {
   ChangeBaseline, ChangeVerdict, changeSurvives,
   type ChangeCandidate, type ChangeObservation, type ChangeStage, type ChangeTask, type ConfinementBreach,
@@ -523,6 +524,12 @@ export interface VerifyChangeOpts {
    * 22 Sep 2026 were taken without it. That is the only reason to turn it off.
    */
   demoteTestTypeErrors?: boolean;
+  /**
+   * ADR-0086 §6. `"declaration"` (the default, option B): a symbol task's `compile_ok` asks about its
+   * named declarations. `"file"` (option A): about its whole files, as 14c was measured. A whole-file
+   * task is judged by the file either way.
+   */
+  symbolGate?: "declaration" | "file";
 }
 
 /**
@@ -670,6 +677,8 @@ export async function verifyChange(
   let after: ErrorCounts = before;
   let errorMessage: string | null = null;
   let tests: ChangeVerdict["tests"] = null;
+  /** ADR-0086 §6 option B's counts, when this task is judged by its declarations. */
+  let scope: ReturnType<typeof declarationScope> = null;
   const timing_ms: { compile?: number; tests?: number } = {};
   const files_touched = candidate.edits
     .filter((e) => task.files.find((f) => f.path === e.path)?.source !== e.contents)
@@ -704,8 +713,16 @@ export async function verifyChange(
       after = tsc.errors;
       timing_ms.compile = tsc.ms;
 
-      const remaining = pick(after, targets);
       const introduced = introducedBy(before, after);
+      // ADR-0086 §6 option B: a symbol task is judged by its named declarations, unless the plan asked
+      // for 14c's file-scoped rule. `null` from `declarationScope` means a declaration could not be
+      // located, which is never satisfied.
+      if (task.symbols.length > 0 && (opts.symbolGate ?? "declaration") === "declaration") {
+        const contents = new Map(candidate.edits.map((e) => [toPosix(e.path), e.contents]));
+        scope = declarationScope(task, contents, tsc.message, after.by_file, projectDir) ?? { remaining: { [targets[0]!]: 1 }, outside: {} };
+      }
+      const remaining = scope?.remaining ?? pick(after, targets);
+      const worseOutside = Object.entries(scope?.outside ?? {}).filter(([, o]) => o.after > o.before);
 
       /**
        * **ADR-0077 option B, and it defaults on.** A type error the change introduced into a **test
@@ -743,9 +760,12 @@ export async function verifyChange(
       const demoteTestTypeErrors = (opts.demoteTestTypeErrors ?? true)
         && (opts.compilerFlags ?? []).length > 0;
       const introducedInTests = Object.entries(introduced).filter(([f]) => isTestArtefact(f));
-      const blocking = demoteTestTypeErrors
+      const judgedOutside = new Set(Object.keys(scope?.outside ?? {}));
+      const blocking = (demoteTestTypeErrors
         ? Object.entries(introduced).filter(([f]) => !isTestArtefact(f))
-        : Object.entries(introduced);
+        : Object.entries(introduced))
+        // Under option B a task file is judged by `worseOutside` instead of by its total.
+        .filter(([f]) => !judgedOutside.has(f));
       for (const [file, n] of (demoteTestTypeErrors ? introducedInTests : [])) {
         demoted.push({
           kind: "test_type_error_demoted",
@@ -754,7 +774,7 @@ export async function verifyChange(
         });
       }
 
-      compile_ok = Object.keys(remaining).length === 0 && blocking.length === 0;
+      compile_ok = Object.keys(remaining).length === 0 && blocking.length === 0 && worseOutside.length === 0;
       if (!compile_ok) {
         // ADR-0072: the task's own files and the ones that just gained an error — not the project's.
         // `tsc.message` is every diagnostic the compiler produced, and `truncateError` cuts it at
@@ -766,7 +786,10 @@ export async function verifyChange(
         problems.push(
           `tsc is not satisfied: ${Object.keys(remaining).length > 0
             ? `${Object.entries(remaining).map(([f, n]) => `${n} error(s) left in ${f}`).join(", ")}`
-            : "no errors left in the task's files"}` +
+            : scope !== null ? "no errors left in the named declarations" : "no errors left in the task's files"}` +
+          `${worseOutside.length > 0
+            ? `; ${worseOutside.map(([f, o]) => `${f} has ${o.after} error(s) outside the named declarations where it had ${o.before}`).join(", ")}`
+            : ""}` +
           `${blocking.length > 0
             ? `; ${blocking.map(([f, n]) => `${n} new error(s) in ${f}`).join(", ")}`
             : ""}` +
@@ -917,12 +940,14 @@ export async function verifyChange(
     compile_ok,
     tests_ok,
     confined,
+    target_scope: scope !== null ? "declaration" as const : "file" as const,
     files_touched,
     errors: {
       before,
       after,
       introduced: introducedBy(before, after),
-      remaining_in_target: pick(after, targets),
+      remaining_in_target: scope?.remaining ?? pick(after, targets),
+      outside_target: scope?.outside ?? {},
       message: errorMessage,
     },
     tests,

@@ -129,7 +129,7 @@ describe("shouldCorrect — the three refusals that keep §2.2 honest", () => {
     // ADR-0022 already proves a byte-identical retry is a wasted verdict against a deterministic worker,
     // and "try again" is what a note with no findings says.
     const empty = base({
-      errors: { before: { total: 0, by_file: {} }, after: { total: 0, by_file: {} }, introduced: {}, remaining_in_target: {}, message: null },
+      errors: { before: { total: 0, by_file: {} }, after: { total: 0, by_file: {} }, introduced: {}, remaining_in_target: {}, outside_target: {}, message: null },
       error: null,
     });
     expect(shouldCorrect(empty, budget(), nothing).write).toBe(false);

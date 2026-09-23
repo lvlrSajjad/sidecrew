@@ -140,6 +140,58 @@ describe.skipIf(!SLOW)("the 2a gate on fixtures/fix-fixture", () => {
     expect(Object.keys(verdict.errors.introduced)).toEqual(["test/report.test.ts"]);
   });
 
+  // ADR-0086 §6 option B through the real gate: `rates.ts` carries one planted error, inside `rateFor`.
+  describe("a symbol task judged by its declaration (ADR-0086 §6 B)", () => {
+    const symbolTask = (name: string): ChangeTask => {
+      const base = task(["src/rates.ts"]);
+      const located = locateSymbols(base.files, [{ file: "src/rates.ts", name }], captured.diagnostics, PROJECT);
+      if (!Array.isArray(located)) throw new Error(located.problem);
+      return ChangeTask.parse({ ...base, symbols: located });
+    };
+    const convertRefactor = read("src/rates.ts").replace(
+      "  return roundTo(amount * rateFor(rates, code), 2);",
+      "  const rate = rateFor(rates, code);\n  return roundTo(amount * rate, 2);",
+    );
+
+    it("passes a change to one declaration though another in the file still has its error", { timeout: 5 * MINUTES }, async () => {
+      const t = symbolTask("convert");
+      expect(t.symbols[0]!.errors).toBe(0);
+      const verdict = await verifyChange(t, candidate([{ path: "src/rates.ts", contents: convertRefactor }]), {
+        sandbox, baseline: captured.baseline, projectDir: PROJECT, runner: "vitest",
+      });
+      expect(verdict.target_scope).toBe("declaration");
+      expect(verdict.errors.outside_target["src/rates.ts"]).toEqual({ before: 1, after: 1 });
+      expect(verdict.compile_ok, verdict.error ?? "").toBe(true);
+      expect(verdict.survived, verdict.error ?? "").toBe(true);
+    });
+
+    it("refuses the same change under symbol_gate \"file\", 14c's rule", { timeout: 5 * MINUTES }, async () => {
+      const verdict = await verifyChange(symbolTask("convert"), candidate([{ path: "src/rates.ts", contents: convertRefactor }]), {
+        sandbox, baseline: captured.baseline, projectDir: PROJECT, runner: "vitest", symbolGate: "file",
+      });
+      expect(verdict.target_scope).toBe("file");
+      expect(verdict.compile_ok).toBe(false);
+    });
+
+    it("refuses a fix that clears its declaration by breaking a neighbour — B's control", { timeout: 5 * MINUTES }, async () => {
+      // Narrowing rateFor's parameter clears its own error and pushes one into convert, which calls it
+      // with `string | undefined`. The file's total does not rise; the outside count does.
+      const t = symbolTask("rateFor");
+      expect(t.symbols[0]!.errors).toBe(1);
+      const moved = read("src/rates.ts").replace(
+        "export function rateFor(rates: Record<string, number>, code: string | undefined): number {",
+        "export function rateFor(rates: Record<string, number>, code: string): number {",
+      );
+      const verdict = await verifyChange(t, candidate([{ path: "src/rates.ts", contents: moved }]), {
+        sandbox, baseline: captured.baseline, projectDir: PROJECT, runner: "vitest",
+      });
+      expect(verdict.errors.remaining_in_target).toEqual({});
+      expect(verdict.errors.outside_target["src/rates.ts"]).toEqual({ before: 0, after: 1 });
+      expect(verdict.compile_ok).toBe(false);
+      expect(verdict.error).toContain("outside the named declarations");
+    });
+  });
+
   describe("the controls", () => {
     const controls = readdirSync(CONTROLS).filter((f) => f.endsWith(".json"))
       .map((f) => ({ name: basename(f, ".json"), ...JSON.parse(readFileSync(join(CONTROLS, f), "utf8")) as {

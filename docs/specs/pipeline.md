@@ -392,6 +392,7 @@ never going to be allowed to read as a green suite (ADR-0037, ADR-0048).
   "compiler_flags": [],
   "retry_regressions": true,
   "demote_test_type_errors": true,
+  "symbol_gate": "declaration",
   "steps": [
     {
       "name": "widen the accepted input types",
@@ -435,11 +436,16 @@ carrying `symbols` is **symbol-scoped** instead:
   (`symbols_overlap`), and the size clause applies to the declarations' text instead of the files':
   `symbols_too_large_to_rewrite`. **`files_too_large_to_rewrite` does not apply to a symbol task.**
   That is the whole reach gain. A 60-line method inside a 4,000-line service is a 60-line task.
-- **The gate is unchanged** (ADR-0086 §6, option A). `compile_ok` still wants zero errors in the task's
-  *files*, and the task may change nothing else in them. So a pre-existing error outside the named
-  declarations makes the task unsatisfiable, and the validator refuses it:
-  `pre_existing_error_outside_symbol`. Whether the target should become the declaration is open, and
-  it is the owner's call.
+- **`symbol_gate` decides what `compile_ok` asks of a symbol task** (ADR-0086 §6). The default,
+  `"declaration"` (option B, the owner's decision, 23 Sep 2026): **zero errors inside the named
+  declarations after the change, and no more errors outside them in the same file than before.** The
+  verdict says so in `target_scope: "declaration"` and records the outside counts in
+  `errors.outside_target`, and the schema refuses a `compile_ok` either one contradicts. It compares
+  *outside before* with *outside after*, never the file's totals: fixing two errors inside and breaking
+  one outside lowers the total, and it is still a change that made the file worse. `"file"` (option A,
+  14c's rule) wants zero errors anywhere in the task's files, and there the validator refuses an error
+  outside the declarations up front, as `pre_existing_error_outside_symbol`. A whole-file task is
+  always judged by its files.
 
 ### `demote_test_type_errors` — ADR-0077 option B, on by default
 
@@ -666,12 +672,14 @@ survival rate that quietly stopped having a denominator.
   "compile_ok": true,
   "tests_ok": true,
   "confined": true,
+  "target_scope": "file",
   "files_touched": ["src/totals.ts"],
   "errors": {
     "before": { "total": 7, "by_file": { "src/totals.ts": 4, "src/report.ts": 3 } },
     "after": { "total": 3, "by_file": { "src/report.ts": 3 } },
     "introduced": {},
     "remaining_in_target": {},
+    "outside_target": {},
     "message": null
   },
   "tests": { "reported": true, "ran_before": 12, "ran_after": 12, "passed_before": 12, "passed_after": 12, "regressed": [], "message": null, "first_reading": null },

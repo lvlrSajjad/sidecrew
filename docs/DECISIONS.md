@@ -6374,6 +6374,19 @@ of A is expected to be small. That is an estimate, and the validator's refusal c
 **Decided: A**, by the owner on 22 Sep 2026, on that recommendation. B stays open, to be decided on its
 own measurement once 14c's number exists.
 
+**Revised, 23 Sep 2026, by the owner: B, and it is the default.** 14c's number exists, and it showed
+that A makes the next experiment impossible rather than merely harder. `14c′` hands the worker one
+declaration at a time (ADR-0087), and under A that task fails whenever the file has an error in any
+*other* declaration, however correct the fix. So the rule that measured 14c is kept as
+`symbol_gate: "file"`, which reproduces 14c exactly, and B is `"declaration"`, the default. **What B
+keeps as strict as A:** the project's tests must pass; confinement is unchanged, with no reaching outside
+the declaration, no `any`, no suppressions and no deletions; and **nothing in the file may get worse**.
+That is enforced by comparing the errors *outside* the declarations before and after, never the file's
+total, because a total can fall while the file gets worse. `ChangeVerdict` records `target_scope` and
+`errors.outside_target`, and the schema refuses a `compile_ok` either contradicts. B's control, run
+through the real gate on the fixture: a fix that clears its own declaration by narrowing a parameter
+that a neighbour calls is **refused** (`outside 0 → 1`).
+
 ---
 
 ## ADR-0087 — Phase 14c's fork: INSERT `14c′`, and what the funnel says the insert is for
@@ -6411,6 +6424,15 @@ but the tool does not yet change what it reaches at a usable rate, and a version
 re-measured on the same 27 tasks decomposed, with its exit check frozen before it runs), and **`v0.2.0` is
 held** until a phase shows the reached code being changed at a usable rate. C stays second in line; B stays
 open.
+
+**Amended, 23 Sep 2026 — per declaration, not per error, and why A as first written could not run.**
+Splitting into *one error per task* conflicts with ADR-0086 §6 option A, where `compile_ok` wants zero
+errors anywhere in the file. A task fixing one of a file's eight errors fails however right it is,
+and ordering the tasks in steps fails every step but the last. This was caught on reading the gate,
+before anything was built or run. **So `14c′`'s unit is one declaration per task** (the big arm has 55
+errors in 41 declarations, so it is nearly one error per task anyway), **under ADR-0086 §6 option B**,
+which the owner decided the same day. Both arms become symbol tasks, the small arm included, so they
+differ only in file size, which is 14c's question with change size held equal.
 
 ---
 

@@ -206,6 +206,47 @@ export function locateSymbols(
   return out;
 }
 
+/**
+ * ADR-0086 §6 option B: `compile_ok`'s counts for a symbol task, judged by its named declarations.
+ *
+ * - **inside**: errors on lines of the named declarations *as they are after the change*. They are
+ *   re-located in the new contents, because a fix that adds lines moves everything below it.
+ * - **outside**: the file's other errors, before and after. Before is the baseline's count for the file
+ *   minus the errors the task's own declarations carried; after is the new total minus inside.
+ *
+ * It compares outside-before with outside-after, never the file's totals: fixing two errors inside and
+ * breaking one outside lowers the total, and it is still a change that made the file worse.
+ *
+ * `null` when a named declaration cannot be located in the new contents. Confinement's
+ * `symbol_not_redeclared` refuses that case first, and the caller treats `null` as not satisfied.
+ */
+export function declarationScope(
+  task: ChangeTask,
+  contentsAfter: ReadonlyMap<string, string>,
+  diagnosticsAfter: string,
+  errorsAfterByFile: Readonly<Record<string, number>>,
+  projectDir?: string,
+): { remaining: Record<string, number>; outside: Record<string, { before: number; after: number }> } | null {
+  const remaining: Record<string, number> = {};
+  const outside: Record<string, { before: number; after: number }> = {};
+  for (const file of task.files) {
+    const mine = task.symbols.filter((s) => s.path === file.path);
+    if (mine.length === 0) continue;
+    const text = contentsAfter.get(file.path) ?? file.source;
+    const ranges: { from: number; to: number }[] = [];
+    for (const s of mine) {
+      const r = resolveSymbol(text, s.name, file.path, projectDir);
+      if (!r.ok) return null;
+      ranges.push({ from: lineAt(text, r.span.start), to: lineAt(text, r.span.end - 1) });
+    }
+    const inside = errorLines(diagnosticsAfter, file.path).filter((n) => ranges.some((x) => n >= x.from && n <= x.to)).length;
+    if (inside > 0) remaining[file.path] = inside;
+    const before = Math.max(0, file.errors - mine.reduce((n, s) => n + s.errors, 0));
+    outside[file.path] = { before, after: Math.max(0, (errorsAfterByFile[file.path] ?? 0) - inside) };
+  }
+  return { remaining, outside };
+}
+
 // ── the splice ────────────────────────────────────────────────────────────────────────────────────
 
 /**

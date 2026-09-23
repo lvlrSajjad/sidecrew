@@ -11,8 +11,8 @@ import { checkConfinement } from "../src/confinement.js";
 import { buildChangeTask, fixTokenBudget, parseSymbolEdits, readAnswer, type LoadedChangePlan } from "../src/fix.js";
 import { validateChangePlan } from "../src/fix-validate.js";
 import { changePromptText } from "../src/prompt.js";
-import { ChangeCandidate, ChangeTask, type ConfinementRule } from "../src/schemas.js";
-import { declarations, locateSymbols, resolveSymbol, spliceSymbols } from "../src/symbols.js";
+import { ChangeCandidate, ChangeTask, ChangeVerdict, type ConfinementRule } from "../src/schemas.js";
+import { declarations, declarationScope, locateSymbols, resolveSymbol, spliceSymbols } from "../src/symbols.js";
 
 const SERVICE = `import { Injectable } from "@nestjs/common";
 import { roundTo } from "./money";
@@ -272,5 +272,83 @@ describe("validateChangePlan on a symbol task", () => {
     expect(await codes([{ ...base, task_id: "m", symbols: [{ file: "big.ts", name: "Big.nope" }] }])).toEqual(["symbol_missing"]);
     expect(await codes([{ ...base, task_id: "o", symbols: [{ file: "big.ts", name: "Big" }, { file: "big.ts", name: "Big.small" }] }]))
       .toContain("symbols_overlap");
+  });
+});
+
+describe("declarationScope — ADR-0086 §6 option B", () => {
+  // Two declarations, one error each at the baseline: `rateFor` (line 5) and `convert` (line 9).
+  const SRC = `const rates: Record<string, number> = {};
+
+export function rateFor(code: string | undefined): number {
+  // the lookup
+  return rates[code] ?? 0;
+}
+
+export function convert(amount: number, code: string | undefined): number {
+  return amount * rates[code];
+}
+`;
+  const PATH_R = "src/r.ts";
+  const scoped = (names: string[]): ChangeTask => {
+    const t = task(names, SRC, PATH_R);
+    // The baseline: the file carried 2 errors, one inside each function.
+    return ChangeTask.parse({ ...t, files: [{ ...t.files[0]!, errors: 2 }], symbols: t.symbols.map((s) => ({ ...s, errors: 1 })) });
+  };
+
+  it("passes a fix to the named declaration though the file still has an error elsewhere", () => {
+    const after = SRC.replace("return rates[code] ?? 0;", "return code === undefined ? 0 : rates[code] ?? 0;");
+    const diag = `${PATH_R}(9,26): error TS2538: Type 'undefined' cannot be used as an index type.`;
+    const r = declarationScope(scoped(["rateFor"]), new Map([[PATH_R, after]]), diag, { [PATH_R]: 1 });
+    expect(r).toEqual({ remaining: {}, outside: { [PATH_R]: { before: 1, after: 1 } } });
+  });
+
+  it("finds the declaration again after the fix moved every line below it", () => {
+    const after = SRC.replace("  // the lookup\n", "  // the lookup\n  if (code === undefined) {\n    return 0;\n  }\n");
+    // convert is now at line 12, and its error with it; rateFor's own error is gone.
+    const diag = `${PATH_R}(12,26): error TS2538: Type 'undefined' cannot be used as an index type.`;
+    expect(declarationScope(scoped(["rateFor"]), new Map([[PATH_R, after]]), diag, { [PATH_R]: 1 })?.remaining).toEqual({});
+  });
+
+  it("sees a change that fixed inside and broke outside, although the file's total did not rise", () => {
+    // rateFor is fixed (inside 1 → 0) but its new signature breaks another call in convert: outside 1 → 2.
+    const diag = [`${PATH_R}(9,26): error TS2538: x`, `${PATH_R}(9,10): error TS2345: y`].join("\n");
+    const r = declarationScope(scoped(["rateFor"]), new Map([[PATH_R, SRC]]), diag, { [PATH_R]: 2 });
+    expect(r?.outside[PATH_R]).toEqual({ before: 1, after: 2 });
+  });
+
+  it("counts errors still inside the named declaration as remaining", () => {
+    const diag = `${PATH_R}(5,16): error TS2538: x\n${PATH_R}(9,26): error TS2538: y`;
+    expect(declarationScope(scoped(["rateFor"]), new Map(), diag, { [PATH_R]: 2 })?.remaining).toEqual({ [PATH_R]: 1 });
+  });
+
+  it("returns null when a named declaration is gone, which the gate never treats as satisfied", () => {
+    const after = SRC.replace("function rateFor(", "function lookup(");
+    expect(declarationScope(scoped(["rateFor"]), new Map([[PATH_R, after]]), "", {})).toBeNull();
+  });
+});
+
+describe("ChangeVerdict under a declaration scope", () => {
+  const verdict = (outside: { before: number; after: number }, remaining: Record<string, number> = {}) => ({
+    task_id: "t", stage_reached: "compile", survived: false, compile_ok: true, tests_ok: false, confined: true,
+    target_scope: "declaration", files_touched: ["src/r.ts"],
+    errors: {
+      before: { total: 2, by_file: { "src/r.ts": 2 } }, after: { total: outside.after, by_file: { "src/r.ts": outside.after } },
+      introduced: {}, remaining_in_target: remaining, outside_target: { "src/r.ts": outside }, message: null,
+    },
+    tests: null, confinement: [], observations: [], refused: null, error: null, timing_ms: {}, compiler_flags: [],
+  });
+
+  it("accepts compile_ok with the file still carrying its other errors, no worse than before", () => {
+    expect(ChangeVerdict.safeParse(verdict({ before: 1, after: 1 })).success).toBe(true);
+  });
+
+  it("refuses compile_ok when the file got worse outside the declaration", () => {
+    const r = ChangeVerdict.safeParse(verdict({ before: 1, after: 2 }));
+    expect(r.success).toBe(false);
+    expect(JSON.stringify(r.error?.issues)).toContain("outside the named declarations");
+  });
+
+  it("refuses compile_ok with an error still inside the declaration", () => {
+    expect(ChangeVerdict.safeParse(verdict({ before: 1, after: 1 }, { "src/r.ts": 1 })).success).toBe(false);
   });
 });

@@ -775,6 +775,8 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
   // field independently is four chances for one of them to be the one that differs.
   const retryRegressions = plan.retry_regressions;
   const demoteTestTypeErrors = plan.demote_test_type_errors;
+  // ADR-0086 §6: read once, like the other gate settings, so no call site can be the one that differs.
+  const symbolGate = plan.symbol_gate;
 
 
   const dir = opts.dir ?? sidecrewDir();
@@ -983,7 +985,7 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
 
             const gateStart = performance.now();
             const verdict = await verifyChange(current, candidate, {
-              sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions, demoteTestTypeErrors,
+              sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions, demoteTestTypeErrors, symbolGate,
               timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
             });
             gate_ms += performance.now() - gateStart;
@@ -1047,7 +1049,7 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
 
                 const g2 = performance.now();
                 const v2 = await verifyChange(corrected, c2, {
-                  sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions, demoteTestTypeErrors,
+                  sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions, demoteTestTypeErrors, symbolGate,
                   timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
                 });
                 gate_ms += performance.now() - g2;

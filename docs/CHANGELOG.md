@@ -1,6 +1,14 @@
 # Changelog
 ## Unreleased
 
+**ADR-0086 §6 option B is built and is the default: a symbol task is judged by its declaration.**
+`compile_ok` on a symbol task now means zero errors inside the named declarations and no more errors
+*outside* them in the file than before. The tests must still pass and confinement is unchanged.
+`symbol_gate: "file"` reproduces 14c's rule. The verdict records `target_scope` and `outside_target`,
+and the schema enforces them. Its control through the real gate: a fix that clears its own declaration
+by breaking a neighbour is refused. Also: `14c′` splits per declaration, not per error, because
+per-error tasks cannot pass a file-scoped gate (ADR-0087 amendment).
+
 **ADR-0088 is built: sidecrew brings its own Stryker, and a project is byte-for-byte intact after every
 job.** `sidecrew tools install` puts a pinned Stryker 8.7.1 (~62 MB) into `~/.sidecrew/tools`, never into
 a project. Each mutation run uses a throwaway copy-on-write copy of it, linked to the project's own

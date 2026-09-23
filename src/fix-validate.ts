@@ -359,24 +359,31 @@ export async function validateChangePlan(planPath: string, opts: ValidateChangeO
           const errorful = task.files.map(toPosix).filter((f) => (byFile[f] ?? 0) > 0);
           const lines = symbolLines.get(task.task_id);
           const easy = task.shape === "rename" || task.shape === "unused_import" || task.shape === "dead_code";
-          if (lines !== undefined && !easy) {
-            // ADR-0086 §6, option A: `compile_ok` still counts errors in the task's *files*, and a symbol
-            // task may not touch the rest of its file. So an error outside the named declarations is a
-            // wall no worker can climb, and it is refused here rather than discovered at 262 s a try.
+          if (lines !== undefined) {
+            // A symbol task. Under ADR-0086 §6 option B (the default) only the errors *inside* its
+            // declarations are the task's; under option A (`symbol_gate: "file"`, 14c's rule) an error
+            // anywhere else in the file is a wall no worker can climb, and it is refused here rather
+            // than discovered at 262 s a try.
             let inside = 0;
             for (const f of errorful) {
               const at = errorLines(run.message, f);
               const mine = lines.filter((l) => l.path === f);
               const within = at.filter((n) => mine.some((l) => n >= l.from && n <= l.to)).length;
               inside += within;
-              if (at.length - within > 0) {
+              if (plan.symbol_gate === "file" && at.length - within > 0) {
                 refuse(task.task_id, "pre_existing_error_outside_symbol",
-                  `${f} has ${at.length - within} tsc error(s) outside the named declaration(s), and compile_ok ` +
-                  "requires zero in the task's files while a symbol task may change nothing else in them — no " +
-                  "worker can pass this. Name the declarations those errors are in too (ADR-0086 §6)");
+                  `${f} has ${at.length - within} tsc error(s) outside the named declaration(s), and under ` +
+                  "symbol_gate \"file\" compile_ok requires zero in the task's files while a symbol task may " +
+                  "change nothing else in them. Name those declarations too, or use the default " +
+                  "symbol_gate \"declaration\" (ADR-0086 §6)");
+              }
+              if (easy && within > 0) {
+                refuse(task.task_id, "pre_existing_error",
+                  `${f} has ${within} tsc error(s) inside the named declaration(s) and this ${task.shape} ask does ` +
+                  "not cover them — compile_ok requires zero there (ADR-0048, ADR-0050 option C, ADR-0086 §6)");
               }
             }
-            if (inside === 0) {
+            if (!easy && inside === 0) {
               warnings.push(issue("nothing_to_fix",
                 `no named declaration has a tsc error, and a ${task.shape} ask usually exists to clear one — ` +
                 "the only candidate that can survive is no_edit_at_all, which the gate refuses", task.task_id));
