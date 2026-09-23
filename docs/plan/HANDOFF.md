@@ -32,7 +32,7 @@ which cannot be retracted (ADR-0051).
 
 **ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
-**Next: Phase 14c′ — PREPARED, NOT RUN. The owner says when it runs.** (23 Sep)
+**Phase 14c′ — LAUNCHED 23 Sep 22:14 on the owner's go; it sleeps until 02:05 and then runs.** Log: `experiments/reach/results/run-prime.log`. If it died: relaunch the same command before 02:00 only if it never started; a run that died mid-way is restarted after the next 02:00, never resumed across it (ADR-0069). Never re-plan.
 
 - ADR-0086 §6 **option B built and the default** (`symbol_gate: "declaration"`): a symbol task is judged
   by its declaration, and nothing outside it may get worse.
