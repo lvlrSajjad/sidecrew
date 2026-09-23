@@ -6416,8 +6416,8 @@ open.
 
 ## ADR-0088 — sidecrew brings its own tools, and leaves the project exactly as it found it
 
-**Status:** **the principle is decided by the owner, 23 Sep 2026** · the mechanism is **PROPOSED** and
-needs one spike before it is built · amends `CLAUDE.md` § *Shape* · supersedes the *"a devDependency
+**Status:** **the principle is decided by the owner, 23 Sep 2026** · the mechanism is **decided by the spike** (23 Sep,
+below) and not yet built · amends `CLAUDE.md` § *Shape* · supersedes the *"a devDependency
 in a client repo"* option in HANDOFF
 
 ### The owner's rule
@@ -6488,3 +6488,39 @@ is also the testbed, and which moved 50 commits in one ordinary day (HANDOFF §5
 
 Together, a job cannot change the project, and a measurement cannot even disturb the checkout the
 owner is working in.
+
+### Spike result, 23 Sep 2026 — the mechanism works, and one trap decides its shape
+
+Measured on a local clone of project-a at `1d79d903f9`, which has no Stryker installed, with the
+verifier's own `strykerConfig` and `jestConfigShim` changed in one respect only: the binary and the
+plugins came from `~/.sidecrew/tools/stryker-8.7.1`.
+
+| | |
+|---|---|
+| mutants on a 19-line file, driven through its own 78-line spec | **7 killed, 1 CompileError, 0 NoCoverage** — the project's tests found, and the type checker ran |
+| wall clock | **64 s** |
+| the owner's working checkout, fingerprinted before and after | **byte-for-byte identical**: HEAD, status, `package.json`, `yarn.lock`, `node_modules` top level and `.bin`, mtime |
+| the clone's `package.json`, `yarn.lock`, `node_modules` | unchanged; no Stryker package ever entered it |
+| the cache | 183 packages, **62 MB** |
+
+**The trap: npm installs peer dependencies.** The first install put **`typescript` 7.0.2** (the Go port,
+which has no JavaScript API) and **`vitest` 4.1.11** into the cache. Stryker then resolved *those*,
+not the project's. The first failure was loud (`ts.parseConfigFileTextToJson is not a function`). The
+vitest one would have been silent, because a vitest-runner verdict would have come from a vitest the
+project does not use. **That is a wrong-verdict failure, the kind this project stops for.** It decides
+the mechanism:
+
+1. **The cache carries no compiler and no test runner.** Installed with `legacy-peer-deps=true`, recorded
+   in the cache's own `.npmrc`. A test asserts none of `typescript`, `jest`, `vitest`, `ts-jest` is in it.
+2. **Each run gets an APFS clone of the cache** (`cp -c`, instant, outside the project), in which
+   `typescript`, `jest` and `vitest` are **symlinks to the project's own**. Resolution then climbs from
+   the clone's real path to the project's tools. It needs no `--preserve-symlinks`, no `NODE_PATH`,
+   and no write to the project.
+3. **Pass only the plugins the runner needs.** The `@stryker-mutator/*` glob loads the other runner too,
+   and warns it cannot find its framework.
+4. **The integrity fingerprint must cover every lockfile format.** project-a uses `yarn.lock`, and a
+   check hard-coded to `package-lock.json` would have fingerprinted nothing.
+
+The pin stays **8.7.1** (ADR-0030: 10.x fails to load with `ERR_REQUIRE_ESM`). **The mechanism is
+decided by this measurement; building it into `verifier/ts.ts`, `doctor` and a `sidecrew tools` install
+step is the next piece of work.**

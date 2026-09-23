@@ -191,7 +191,7 @@ not a queue.** These are the live options:
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
 | **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
 | **D** | ~~Decide ADR-0082 in principle~~ **ACCEPTED 23 Sep, as test-first development** (ADR-0082 addendum) | done | — |
-| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **ADR-0088 first**: sidecrew provides its own pinned Stryker from a tool cache and leaves the project intact (owner's rule, 23 Sep). A devDependency in a client repo is **off the table**. One spike, then build, then D |
+| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **ADR-0088 first**: sidecrew provides its own pinned Stryker from a tool cache and leaves the project intact (owner's rule, 23 Sep). A devDependency in a client repo is **off the table**. **Spike DONE 23 Sep: works (7 killed, 0 NoCoverage, checkout identical)**; build it, then D |
 | **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
 
 **The owner's sequencing, 22 Sep: ADR-0084 first, then 14c — done, so 14c (A) is the next build.**
