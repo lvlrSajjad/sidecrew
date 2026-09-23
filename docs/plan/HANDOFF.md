@@ -32,9 +32,18 @@ which cannot be retracted (ADR-0051).
 
 **ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
-**Next: Phase 14c′.** Freeze its exit check first, in `prompts/phase-14c-prime.md`, before
-decomposing a single task. Then decompose the 27 declared tasks mechanically, one `tsc` error per
-task, ordered in steps, and run it the same way `scripts/reach-run.sh` did: after 02:05 local, 7B × 2.
+**Next: Phase 14c′ — PREPARED, NOT RUN. The owner says when it runs.** (23 Sep)
+
+- ADR-0086 §6 **option B built and the default** (`symbol_gate: "declaration"`): a symbol task is judged
+  by its declaration, and nothing outside it may get worse.
+- Exit check **frozen**: `prompts/phase-14c-prime.md`. Task set declared: **83 tasks (41 big / 42
+  small)**, 6 steps, validated with no refusals, plan sha256 `a8f889a4…`
+  (`results/task-set-prime-*.json`).
+- It runs on a **pinned clone** at `1d79d903f9` under `~/.sidecrew/clones/`. The working checkout has
+  moved 36 commits since and is never touched. Delete the clone after the run.
+- **Launch**, when told: `TAG=prime WATCH=<working checkout> PLAN=experiments/reach/plans/project-a-2026-09-23-prime/change_plan.json EXPECT_SHA=a8f889a49ae96a3977ba0ddd2147fc0b34d9a3af41078cee2bb070f2a0703fa2 caffeinate -dims scripts/reach-run.sh`.
+  It waits for 02:05 unless `START_AFTER` is set to a time that keeps the run clear of 02:00; the
+  estimate is 2.5–4.5 h. Then run `python3 scripts/results-14c-prime.py <newest run dir> <plan>`.
 
 Where everything is: `experiments/reach/README.md` §1–§4 (census, the `Reach` definition, the task set
 and its two dated amendments, the result). Plans and refused lists are gitignored under
