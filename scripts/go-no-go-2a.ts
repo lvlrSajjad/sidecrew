@@ -86,8 +86,8 @@ const INPUTS: Record<InputId, InputSpec> = {
 // destroying the timestamp that identifies the run. Redaction must remove the name without
 // destroying the structure around it, because other things join on that structure.
 const REDACTIONS: [RegExp, string][] = [
-  [/\/Users\/[\w.-]+\/Coding\/ET\/WEB_API\/project-a/gi, "<project-a>"],
-  [/\/Users\/[\w.-]+\/Coding\/ET\/WEB_API\/project-b/gi, "<project-b>"],
+  [/\/Users\/[\w.-]+\/Coding\/[^/\s]+\/[^/\s]+\/project-a/gi, "<project-a>"],
+  [/\/Users\/[\w.-]+\/Coding\/[^/\s]+\/[^/\s]+\/project-b/gi, "<project-b>"],
   [/project-a/gi, "project-a"],
   [/project-b/gi, "project-b"],
   [/the-client|eztrak|the-client/gi, "project"],

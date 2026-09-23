@@ -543,7 +543,7 @@ because each is a contract, prompt or tooling change, not a sandbox rule.
   things have to be right and only one of them is `exportStyleFor`.
 - **`scripts/planner-tokens.mjs` cannot produce `meta.planner_tokens`, twice over.** (a) its slug is
   `dir.replace(/\//g, "-")` and does not map `_` to `-`, so it exits ENOENT on any path with an
-  underscore — `…/WEB_API/project-a` is one. (b) patched, it undercounts a subagent planner ~5× because
+  underscore — project-a's checkout sits under one. (b) patched, it undercounts a subagent planner ~5× because
   subagent messages are not in the main transcript (zero `isSidechain` entries). This is the one number
   `docs/specs/pipeline.md` says sidecrew cannot measure for itself, and on the one project where somebody
   tried, the shipped tool could not supply it.

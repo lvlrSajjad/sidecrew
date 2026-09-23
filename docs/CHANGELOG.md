@@ -1,6 +1,10 @@
 # Changelog
 ## Unreleased
 
+**Owner decisions, 23 Sep:** `14c′` is ADR-0087 A (one error per task), and `v0.2.0` is held. The parent
+folder name of the client checkouts is redacted from the tree: two prose mentions and a redaction regex
+that now matches any parent folders.
+
 **Phase 14c measured: `Reach` 0.519 → 0.911 on project-a, and the frozen rule says INSERT `14c′`.**
 `S_big` 0/9 `[0.000, 0.336]` against `S_small` 1/18 `[0.001, 0.273]`. The intervals overlap almost
 entirely, so it is a direction, not a result. The funnel says why: the worker clears the same share of

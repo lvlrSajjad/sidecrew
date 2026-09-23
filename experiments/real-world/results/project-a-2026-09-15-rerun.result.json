@@ -215,7 +215,7 @@
       "host_rationale": "the clock-reading function, so the exemplar demonstrates jest.useFakeTimers({now}); notes never reaches the worker"
     },
     "planner_tokens_mjs_defects": [
-      "slug is dir.replace(/\\//g,'-') and does not map '_' to '-', so it exits ENOENT on any project path containing an underscore (this project: WEB_API)",
+      "slug is dir.replace(/\\//g,'-') and does not map '_' to '-', so it exits ENOENT on any project path containing an underscore (this project's parent directory has one)",
       "with the slug patched it reports 27,640 excluding cache reads over 6 messages — the subagent's messages are not in the main transcript (0 isSidechain entries), undercounting a subagent planner ~5x"
     ],
     "meta_planner_tokens_written": 0

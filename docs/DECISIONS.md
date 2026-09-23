@@ -6347,7 +6347,8 @@ own measurement once 14c's number exists.
 ## ADR-0087 — Phase 14c's fork: INSERT `14c′`, and what the funnel says the insert is for
 
 **Status:** **applied as written**, 23 Sep 2026 · the frozen rule (`prompts/phase-14c-the-reach.md` §3)
-decided it, not this ADR · **what `14c′` contains is PROPOSED and needs the owner**
+decided it, not this ADR · **`14c′`'s content decided by the owner, 23 Sep 2026: option A** · **`v0.2.0`
+held**, by the owner the same day
 
 **Measured:** `Reach` 0.519 → **0.911** on project-a. `S_big` **0/9** `[0.000, 0.336]`, `S_small`
 **1/18** `[0.001, 0.273]`. `0 < 0.75 × 0.056`, so the rule says **INSERT `14c′`**. The intervals overlap
@@ -6373,3 +6374,8 @@ of 2–8 errors behind. So the file's size stopped mattering, and the change's s
 runs, like every rule here. **Not cutting `v0.2.0` yet** is also a recommendation: the reach is real,
 but the tool does not yet change what it reaches at a usable rate, and a version whose headline is
 "doubles what it can touch" would be claiming the first half of that without the second.
+
+**Decided, 23 Sep 2026, by the owner, on both recommendations:** `14c′` is **A** (one error per task,
+re-measured on the same 27 tasks decomposed, with its exit check frozen before it runs), and **`v0.2.0` is
+held** until a phase shows the reached code being changed at a usable rate. C stays second in line; B stays
+open.

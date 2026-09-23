@@ -25,13 +25,14 @@ Nothing is running. Workers stopped, sandboxes swept, both trees clean. **Nothin
 | why, descriptively | the share of errors cleared is **0.304 vs 0.307**. The file's size stopped mattering; the change's size binds |
 | instrument | the splice broke nothing: 0 syntax errors in 53 verdicts, 0 unparsed, 0 truncated |
 
-**Waiting on the owner, in this order:**
-1. **What `14c′` is** — ADR-0087 proposes A (one error per task, re-measured on the same 27 tasks
-   decomposed, rule frozen first), then C (sibling signatures in the prompt), then B.
-2. **`v0.2.0`** — PHASES said to cut it at 14c. The recommendation is **hold**: the reach is real, the
-   rate on what it reaches is not yet usable.
-3. **Push** the 10 commits since `6678814`. They have been blob-scanned per commit. Re-scan before
-   pushing, as always.
+**Decided by the owner, 23 Sep:** `14c′` is ADR-0087 **A** (one error per task, the same 27 tasks
+decomposed); **`v0.2.0` is held**; the 10 commits are **pushed**, and the parent-folder name that two
+tracked files and a redaction regex carried is redacted from the tree. It stays in the pushed history,
+which cannot be retracted (ADR-0051).
+
+**Next: Phase 14c′.** Freeze its exit check first, in `prompts/phase-14c-prime.md`, before
+decomposing a single task. Then decompose the 27 declared tasks mechanically, one `tsc` error per
+task, ordered in steps, and run it the same way `scripts/reach-run.sh` did: after 02:05 local, 7B × 2.
 
 Where everything is: `experiments/reach/README.md` §1–§4 (census, the `Reach` definition, the task set
 and its two dated amendments, the result). Plans and refused lists are gitignored under
@@ -53,8 +54,8 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c DONE 23 Sep → `14c′` inserted (ADR-0087), content needs the owner.** *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0087**; start new ones at 0088. **ADR-0087 (`14c′`'s content) needs the owner first.** ADR-0086 §6 decided: A. Also **0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
+| next phase | **14c DONE 23 Sep → `14c′` inserted and decided: ADR-0087 A. Freeze its exit check first.** *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
+| ADRs | run to **0087**; start new ones at 0088. ADR-0087 decided (A, `v0.2.0` held). ADR-0086 §6 decided: A. Also **0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
