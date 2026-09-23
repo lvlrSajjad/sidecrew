@@ -1,0 +1,33 @@
+{
+  "measured": true,
+  "kind": "reach-task-set-prime",
+  "phase": "14c′",
+  "declared_at": "2026-09-23T12:47:55.529Z",
+  "rule": "docs/plan/prompts/phase-14c-prime.md §1",
+  "from_plan_sha256": "8a228fd7d6366f7300ccce8b38e40172d6cfe7b632c144346df39eb755ca9559",
+  "files": {
+    "big": 9,
+    "small": 18
+  },
+  "tasks": {
+    "big": 41,
+    "small": 42,
+    "total": 83
+  },
+  "steps": 6,
+  "errors_covered": 165,
+  "errors_dropped_outside_any_declaration": 0,
+  "gate": {
+    "symbol_gate": "declaration",
+    "retry_regressions": true,
+    "demote_test_type_errors": true,
+    "compiler_flags": [
+      "--strictNullChecks"
+    ],
+    "correction": false
+  },
+  "plan_sha256": "a8f889a49ae96a3977ba0ddd2147fc0b34d9a3af41078cee2bb070f2a0703fa2",
+  "project_commit": "1d79d903f9c743aa58d2063e98055325a5ef7858",
+  "project_dirty": false,
+  "sidecrew_commit": "5c9bb0b69e5ced61fed7473db59ffb805d522c6d"
+}

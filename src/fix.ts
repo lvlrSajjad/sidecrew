@@ -1208,6 +1208,9 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
     if (!opts.dryRun && first !== null) {
       const timeouts = { ...DEFAULT_CHANGE_TIMEOUTS, ...opts.timeouts };
       const final = await typecheck(sandbox, projectDir, tsconfig, timeouts.compile, compilerFlags);
+      // Per file, beside the run's first baseline (`baselines/0.json`), so "did any file end worse than
+      // it started" can be read from disk. `FixResult` keeps the total only; this is the record under it.
+      await writeJson(join(runDir, "combined-errors.json"), final.errors);
       for (let i = 0; i < stepRows.length; i += 1) {
         stepRows[i]!.errors_after = i + 1 < stepRows.length ? stepRows[i + 1]!.errors_before : final.errors.total;
       }

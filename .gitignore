@@ -86,3 +86,5 @@ experiments/reach/plans/
 # The run log prints sandbox paths and a run id built from the project directory name.
 experiments/reach/results/*.log
 experiments/reach/results/*-report.json
+# The working checkout's fingerprints: hashes plus its HEAD, which is only a commit id but is local state.
+experiments/reach/results/watch-*.txt

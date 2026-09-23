@@ -19,7 +19,12 @@ cd "$(dirname "$0")/.." || exit 1
 PLAN="${PLAN:-experiments/reach/plans/project-a-2026-09-22/change_plan.json}"
 EXPECT_SHA="${EXPECT_SHA:-}"
 RESULTS=experiments/reach/results
-LOG=$RESULTS/run.log
+TAG="${TAG:-}"                 # e.g. TAG=prime for 14c′, so 14c's logs are not overwritten
+LOG=$RESULTS/run${TAG:+-$TAG}.log
+REPORT=$RESULTS/run${TAG:+-$TAG}-report.json
+# ADR-0088's addendum: a measurement runs on a pinned clone, and the owner's working checkout must not
+# notice it at all. WATCH names that checkout; it is fingerprinted before and after, and only read.
+WATCH="${WATCH:-}"
 MODEL=qwen2.5-coder-7b-4bit
 START_AFTER="${START_AFTER:-02:05}"
 
@@ -59,6 +64,13 @@ if [ -n "$(git -C "$PROJECT" status --porcelain)" ]; then
 fi
 say "sidecrew $(git rev-parse HEAD) · project $(git -C "$PROJECT" rev-parse HEAD)"
 
+fingerprint () {
+  ( cd "$1" && git rev-parse HEAD; git status --porcelain --untracked-files=all | shasum -a 256
+    for f in package.json package-lock.json yarn.lock pnpm-lock.yaml; do [ -f "$f" ] && shasum -a 256 "$f"; done
+    ls -A node_modules | shasum -a 256; ls -A node_modules/.bin | shasum -a 256 ) 2>/dev/null
+}
+[ -n "$WATCH" ] && fingerprint "$WATCH" > "$RESULTS/watch-before${TAG:+-$TAG}.txt" && say "working checkout fingerprinted (it is only read)"
+
 # ── wait for the boundary to pass ────────────────────────────────────────────────────────────────
 now=$(date +%s)
 target=$(date -j -f "%Y-%m-%d %H:%M" "$(date +%Y-%m-%d) $START_AFTER" +%s)
@@ -93,5 +105,13 @@ say "both workers up"
 say "── 14c: the declared task set, concurrency 2, correction off, gate at its defaults ──"
 node dist/cli.js fix "$PLAN" --concurrency 2 >> "$LOG" 2>&1
 say "fix exited $?"
-node dist/cli.js fix --report --json > "$RESULTS/run-report.json" 2>&1
-say "DONE — report in $RESULTS/run-report.json (gitignored: it carries the run id)"
+node dist/cli.js fix --report --json > "$REPORT" 2>&1
+if [ -n "$WATCH" ]; then
+  fingerprint "$WATCH" > "$RESULTS/watch-after${TAG:+-$TAG}.txt"
+  if cmp -s "$RESULTS/watch-before${TAG:+-$TAG}.txt" "$RESULTS/watch-after${TAG:+-$TAG}.txt"; then
+    say "working checkout: IDENTICAL before and after (ADR-0088)"
+  else
+    say "working checkout: CHANGED during the run — ADR-0088 breach, or the owner worked in it meanwhile; see watch-*.txt"
+  fi
+fi
+say "DONE — report in $REPORT (gitignored: it carries the run id)"
