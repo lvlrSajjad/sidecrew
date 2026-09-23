@@ -6411,3 +6411,63 @@ but the tool does not yet change what it reaches at a usable rate, and a version
 re-measured on the same 27 tasks decomposed, with its exit check frozen before it runs), and **`v0.2.0` is
 held** until a phase shows the reached code being changed at a usable rate. C stays second in line; B stays
 open.
+
+---
+
+## ADR-0088 — sidecrew brings its own tools, and leaves the project exactly as it found it
+
+**Status:** **the principle is decided by the owner, 23 Sep 2026** · the mechanism is **PROPOSED** and
+needs one spike before it is built · amends `CLAUDE.md` § *Shape* · supersedes the *"a devDependency
+in a client repo"* option in HANDOFF
+
+### The owner's rule
+
+> *We must be project agnostic. If we install Stryker because projects use it — maybe a project
+> doesn't. If we use it because it is our best option, okay, but after the job the project must be
+> intact.*
+
+Two rules, and each one retires something that exists today:
+
+1. **A capability sidecrew's gate needs is sidecrew's to provide, not the project's.** Today the
+   verifier loads `@stryker-mutator/*` from the **project's** `node_modules`, and `doctor` reports it
+   `MISSING` if the project does not have it. So workload #1's gate works only on projects that
+   already chose Stryker, and that is a property of the project, not of sidecrew. The 15 Sep trials
+   worked around this by adding it to a throwaway branch of each client repo. That is now off the
+   table.
+2. **The project is intact after the job, and that is checked by a machine, not promised.** Its git
+   status, its `package.json` and lockfile, and its `node_modules` are the same before and after, and a
+   run that finds otherwise fails loudly.
+
+### Why "into the sandbox" is not the answer
+
+The verifier's sandbox is a copy of the project, **but its `node_modules` is a symlink to the
+project's own** (`verifier/ts.ts`, ADR-0034). An `npm install` inside the sandbox writes into the
+project, which is the one thing rule 2 forbids. So the tool has to live entirely outside both.
+
+### Proposed mechanism
+
+- **A pinned tool cache owned by sidecrew**, e.g. `~/.sidecrew/tools/stryker-<version>/`. Stryker and
+  the runner plugins are pinned by exact version and lockfile, the way `models.json` pins model
+  revisions. They are installed there once, on first need, after asking the user, and never into a
+  project.
+- **Stryker runs from the cache, with its cwd in the sandbox.** Plugins are passed by absolute path,
+  which ADR-0036 already supports. The project's own `jest`/`vitest` and `typescript` are still the
+  project's. Those are the project's test runner and compiler, and using them is what makes a verdict
+  about *this* project.
+- **A project that already has Stryker** still uses sidecrew's pinned one, so the same numbers come
+  from the same tool everywhere. `doctor` reports both.
+- **The integrity check** (rule 2) wraps every `run` and `fix`: a fingerprint of the project's
+  `git status --porcelain`, `package.json`, the lockfile and `node_modules`' top level, taken before and
+  after, and compared.
+- **The `CLAUDE.md` § *Shape* change:** *"never bundled"* stays true of the npm package. It gains
+  *"provisioned on demand, pinned, into sidecrew's own cache — never into the project."*
+
+### What has to be proven first — one spike
+
+Whether `@stryker-mutator/jest-runner`, running from outside the project, finds and drives the
+**project's** jest, including ts-jest and a real Nest config. If it does not, the fallback is an
+overlay: a sandbox `node_modules` that is a real directory of symlinks, holding the project's
+packages plus the cache's Stryker packages, so the project's own directory is still never written.
+The spike runs on `fixtures/ts-fixture` first, then on a sandbox of project-a.
+
+**Licence:** StrykerJS is Apache-2.0, which is non-negotiable #6's allowlist.

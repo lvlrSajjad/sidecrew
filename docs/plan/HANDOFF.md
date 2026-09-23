@@ -30,7 +30,7 @@ decomposed); **`v0.2.0` is held**; the 10 commits are **pushed**, and the parent
 tracked files and a redaction regex carried is redacted from the tree. It stays in the pushed history,
 which cannot be retracted (ADR-0051).
 
-**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) is still blocked on where Stryker may be installed.
+**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) waits on **ADR-0088**: sidecrew brings its own pinned Stryker and leaves the project intact (owner's rule, 23 Sep).
 
 **Next: Phase 14c′.** Freeze its exit check first, in `prompts/phase-14c-prime.md`, before
 decomposing a single task. Then decompose the 27 declared tasks mechanically, one `tsc` error per
@@ -191,7 +191,7 @@ not a queue.** These are the live options:
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
 | **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
 | **D** | ~~Decide ADR-0082 in principle~~ **ACCEPTED 23 Sep, as test-first development** (ADR-0082 addendum) | done | — |
-| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **BLOCKED: stryker is installed in neither tree.** Adding `@stryker-mutator/core` is the owner's call — a devDependency in a client repo, or a new one here |
+| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **ADR-0088 first**: sidecrew provides its own pinned Stryker from a tool cache and leaves the project intact (owner's rule, 23 Sep). A devDependency in a client repo is **off the table**. One spike, then build, then D |
 | **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
 
 **The owner's sequencing, 22 Sep: ADR-0084 first, then 14c — done, so 14c (A) is the next build.**
