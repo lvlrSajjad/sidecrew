@@ -1,0 +1,20 @@
+{
+  "measured": true,
+  "kind": "phase-14c-descriptive",
+  "not_the_rule": true,
+  "what": "share of the task's own target errors cleared on attempt 0; a confinement failure counts 0; big-08 made target errors worse and is floored at 0",
+  "per_arm": {
+    "big": {
+      "n": 9,
+      "median_share_cleared": 0.333,
+      "mean_share_cleared": 0.304,
+      "first_attempt_confinement_failures": 2
+    },
+    "small": {
+      "n": 18,
+      "median_share_cleared": 0.208,
+      "mean_share_cleared": 0.307,
+      "first_attempt_confinement_failures": 5
+    }
+  }
+}

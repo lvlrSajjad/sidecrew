@@ -1,0 +1,331 @@
+{
+  "measured": true,
+  "kind": "phase-14c-result",
+  "computed_at": "2026-09-23T01:33:17.792723+00:00",
+  "rule": "docs/plan/prompts/phase-14c-the-reach.md \u00a73 (frozen 22 Sep 2026)",
+  "reach": 0.9111,
+  "reach_before": 0.5187,
+  "S_big": {
+    "k": 0,
+    "n": 9,
+    "rate": 0.0,
+    "ci95": [
+      0.0,
+      0.336
+    ]
+  },
+  "S_small": {
+    "k": 1,
+    "n": 18,
+    "rate": 0.056,
+    "ci95": [
+      0.001,
+      0.273
+    ]
+  },
+  "threshold": {
+    "0.75_x_S_small": 0.042
+  },
+  "intervals_overlap": true,
+  "fork": "INSERT 14c\u2032 \u2014 a big change is not a big file",
+  "fork_caveat": "the intervals overlap, so the fork is a direction rather than a result (\u00a73)",
+  "gate": {
+    "retry_regressions": true,
+    "demote_test_type_errors": true,
+    "compiler_flags": [
+      "--strictNullChecks"
+    ],
+    "correction": false,
+    "adr_0086_s6": "A",
+    "verdict_flags_seen": [
+      "--strictNullChecks"
+    ]
+  },
+  "funnel": {
+    "big": {
+      "compile": 7,
+      "confinement": 2
+    },
+    "small": {
+      "tests": 1,
+      "compile": 11,
+      "confinement": 5,
+      "done": 1
+    }
+  },
+  "confinement": {
+    "big": {
+      "no_edit_at_all": 2
+    },
+    "small": {
+      "no_edit_at_all": 5,
+      "deletion_without_replacement": 1
+    }
+  },
+  "refusals": {
+    "big": 0,
+    "small": 0
+  },
+  "regression_retries_used": 1,
+  "test_type_errors_demoted": 37,
+  "per_task": {
+    "small-01": {
+      "survived": false,
+      "stage": "tests",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": true,
+      "demoted": 2
+    },
+    "small-02": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "big-01": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-03": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-04": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "big-02": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-05": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "small-06": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "big-03": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-07": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-08": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "big-04": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-09": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "small-10": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "big-05": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "small-11": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-12": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "big-06": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-13": {
+      "survived": true,
+      "stage": "done",
+      "confinement": [],
+      "refused": false,
+      "attempts": 1,
+      "retried_regressions": false,
+      "demoted": 1
+    },
+    "small-14": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "big-07": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "small-15": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-16": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "deletion_without_replacement",
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "big-08": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-17": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    },
+    "small-18": {
+      "survived": false,
+      "stage": "confinement",
+      "confinement": [
+        "no_edit_at_all"
+      ],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 0
+    },
+    "big-09": {
+      "survived": false,
+      "stage": "compile",
+      "confinement": [],
+      "refused": false,
+      "attempts": 2,
+      "retried_regressions": false,
+      "demoted": 2
+    }
+  }
+}

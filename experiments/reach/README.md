@@ -101,3 +101,40 @@ nearest count, ties going to the lower. That gives 9 big and 18 small tasks with
 distribution by construction. What stays unmatched, and cannot be matched: a big task spans several
 **declarations** (41 over 9 tasks), and a small task spans one file. That difference is the phase's
 subject, not a confound.
+
+## 4. The result — measured 23 Sep 2026, 02:05–03:32 local, applied as written
+
+One run, 27 tasks, two 7B workers at concurrency 2, and the gate at its defaults
+(`retry_regressions`, `demote_test_type_errors`, `--strictNullChecks`, correction off, ADR-0086 §6 A).
+sidecrew `e8cf66b`, project-a `1d79d903f9`. Neither tree was dirty, and the run stayed clear of 00:00 UTC.
+Measured: `results/result-14c-2026-09-23.json`.
+
+| | k/n | 95 % exact |
+|---|---|---|
+| `Reach` | **0.911** (was 0.519) | — |
+| `S_big` | **0/9** | [0.000, 0.336] |
+| `S_small` | **1/18** | [0.001, 0.273] |
+
+**The fork, applied as written: `Reach ≥ 0.85` and `S_big (0) < 0.75 × S_small (0.042)` → INSERT `14c′`.**
+**The intervals overlap almost entirely**, so this is a direction and not a result, as §3 said it
+would be. Both rates sit at the floor. No cut of the data where it passes was looked for.
+
+**What the funnel says, which the rate cannot** (descriptive, `results/descriptive-14c-2026-09-23.json`,
+not the rule):
+
+- **The worker does the same on both sides of the size clause.** The mean share of a task's own
+  errors cleared on the first attempt is **0.304 on a declaration inside a big file against 0.307 on a
+  whole small file**. `no_edit_at_all` is 2/9 against 5/18. The file's size no longer matters; that is
+  what 14c built.
+- **What sinks both arms is the size of the change.** With 2–8 errors per task, the worker clears about
+  a third of them and leaves the rest. That is `14c′`'s own diagnosis — *"a big change is not a big
+  file"* — so the fork and the funnel agree, although the rate alone could not show it.
+- **The splice never broke a file**: no syntax errors in 53 verdicts, every answer parsed, none was
+  truncated. One task (`big-08`) introduced names not in scope, which is the risk ADR-0086 §5 named:
+  the worker sees no sibling declarations. That is one case, and it is not a rate.
+- ADR-0077 B demoted 37 test-file type errors, and ADR-0084's retry fired once.
+
+**The caveat that belongs to this run's design, not to 14c:** matching the arms on error count (§3's
+second amendment) pushed *both* arms to 2–8 errors per task, harder than 14b's 1–3. So both rates are
+at the floor, and a floor cannot tell two conditions apart. That was the price of a fair comparison.
+Without it, `S_big` would have been compared on bigger changes by construction.

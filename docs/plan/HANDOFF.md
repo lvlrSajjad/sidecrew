@@ -13,21 +13,29 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 22 Sep 2026, 23:00 — Phase 14c's measurement is RUNNING unattended.**
+**Last updated: 23 Sep 2026, ~03:45 — Phase 14c is DONE, and its frozen rule inserted `14c′`.**
+Nothing is running. Workers stopped, sandboxes swept, both trees clean. **Nothing is pushed.**
 
-- **`Reach` is measured: project-a 0.519 → 0.911** (≥ 0.85, so not STOP); project-b 0.728 → 0.788
-  (`experiments/reach/results/census-after-*.json`). **ADR-0086 §6 decided by the owner: option A.**
-- **The task set is declared and committed before any token**: 9 `S_big` symbol tasks matched to 18
-  `S_small` whole-file tasks on errors per task, `null_guard` under `--strictNullChecks`, gate at its
-  defaults. `experiments/reach/README.md` §3 and its two dated amendments say why: the 1–3 cap left
-  `S_big` a pool of one, which is itself a finding about option A under flags. Plan sha256 `8a228fd7…`.
-- **The run:** `scripts/reach-run.sh` was launched at 22:58 and sleeps until **02:05** (ADR-0083), then
-  runs two 7B workers at concurrency 2. Log: `experiments/reach/results/run.log`.
-- **When it finishes:** `python3 scripts/results-14c.py <run_dir> <plan>`, where the run dir is the
-  newest under `.sidecrew/runs/`. Never paste its path into a tracked file (§5). The script applies §3 as
-  written and says whether the intervals overlap.
-- **If the run died:** `sidecrew fix <plan> --resume <run id>` is legitimate only if the baseline
-  day has not changed. Otherwise restart the whole run after the next 02:00 (ADR-0069). Never re-plan.
+| | |
+|---|---|
+| `Reach` (project-a) | **0.519 → 0.911**, which is ≥ 0.85. project-b 0.728 → 0.788 |
+| `S_big` | **0/9** `[0.000, 0.336]`, symbol tasks in previously refused files |
+| `S_small` | **1/18** `[0.001, 0.273]`, whole-file tasks matched on errors per task |
+| fork, as written | **INSERT `14c′`**. The intervals overlap, so it is a direction (ADR-0087) |
+| why, descriptively | the share of errors cleared is **0.304 vs 0.307**. The file's size stopped mattering; the change's size binds |
+| instrument | the splice broke nothing: 0 syntax errors in 53 verdicts, 0 unparsed, 0 truncated |
+
+**Waiting on the owner, in this order:**
+1. **What `14c′` is** — ADR-0087 proposes A (one error per task, re-measured on the same 27 tasks
+   decomposed, rule frozen first), then C (sibling signatures in the prompt), then B.
+2. **`v0.2.0`** — PHASES said to cut it at 14c. The recommendation is **hold**: the reach is real, the
+   rate on what it reaches is not yet usable.
+3. **Push** the 10 commits since `6678814`. They have been blob-scanned per commit. Re-scan before
+   pushing, as always.
+
+Where everything is: `experiments/reach/README.md` §1–§4 (census, the `Reach` definition, the task set
+and its two dated amendments, the result). Plans and refused lists are gitignored under
+`experiments/reach/{plans,local}/`; hashes are in the committed JSON.
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -45,8 +53,8 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c — BUILT 22 Sep (ADR-0086), not measured**; next steps are at the top of this file. *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0086**; start new ones at 0087. **ADR-0086 §6 needs the owner, and it comes first.** Also **0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
+| next phase | **14c DONE 23 Sep → `14c′` inserted (ADR-0087), content needs the owner.** *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
+| ADRs | run to **0087**; start new ones at 0088. **ADR-0087 (`14c′`'s content) needs the owner first.** ADR-0086 §6 decided: A. Also **0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |

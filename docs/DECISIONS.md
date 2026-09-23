@@ -6341,3 +6341,35 @@ of A is expected to be small. That is an estimate, and the validator's refusal c
 
 **Decided: A**, by the owner on 22 Sep 2026, on that recommendation. B stays open, to be decided on its
 own measurement once 14c's number exists.
+
+---
+
+## ADR-0087 — Phase 14c's fork: INSERT `14c′`, and what the funnel says the insert is for
+
+**Status:** **applied as written**, 23 Sep 2026 · the frozen rule (`prompts/phase-14c-the-reach.md` §3)
+decided it, not this ADR · **what `14c′` contains is PROPOSED and needs the owner**
+
+**Measured:** `Reach` 0.519 → **0.911** on project-a. `S_big` **0/9** `[0.000, 0.336]`, `S_small`
+**1/18** `[0.001, 0.273]`. `0 < 0.75 × 0.056`, so the rule says **INSERT `14c′`**. The intervals overlap
+almost entirely and both rates are at the floor. It is a direction, reported as one
+(`experiments/reach/README.md` §4).
+
+**Why the direction is still worth acting on.** The funnel, which is not the rule, agrees with the
+fork's own diagnosis. The worker clears the same share of a task's errors on a declaration inside a
+big file as on a whole small file (**0.304 vs 0.307**), and both arms fail by leaving about two thirds
+of 2–8 errors behind. So the file's size stopped mattering, and the change's size is what binds.
+
+**Proposed content of `14c′`**, in cost order:
+
+- **A — one error per task.** The planner splits a declaration with k errors into k asks, ordered in
+  steps (ADR-0044 §2). This is 14b's probe 2 idea applied to the new unit, and it is the cheapest,
+  because the machinery exists.
+- **B — ADR-0086 §6 option B**: gate the declaration rather than the file. It widens the pool
+  (35 big files instead of 9 at any cap) and does nothing for the rate.
+- **C — sibling signatures in the symbol prompt**, for `big-08`'s out-of-scope names. That is one case,
+  and it is the thing to try second.
+
+**Recommendation: A, measured against the same 27 tasks decomposed**, with the rule frozen before it
+runs, like every rule here. **Not cutting `v0.2.0` yet** is also a recommendation: the reach is real,
+but the tool does not yet change what it reaches at a usable rate, and a version whose headline is
+"doubles what it can touch" would be claiming the first half of that without the second.

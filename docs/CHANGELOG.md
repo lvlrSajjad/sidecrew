@@ -1,6 +1,14 @@
 # Changelog
 ## Unreleased
 
+**Phase 14c measured: `Reach` 0.519 → 0.911 on project-a, and the frozen rule says INSERT `14c′`.**
+`S_big` 0/9 `[0.000, 0.336]` against `S_small` 1/18 `[0.001, 0.273]`. The intervals overlap almost
+entirely, so it is a direction, not a result. The funnel says why: the worker clears the same share of
+a task's errors inside a big file as in a small one (**0.304 vs 0.307**), so the file's size stopped
+mattering, and the change's size is what binds. The splice never broke a file in 53 verdicts.
+The task set was declared, hashed and committed before the first token. Its two amendments came from
+pool sizes, never from a verdict. ADR-0087; `experiments/reach/README.md` §4.
+
 **Phase 14c's build: a task may name a declaration, and the worker returns only that (ADR-0086,
 building ADR-0075 option C).** A `PlannedChange` carrying `symbols: [{ file, name }]` is
 symbol-scoped. The worker is shown the declaration, the file's imports and its class header, and
