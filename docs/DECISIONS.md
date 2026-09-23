@@ -6471,3 +6471,20 @@ packages plus the cache's Stryker packages, so the project's own directory is st
 The spike runs on `fixtures/ts-fixture` first, then on a sandbox of project-a.
 
 **Licence:** StrykerJS is Apache-2.0, which is non-negotiable #6's allowlist.
+
+### Addendum, 23 Sep 2026 — and measurements run on a clone (owner: *"your clone idea is a good one too"*)
+
+The tool cache is the **product** rule: any user's project stays untouched. The clone is the
+**measurement** rule, and it guards against something different: the owner's working checkout, which
+is also the testbed, and which moved 50 commits in one ordinary day (HANDOFF §5).
+
+- Every measurement runs against a **clone of the project at a pinned commit**, outside the owner's
+  working folder, never pushed, and deleted after. `git clone --local` needs no network.
+- Its `node_modules` is an **APFS clone** of the working checkout's (`cp -c`, the mechanism ADR-0034
+  already uses). That means the exact same package versions and no download. `npm ci` would be a
+  second resolution, which might not match, and it would cost a download.
+- The integrity check runs on **both**: the clone is what the job touched, and the working checkout
+  must not have noticed the job at all.
+
+Together, a job cannot change the project, and a measurement cannot even disturb the checkout the
+owner is working in.
