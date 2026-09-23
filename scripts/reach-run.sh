@@ -69,7 +69,6 @@ fingerprint () {
     for f in package.json package-lock.json yarn.lock pnpm-lock.yaml; do [ -f "$f" ] && shasum -a 256 "$f"; done
     ls -A node_modules | shasum -a 256; ls -A node_modules/.bin | shasum -a 256 ) 2>/dev/null
 }
-[ -n "$WATCH" ] && fingerprint "$WATCH" > "$RESULTS/watch-before${TAG:+-$TAG}.txt" && say "working checkout fingerprinted (it is only read)"
 
 # ── wait for the boundary to pass ────────────────────────────────────────────────────────────────
 now=$(date +%s)
@@ -87,6 +86,9 @@ if [ -n "$(git -C "$PROJECT" status --porcelain)" ]; then say "ABORT — the pro
 FREE_GB=$(df -g . | awk 'NR==2 {print $4}')
 if [ "${FREE_GB:-0}" -lt 20 ]; then say "ABORT — ${FREE_GB} GB free; the sandboxes need room"; exit 1; fi
 sweep
+# Taken here, after the wait and immediately before the workers start: the owner may work in the
+# checkout during the evening, and only what happens *during the run* is the run's to answer for.
+[ -n "$WATCH" ] && fingerprint "$WATCH" > "$RESULTS/watch-before${TAG:+-$TAG}.txt" && say "working checkout fingerprinted (it is only read)"
 node dist/cli.js doctor --project "$PROJECT" 2>&1 | sed -E "s#$HOME#~#g" | grep -E "memory|pressure|swap|tier" | tee -a "$LOG"
 
 # ── the workers ──────────────────────────────────────────────────────────────────────────────────
@@ -102,7 +104,7 @@ if ! up 8000 || ! up 8001; then say "ABORT — both workers did not come up with
 say "both workers up"
 
 # ── the run ──────────────────────────────────────────────────────────────────────────────────────
-say "── 14c: the declared task set, concurrency 2, correction off, gate at its defaults ──"
+say "── ${TAG:-14c}: the declared task set, concurrency 2, correction off, gate at its defaults ──"
 node dist/cli.js fix "$PLAN" --concurrency 2 >> "$LOG" 2>&1
 say "fix exited $?"
 node dist/cli.js fix --report --json > "$REPORT" 2>&1
