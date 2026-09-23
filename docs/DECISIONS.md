@@ -5771,9 +5771,10 @@ forbids**, and the difference is worth stating rather than assuming:
   predicate wrong, the measurement is wrong in either direction — running it on the old predicate
   would not have been the conservative choice, it would have been the meaningless one.
 
-## ADR-0082 — sidecrew writes the oracle it is judged by, before the change exists (PROPOSED)
+## ADR-0082 — sidecrew writes the oracle it is judged by, before the change exists (ACCEPTED IN PRINCIPLE)
 
-**Status:** **proposed · 21 Sep 2026 · the owner's proposal · needs the owner** · bears on ADR-0016,
+**Status:** **accepted in principle by the owner, 23 Sep 2026, on the condition that sidecrew works test-first** (addendum
+below) · proposed 21 Sep 2026 · the owner's proposal · bears on ADR-0016,
 ADR-0031, ADR-0046, ADR-0048, ADR-0077 and Phase 15 · **nothing here is built and nothing is agreed**
 
 ### The proposal, in the owner's words
@@ -6249,6 +6250,37 @@ And it does not explain the **first** failure's silence. That run produced no re
 rather than throwing, which is a different symptom of the same family, and the harness now records the
 runner's message and stops after three so the next occurrence says which.
 
+
+### Addendum, 23 Sep 2026 — accepted in principle, as test-first development
+
+**The owner's condition:** *accepted if it means Opus and the workers work in a TDD manner.* It does,
+and it is recorded as the rule rather than as a reading, because the two workloads get different
+cycles and the difference is the part people will get wrong:
+
+| | written first, to | must, **before** the change | must, **after** | the human reviews |
+|---|---|---|---|---|
+| **#2b** — behaviour change | the **expected** behaviour | **fail** on today's code — red, which proves the test is about the new behaviour | pass — green | **the tests**, as the spec, not the diff |
+| **#2a** — behaviour-preserving | today's behaviour | **pass** on today's code **and kill a mutant inside the lines the change will touch** — green, pinned | still pass — green | nothing new; the gate is ADR-0048's plus these tests |
+
+Three things hold in both, and they are what make it TDD rather than tests-afterwards:
+
+1. **Tests before code, always.** No change task is dispatched until its tests exist and have passed
+   their "before" gate.
+2. **The tests are frozen before the change exists.** They are hashed, and a candidate that edits them
+   is `test_file_edited`, as today (ADR-0046).
+3. **Different invocations write the test and the change.** The change worker never sees the tests.
+   That is the held-out property this ADR's Goodhart answer rests on.
+
+**#2b needs one gate #1 does not have: *red first*.** Workload #1's gate requires a test to **pass** on
+the original code (ADR-0016). A #2b test must **fail** on it, for the reason the table gives, while
+still compiling and not being tautological. That is a new iff for `src/schemas.ts` when #2b is built,
+not a flag on the old one.
+
+**What acceptance does not change:** the order is still **D → B → C**. D is the yield of tests that kill
+a mutant inside a named line range, with its rule frozen first. It stays blocked on Stryker being
+installable in the measured project, which is a dependency decision still open with the owner.
+Accepting the principle commits to the destination; it does not skip the measurement that says whether
+the destination is affordable.
 ---
 
 ## ADR-0086 — Symbol-scoped return: what option C is, built, and the one choice it leaves the owner

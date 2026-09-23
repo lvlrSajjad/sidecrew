@@ -30,6 +30,8 @@ decomposed); **`v0.2.0` is held**; the 10 commits are **pushed**, and the parent
 tracked files and a redaction regex carried is redacted from the tree. It stays in the pushed history,
 which cannot be retracted (ADR-0051).
 
+**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) is still blocked on where Stryker may be installed.
+
 **Next: Phase 14c′.** Freeze its exit check first, in `prompts/phase-14c-prime.md`, before
 decomposing a single task. Then decompose the 27 declared tasks mechanically, one `tsc` error per
 task, ordered in steps, and run it the same way `scripts/reach-run.sh` did: after 02:05 local, 7B × 2.
@@ -55,7 +57,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
 | next phase | **14c DONE 23 Sep → `14c′` inserted and decided: ADR-0087 A. Freeze its exit check first.** *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0087**; start new ones at 0088. ADR-0087 decided (A, `v0.2.0` held). ADR-0086 §6 decided: A. Also **0082 and 0064** — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
+| ADRs | run to **0087**; start new ones at 0088. ADR-0087 decided (A, `v0.2.0` held). ADR-0086 §6 decided: A. Also **0064**; 0082 is accepted in principle (TDD), with D blocked on Stryker — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
 | running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
 | CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
 | `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
@@ -188,7 +190,7 @@ not a queue.** These are the live options:
 | **A** | **Phase 14c — symbol-scoped return**. **BUILT 22 Sep (ADR-0086)**; what is left is the measurement | `--after` census (seconds) · then **one quiet 2–4 h run** if `Reach ≥ 0.85` | the owner on **ADR-0086 §6** first. **Exit check FROZEN 22 Sep** — `prompts/phase-14c-the-reach.md` |
 | **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
 | **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
-| **D** | **Decide ADR-0082** in principle — manufacture the oracle instead of borrowing it | a decision | the owner. Its measurement is **E**, still blocked |
+| **D** | ~~Decide ADR-0082 in principle~~ **ACCEPTED 23 Sep, as test-first development** (ADR-0082 addendum) | done | — |
 | **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **BLOCKED: stryker is installed in neither tree.** Adding `@stryker-mutator/core` is the owner's call — a devDependency in a client repo, or a new one here |
 | **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
 
@@ -365,7 +367,7 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **ADR-0082 — sidecrew writes the oracle it is judged by (proposed, 21 Sep, the owner's own
+- **ADR-0082 — sidecrew writes the oracle it is judged by (**accepted in principle 23 Sep, as TDD** — proposed 21 Sep, the owner's own
   proposal).** Every step of the loop but two is already `VISION.md`'s; **the delta is that the oracle
   stops being borrowed from the project and starts being manufactured** — the worker writes tests
   covering the region about to change, gated by workload #1, *before* the change exists. It is not

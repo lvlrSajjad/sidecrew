@@ -1,6 +1,10 @@
 # Changelog
 ## Unreleased
 
+**ADR-0082 accepted in principle, as test-first development (owner, 23 Sep).** Tests always come first, are frozen, and are written by a
+different invocation from the change. For a behaviour change they must go red → green; for a behaviour-preserving one they are pinned green → green. The
+order D → B → C stands; D is blocked on Stryker.
+
 **Owner decisions, 23 Sep:** `14c′` is ADR-0087 A (one error per task), and `v0.2.0` is held. The parent
 folder name of the client checkouts is redacted from the tree: two prose mentions and a redaction regex
 that now matches any parent folders.
