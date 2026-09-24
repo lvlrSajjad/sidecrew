@@ -1,0 +1,151 @@
+{
+  "measured": true,
+  "kind": "phase-14c-prime-result",
+  "computed_at": "2026-09-24T04:06:18.969955+00:00",
+  "rule": "docs/plan/prompts/phase-14c-prime.md \u00a72\u2013\u00a73 (frozen 23 Sep 2026)",
+  "S_prime_big": {
+    "k": 15,
+    "n": 41,
+    "rate": 0.366,
+    "ci95": [
+      0.221,
+      0.531
+    ]
+  },
+  "S_prime_small": {
+    "k": 10,
+    "n": 42,
+    "rate": 0.238,
+    "ci95": [
+      0.121,
+      0.395
+    ]
+  },
+  "threshold": {
+    "usable": 0.3,
+    "0.75_x_S_prime_small": 0.178
+  },
+  "intervals_overlap": true,
+  "fork": "PROCEED to 14d \u2014 usable, big files not worse",
+  "fork_caveat": "the intervals overlap, so the fork is a direction rather than a result (\u00a73)",
+  "safety": {
+    "combined_regressions": 0,
+    "files_worse_than_start": 0,
+    "files": 27
+  },
+  "gate": {
+    "symbol_gate": "declaration",
+    "retry_regressions": true,
+    "demote_test_type_errors": true,
+    "compiler_flags": [
+      "--strictNullChecks"
+    ]
+  },
+  "verdict_scopes": {
+    "declaration": 117,
+    "file": 26
+  },
+  "funnel": {
+    "big": {
+      "tests": 2,
+      "compile": 15,
+      "done": 15,
+      "confinement": 9
+    },
+    "small": {
+      "compile": 27,
+      "confinement": 5,
+      "done": 10
+    }
+  },
+  "descriptive": {
+    "files_left_with_zero_errors": 3,
+    "errors_start_in_plan_files": 165,
+    "errors_end_in_plan_files": 133
+  },
+  "per_task": {
+    "small-01": false,
+    "small-02": false,
+    "big-01": false,
+    "small-03": false,
+    "small-04": false,
+    "big-02": false,
+    "small-05": false,
+    "small-06": false,
+    "big-03": true,
+    "small-07": false,
+    "small-08": false,
+    "big-04": true,
+    "small-09": false,
+    "small-10": false,
+    "big-05": false,
+    "small-11": false,
+    "small-12": true,
+    "big-06": false,
+    "small-13": true,
+    "small-14": true,
+    "big-07": false,
+    "small-15": false,
+    "small-16": false,
+    "big-08": false,
+    "small-17": false,
+    "small-18": false,
+    "big-09": true,
+    "big-10": false,
+    "big-11": false,
+    "small-19": false,
+    "big-12": true,
+    "small-20": true,
+    "small-21": false,
+    "big-13": true,
+    "small-22": false,
+    "big-14": false,
+    "small-23": false,
+    "big-15": false,
+    "small-24": true,
+    "small-25": true,
+    "big-16": false,
+    "small-26": false,
+    "small-27": false,
+    "big-17": false,
+    "small-28": false,
+    "small-29": false,
+    "big-18": false,
+    "big-19": false,
+    "big-20": false,
+    "small-30": true,
+    "big-21": true,
+    "small-31": false,
+    "small-32": false,
+    "big-22": false,
+    "small-33": false,
+    "big-23": true,
+    "small-34": false,
+    "big-24": false,
+    "small-35": false,
+    "big-25": true,
+    "small-36": true,
+    "small-37": false,
+    "big-26": true,
+    "big-27": false,
+    "big-28": true,
+    "big-29": true,
+    "big-30": false,
+    "big-31": false,
+    "small-38": true,
+    "big-32": true,
+    "big-33": false,
+    "small-39": false,
+    "small-40": false,
+    "big-34": false,
+    "big-35": true,
+    "big-36": false,
+    "small-41": true,
+    "big-37": true,
+    "small-42": false,
+    "big-38": false,
+    "big-39": false,
+    "big-40": false,
+    "big-41": true
+  }
+}

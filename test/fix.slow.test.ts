@@ -165,6 +165,15 @@ describe.skipIf(!SLOW)("the 2a gate on fixtures/fix-fixture", () => {
       expect(verdict.survived, verdict.error ?? "").toBe(true);
     });
 
+    it("records the declaration scope even on a verdict that never reached the compiler", { timeout: 5 * MINUTES }, async () => {
+      // 14c′ found 26 confinement failures recorded as "file". The scope is the task's rule, not the stage's.
+      const verdict = await verifyChange(symbolTask("convert"), candidate([{ path: "src/rates.ts", contents: read("src/rates.ts") }]), {
+        sandbox, baseline: captured.baseline, projectDir: PROJECT, runner: "vitest",
+      });
+      expect(verdict.stage_reached).toBe("confinement");
+      expect(verdict.target_scope).toBe("declaration");
+    });
+
     it("refuses the same change under symbol_gate \"file\", 14c's rule", { timeout: 5 * MINUTES }, async () => {
       const verdict = await verifyChange(symbolTask("convert"), candidate([{ path: "src/rates.ts", contents: convertRefactor }]), {
         sandbox, baseline: captured.baseline, projectDir: PROJECT, runner: "vitest", symbolGate: "file",

@@ -630,6 +630,13 @@ export async function verifyChange(
   // ADR-0066 option C. Taken before anything expensive runs, so the pair brackets the gate rather than
   // describing the machine the gate was about to ruin. Nothing below reads it (ADR-0066 is *record*).
   const machineBefore = await readMachineState();
+  /**
+   * Which rule this task is judged by, decided by the task and the plan — **not** by how far the
+   * candidate got. 14c′ recorded 26 verdicts that stopped at confinement as `"file"`, because this was
+   * read off `scope`, which only the compile stage fills. The rate was unaffected, since none of them
+   * reached compile, but a verdict must say what rule its task was under.
+   */
+  const declarationScoped = task.symbols.length > 0 && (opts.symbolGate ?? "declaration") === "declaration";
 
   // ADR-0044's "the other direction", built in Phase 12: a worker that says it cannot do the task is an
   // escalation with a reason, and it stops here. The point is the 262 s it does not spend — Phase 11
@@ -643,6 +650,7 @@ export async function verifyChange(
       compile_ok: false,
       tests_ok: false,
       confined: true,
+      target_scope: declarationScoped ? "declaration" : "file",
       files_touched: [],
       errors: { before, after: before, introduced: {}, remaining_in_target: pick(before, targets), message: null },
       tests: null,
@@ -717,7 +725,7 @@ export async function verifyChange(
       // ADR-0086 §6 option B: a symbol task is judged by its named declarations, unless the plan asked
       // for 14c's file-scoped rule. `null` from `declarationScope` means a declaration could not be
       // located, which is never satisfied.
-      if (task.symbols.length > 0 && (opts.symbolGate ?? "declaration") === "declaration") {
+      if (declarationScoped) {
         const contents = new Map(candidate.edits.map((e) => [toPosix(e.path), e.contents]));
         scope = declarationScope(task, contents, tsc.message, after.by_file, projectDir) ?? { remaining: { [targets[0]!]: 1 }, outside: {} };
       }
@@ -940,7 +948,7 @@ export async function verifyChange(
     compile_ok,
     tests_ok,
     confined,
-    target_scope: scope !== null ? "declaration" as const : "file" as const,
+    target_scope: declarationScoped ? "declaration" as const : "file" as const,
     files_touched,
     errors: {
       before,
