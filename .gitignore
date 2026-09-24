@@ -96,3 +96,4 @@ experiments/test-first/local/
 experiments/test-first/results/*.log
 experiments/test-first/results/*-validate.json
 experiments/test-first/results/*.txt
+experiments/test-first/results/*-run.json
