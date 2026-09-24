@@ -166,3 +166,24 @@ void if its transcript calls `sidecrew_recon`, `sidecrew_query` or `sidecrew_rea
 recon`, `query` or `read`** — checked by a grep of the transcript before its number is read, the way a
 void window is discarded rather than adjusted (`planner-cost` §2). The contract's §1′ says the same to
 the planner.
+
+## Note, 25 Sep 2026 ~00:20 — two launch artefacts, written before any retrieval-arm number existed
+
+*Not an edit to §2 or §3.* The four planner passes were launched **in parallel** at 00:00, to finish before
+02:05. Two consequences, both found in the first finished transcripts, both recorded here before the
+retrieval arm reported:
+
+1. **The harness was a shared prompt cache.** The first pass to start (base, `N ≈ 40`) wrote a 30,678-token
+   prefix; the other three read it back as a cache read, which `P_total` excludes. So three of the four
+   `P_total`s are **30,678 lower** than a pass started alone would be — including both `N ≈ 12` arms,
+   equally. **Between arms it cancels at `N ≈ 12`; against §3's absolute thresholds it does not**: it would
+   flatter `R₁` by ~0.33. **So §3 is applied to `R₁` harness-normalised** — `P_total` plus that pass's first
+   message's cache read, i.e. what a pass started alone pays — and the as-measured `R₁` is reported beside
+   it. Choosing the conservative reading before seeing the number is the point of writing this now; if the
+   two readings fall in different rows of §3, the report says so and the normalised one decides.
+2. **The passes shared one scratchpad folder.** The base `N ≈ 12` pass reports it once saw a recon-format
+   file another pass had written, then redid its survey in a private folder; it made no retrieval call
+   (`retrieval_calls` = 0), so it is **not void** by the note above, and `R₀` is not a criterion. The
+   dangerous direction is the other one — a retrieval pass reading a base pass's files would flatter `R₁` —
+   so both retrieval transcripts are audited for reads of files they did not write before `R₁` is read.
+   A retrieval pass that relied on one is re-run alone.
