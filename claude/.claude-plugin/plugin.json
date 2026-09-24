@@ -1,6 +1,6 @@
 {
   "name": "sidecrew",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Local MLX worker models make behaviour-preserving code changes and write unit tests, behind a gate a machine can run. Claude plans and reviews; only survivors come back.",
   "author": {
     "name": "Sadjad Asadi",

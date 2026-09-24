@@ -1,5 +1,17 @@
 # Changelog
-## Unreleased
+## v0.2.0 — the reach: a task can name a declaration, and a big file stops being refused (2026-09-24)
+
+**What changes for a user:** a behaviour-preserving task can now name one declaration (`symbols:
+[{ file, name }]`), so a method inside a 4,000-line service is a 60-line task. Before, every file over
+~22,700 characters was refused outright, and on a real Nest codebase those files were 48.1 % of the
+code. **Measured on that codebase:** the share a worker can be asked to change went **0.519 → 0.911**,
+and one-declaration tasks survived **15/41 `[0.221, 0.531]` in big files and 10/42 `[0.121, 0.395]` in
+small ones**, with no survivor making a file worse. The intervals overlap, and the big-file arm's lower
+bound is under the 0.30 "usable" line, so it is a direction; the details and every caveat are below.
+
+**Also in this release:** sidecrew now brings its own pinned Stryker (`sidecrew tools install`) and
+never installs anything into a project, and every `run` and `fix` checks that the project is
+byte-for-byte intact afterwards (ADR-0088). The entries below are the full record.
 
 **ADR-0082 D measured: `Y` = 2/20 `[0.012, 0.317]` → B is not affordable as it stands.** Test-first
 stays accepted in principle; next comes a measurement of what raises `Y`. Where it breaks: of 14 tasks,

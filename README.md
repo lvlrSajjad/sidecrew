@@ -459,7 +459,25 @@ sidecrew bench --determinism   # 5× the same prompt: byte-identical, or non-zer
 
 ## Status
 
-**Phase 14 — the first public release.** The pipeline runs end to end for both workloads: plan,
+**v0.2.0 — the reach (24 Sep 2026).** A task can name one declaration instead of a whole file, and it is
+judged by that declaration: zero errors inside it, nothing worse outside it, and every test still
+passing (ADR-0086). All measured on an unmodified commercial Nest codebase (2,174 source files), against
+rules frozen before the numbers existed:
+
+| | measured | where |
+|---|---|---|
+| share of the code a worker can be asked to change | **0.519 → 0.911** by bytes | `experiments/reach/` |
+| one declaration per task, in files that used to be refused | **15/41 = 0.37 `[0.22, 0.53]`** | `docs/plan/prompts/phase-14c-prime.md` |
+| the same, in files that were always in reach | **10/42 = 0.24 `[0.12, 0.40]`** | same |
+| the same 27 files, one task per file (the old unit) | 1/27 | `docs/plan/prompts/phase-14c-the-reach.md` |
+
+**Read it as a direction:** the two intervals overlap, and the big-file interval reaches below the 0.30
+line this project calls *usable*. The shape was `--strictNullChecks` null guards, the hardest one
+measured. **What did not work yet:** a worker writing its own tests *before* a change (ADR-0082) managed
+**2/20**, because it cannot yet build a test that runs against a real NestJS service. And a hole was
+found in the test-writing gate (ADR-0089, open): a type-only assertion can pass it.
+
+**Before that, Phase 14 — the first public release.** The pipeline runs end to end for both workloads: plan,
 generate on a local worker, verify, retry once, escalate; and `sidecrew fix` does the same for
 behaviour-preserving code changes. Five measurements have been taken against rules frozen before any
 number existed, and the honest summary is that **three of them said no**:
