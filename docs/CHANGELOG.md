@@ -1,6 +1,12 @@
 # Changelog
 ## Unreleased
 
+**Phase 14c′ measured: one declaration per task → PROCEED to 14d.** `S′_big` 15/41 = 0.366 `[0.221,
+0.531]`, `S′_small` 10/42 = 0.238 `[0.121, 0.395]`, and B's safety check clean (0 combined regressions,
+0 of 27 files worse). On the same 27 files where 14c's file-sized tasks survived 1/27, one-declaration
+tasks survived 25/83. The intervals overlap and the big arm's lower bound is under 0.30, so *usable* is
+a direction. The owner's working checkout was identical before and after. `prompts/phase-14c-prime.md` §5.
+
 **ADR-0086 §6 option B is built and is the default: a symbol task is judged by its declaration.**
 `compile_ok` on a symbol task now means zero errors inside the named declarations and no more errors
 *outside* them in the file than before. The tests must still pass and confinement is unchanged.

@@ -6567,3 +6567,10 @@ anywhere in the repo. Status is now scoped to the project's own directory (`-- .
 exactly that case. The fixtures' own `package.json` files still list Stryker as a devDependency. The
 verifier no longer reads it, and removing it would rewrite their lockfiles, which is left for the owner.
 
+### ADR-0087 result, 24 Sep 2026
+
+`14c′` ran as amended: one declaration per task, gate B. **PROCEED to 14d** by its frozen rule:
+`S′_big` 15/41 against `S′_small` 10/42, safety clean. The diagnosis this ADR drew from 14c's funnel,
+*the change's size binds, not the file's*, is borne out on the same 27 files: 1/27 → 25/83.
+`prompts/phase-14c-prime.md` §5.
+

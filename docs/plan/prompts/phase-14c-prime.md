@@ -60,3 +60,38 @@ span **02:00 local** (ADR-0083), clean trees, and record both commits. In additi
 - **The owner says when it runs.** It is prepared and dry-run, and it waits.
 - **The clone's integrity is checked, and so is the working checkout's** (ADR-0088): both fingerprints
   go in the result.
+
+## 5. The result — measured 24 Sep 2026, 02:05–06:05, applied as written
+
+One run, 83 tasks in 6 steps, two 7B workers, on the pinned clone at `1d79d903f9`. sidecrew was at
+`6336402`. Gate: `symbol_gate: "declaration"`, `retry_regressions`, `demote_test_type_errors`,
+`--strictNullChecks`, correction off. Measured: `experiments/reach/results/result-14c-prime-2026-09-24.json`.
+
+| | k/n | 95 % exact |
+|---|---|---|
+| `S′_big`, one declaration inside a big file | **15/41 = 0.366** | [0.221, 0.531] |
+| `S′_small`, one declaration inside a small file | **10/42 = 0.238** | [0.121, 0.395] |
+| B's safety check | **0 combined regressions · 0 of 27 files ended with more errors than they started** | — |
+
+**The fork, applied as written: `S′_big ≥ 0.30` and `S′_big ≥ 0.75 × S′_small` → PROCEED to 14d.** Cutting
+`v0.2.0` becomes the owner's call again, and §3 attaches a recommendation to cut.
+
+**What that does and does not say:**
+
+- **The intervals overlap**, so the ratio is a direction, as §3 said it would be. **The big arm's
+  interval also reaches below 0.30** (lower bound 0.221): *usable* rests on the point estimate. Reported
+  as the rule reads it, without looking for a cut of the data where it passes or where it fails.
+- **Against 14c on the same 27 files, the change was the unit, not the files:** 1/27 tasks survived when
+  each task was a whole file's worth of errors, and 25/83 survived when each was one declaration.
+  Errors in those files fell 165 → 133, and 3 of the 27 files ended with none.
+- **Where the rest fail** (descriptive, over all 143 verdicts): 88 at `compile`, 26 at confinement
+  (23 `no_edit_at_all`, the worker declining; 2 deletions; 1 `any`, all refused), 4 at the suite. Of the
+  88 compile failures, **72 left an error inside their own declaration**, 13 cleared their own and broke
+  another source file, and **3 cleared their own and made the rest of the same file worse. Those 3 are
+  B's new clause catching real cases on its first run**; under a total-count check every one of them
+  would have passed.
+- **ADR-0088 held on its first real run:** the working checkout fingerprinted identical before and
+  after, and `runFix`'s own integrity check on the clone passed.
+- **One recording defect, fixed the same morning** (`bbb6d64`): 26 verdicts that stopped at confinement
+  said `target_scope: "file"`. None reached compile, so no rate is affected; the scope is now the
+  task's rule on every path.
