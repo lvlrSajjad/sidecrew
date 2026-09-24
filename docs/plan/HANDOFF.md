@@ -32,7 +32,9 @@ which cannot be retracted (ADR-0051).
 
 **ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) has its **rule frozen** (`prompts/adr-0082-d.md`, 24 Sep) and needs **one owner decision, who writes the exemplars** (recommendation: a Sonnet subagent). It is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
-**Phase 14c′ — DONE 24 Sep 06:05 → PROCEED to 14d** by its frozen rule. `S′_big` 15/41 [0.221, 0.531], `S′_small` 10/42 [0.121, 0.395]; B's safety check clean. `prompts/phase-14c-prime.md` §5. **`v0.2.0` is the owner's call again, and the rule recommends cutting it.** Nothing pushed since `da1bf67`.
+**`v0.2.0` IS PUBLISHED, 24 Sep:** on npm as `latest` with SLSA provenance, and on the MCP Registry, from tag `v0.2.0` at `61eb7f2`; all three release jobs green on the first run. **Next: 14d** (freeze its `R` rule first); the owner is asked whether **ADR-0089** becomes a 1.0 prerequisite.
+
+**Phase 14c′ — DONE 24 Sep 06:05 → PROCEED to 14d** by its frozen rule. `S′_big` 15/41 [0.221, 0.531], `S′_small` 10/42 [0.121, 0.395]; B's safety check clean. `prompts/phase-14c-prime.md` §5. **`v0.2.0`: cut by the owner, 24 Sep.**
 
 **ADR-0082 D — DONE 24 Sep 07:24: `Y` = 2/20 → B not affordable as it stands** (`prompts/adr-0082-d.md` §6). The worker cannot yet build a test that runs against a NestJS service; once one runs, it kills (2/2). **New, needs the owner: ADR-0089**, a type-only assertion survives workload #1's gate (fixture: 1 of 12 killed, still survives; one D survivor scored 0.015). Recommendation: B, after re-scoring history from stored reports. The clone is deleted.
 
@@ -63,7 +65,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 |---|---|
 | branch | `main`, clean, **0 client references in the tracked tree** |
 | tests | `npm run lint && npm test` → **819 passing**, 1 skipped · slow sets: `fix.slow` **34**, `verifier-ts.slow` **10** (needs `sidecrew tools install`, not a fixture install) · **run them before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture` |
-| version | **`0.1.2`** — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
+| version | **`0.2.0`** (published 24 Sep; was `0.1.2`) — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
 | pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
 | published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
 | supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
