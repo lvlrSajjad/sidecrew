@@ -55,7 +55,15 @@ restated in their words — **"be able to achieve what Opus does, our way; even 
 **Nothing here was research, and it is all done but the release.** What remains needs an npm account
 and a GitHub settings page, not a session.
 
-### 1. The whole-file ceiling — **ADR-0075 accepted (option C), 20 Sep** · the biggest single capability gain available · **Phase 14c, unblocked**
+### 1. The whole-file ceiling — ✅ **DONE, 24 Sep 2026, shipped in `v0.2.0`**
+
+**Measured on project-a:** `Reach` **0.519 → 0.911** (14c), and one-declaration tasks survive **15/41
+`[0.221, 0.531]` inside previously refused files against 10/42 `[0.121, 0.395]` in small ones** (14c′,
+ADR-0086 §6 B), with no survivor making a file worse. The intervals overlap, so it is a direction. The
+rest of this item is the reasoning it was built on, kept as written. **Retrieval, item 2, is next: Phase
+14d, where `v1.0.0` is cut.**
+
+*As planned, 20 Sep:* **ADR-0075 accepted (option C)** · the biggest single capability gain available
 
 **Half of a real codebase is unaddressable, and it is the half the work is in** (3.3 % of files,
 48.1 % of bytes; every 1000+ line file). That is the *return format*, not the model. Option C —

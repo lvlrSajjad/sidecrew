@@ -6,52 +6,27 @@
 > gather the info needed**; workers read and report; **Opus asks the user** where a machine cannot
 > decide; Opus plans on the answer; workers act; the loop repeats **until a machine-checkable
 > definition of *satisfied*** is met. That is `VISION.md`'s philosophy and the owner's own framing
-> (20 Sep 2026). **`PHASES.md` § *The framework these phases are building toward* is the table of
-> which phase makes which step true** — read it before planning 14c or 14d. ADR-0079 is the write-up;
-> ADR-0075 (accepted) is the *act on any file* half; 14d is the *read and ask* half.
+> (20 Sep 2026). **Phases 14c and 14c′ built the *act on any file* half. 14d is the *read and ask*
+> half, and it is where `v1.0.0` is cut.**
 
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 23 Sep 2026, ~03:45 — Phase 14c is DONE, and its frozen rule inserted `14c′`.**
-Nothing is running. Workers stopped, sandboxes swept, both trees clean. **Nothing is pushed.**
+**Last updated: 24 Sep 2026, ~08:00. `v0.2.0` is published. Nothing is running, nothing is
+half-finished, the tree is clean and pushed, and no pinned clone is left on disk. The next thing is
+Phase 14d — §3 has the paste-in prompt.**
 
-| | |
-|---|---|
-| `Reach` (project-a) | **0.519 → 0.911**, which is ≥ 0.85. project-b 0.728 → 0.788 |
-| `S_big` | **0/9** `[0.000, 0.336]`, symbol tasks in previously refused files |
-| `S_small` | **1/18** `[0.001, 0.273]`, whole-file tasks matched on errors per task |
-| fork, as written | **INSERT `14c′`**. The intervals overlap, so it is a direction (ADR-0087) |
-| why, descriptively | the share of errors cleared is **0.304 vs 0.307**. The file's size stopped mattering; the change's size binds |
-| instrument | the splice broke nothing: 0 syntax errors in 53 verdicts, 0 unparsed, 0 truncated |
+### What happened on 22–24 Sep, in one table
 
-**Decided by the owner, 23 Sep:** `14c′` is ADR-0087 **A** (one error per task, the same 27 tasks
-decomposed); **`v0.2.0` is held**; the 10 commits are **pushed**, and the parent-folder name that two
-tracked files and a redaction regex carried is redacted from the tree. It stays in the pushed history,
-which cannot be retracted (ADR-0051).
-
-**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) has its **rule frozen** (`prompts/adr-0082-d.md`, 24 Sep) and needs **one owner decision, who writes the exemplars** (recommendation: a Sonnet subagent). It is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
-
-**`v0.2.0` IS PUBLISHED, 24 Sep:** on npm as `latest` with SLSA provenance, and on the MCP Registry, from tag `v0.2.0` at `61eb7f2`; all three release jobs green on the first run. **Next: 14d** (freeze its `R` rule first); **ADR-0089 is a 1.0 prerequisite** (owner, 24 Sep): re-score stored survivors first, then choose the fix.
-
-**Phase 14c′ — DONE 24 Sep 06:05 → PROCEED to 14d** by its frozen rule. `S′_big` 15/41 [0.221, 0.531], `S′_small` 10/42 [0.121, 0.395]; B's safety check clean. `prompts/phase-14c-prime.md` §5. **`v0.2.0`: cut by the owner, 24 Sep.**
-
-**ADR-0082 D — DONE 24 Sep 07:24: `Y` = 2/20 → B not affordable as it stands** (`prompts/adr-0082-d.md` §6). The worker cannot yet build a test that runs against a NestJS service; once one runs, it kills (2/2). **New, needs the owner: ADR-0089**, a type-only assertion survives workload #1's gate (fixture: 1 of 12 killed, still survives; one D survivor scored 0.015). Recommendation: B, after re-scoring history from stored reports. The clone is deleted.
-
-- ADR-0086 §6 **option B built and the default** (`symbol_gate: "declaration"`): a symbol task is judged
-  by its declaration, and nothing outside it may get worse.
-- Exit check **frozen**: `prompts/phase-14c-prime.md`. Task set declared: **83 tasks (41 big / 42
-  small)**, 6 steps, validated with no refusals, plan sha256 `a8f889a4…`
-  (`results/task-set-prime-*.json`).
-- It runs on a **pinned clone** at `1d79d903f9` under `~/.sidecrew/clones/`. The working checkout has
-  moved 36 commits since and is never touched. **Keep the clone after the run**: ADR-0082 D (`prompts/adr-0082-d.md`, frozen 24 Sep) measures on the same commit. Delete it after D.
-- **Launch**, when told: `TAG=prime WATCH=<working checkout> PLAN=experiments/reach/plans/project-a-2026-09-23-prime/change_plan.json EXPECT_SHA=a8f889a49ae96a3977ba0ddd2147fc0b34d9a3af41078cee2bb070f2a0703fa2 caffeinate -dims scripts/reach-run.sh`.
-  It waits for 02:05 unless `START_AFTER` is set to a time that keeps the run clear of 02:00; the
-  estimate is 2.5–4.5 h. Then run `python3 scripts/results-14c-prime.py <newest run dir> <plan>`.
-
-Where everything is: `experiments/reach/README.md` §1–§4 (census, the `Reach` definition, the task set
-and its two dated amendments, the result). Plans and refused lists are gitignored under
-`experiments/reach/{plans,local}/`; hashes are in the committed JSON.
+| | result | where |
+|---|---|---|
+| **14c** — a task may name a declaration (ADR-0086, option C built) | `Reach` **0.519 → 0.911**; file-sized tasks `S_big` 0/9 vs `S_small` 1/18 → **INSERT 14c′** | `prompts/phase-14c-the-reach.md`, ADR-0087 |
+| **ADR-0086 §6 option B** — judge a symbol task by its declaration | **built, the default** (`symbol_gate: "declaration"`) | ADR-0086 §6 |
+| **14c′** — one declaration per task | `S′_big` **15/41** [0.221, 0.531] vs `S′_small` **10/42** [0.121, 0.395]; safety clean → **PROCEED to 14d** | `prompts/phase-14c-prime.md` §5 |
+| **ADR-0088** — sidecrew brings its own pinned Stryker; the project is intact after every job | **built**; working checkout identical across three measurements | ADR-0088 |
+| **ADR-0082 D** — can a worker write the test first? | `Y` **2/20** [0.012, 0.317] → **B not affordable as it stands** (principle stays accepted) | `prompts/adr-0082-d.md` §6 |
+| **ADR-0089** — a type-only assertion survives workload #1's gate | found, pinned as a KNOWN HOLE test, **a 1.0 prerequisite** (owner) | ADR-0089 |
+| **`v0.2.0`** | **published**: npm `latest` with SLSA provenance, MCP Registry, from `v0.2.0` at `61eb7f2` | CHANGELOG |
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -63,17 +38,19 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 | | |
 |---|---|
-| branch | `main`, clean, **0 client references in the tracked tree** |
-| tests | `npm run lint && npm test` → **819 passing**, 1 skipped · slow sets: `fix.slow` **34**, `verifier-ts.slow` **10** (needs `sidecrew tools install`, not a fixture install) · **run them before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture` |
-| version | **`0.2.0`** (published 24 Sep; was `0.1.2`) — all six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2), `dist` rebuilt. `ci.yml` checks four of the six, `release.yml` five; **the lockfile is checked by neither** |
-| pushed | **yes, and routinely now.** Every push is preceded by a blob-contents scan over `origin/main..HEAD`; it has caught a real leak twice, most recently **21 Sep, in this file, from pasting a `.sidecrew/runs/` path** — those directory names are built from the project's own name, §5. Tags: `v0.1.0-rc.1`, `-rc.2` (both failed, published nothing), `v0.1.0`, `v0.1.1`, `v0.1.2` |
-| published | **DONE, 21 Sep. `sidecrew@0.1.2` is on npm as `latest` with a SLSA provenance attestation, and `io.github.lvlrSajjad/sidecrew` is active on the MCP Registry at `0.1.2`.** Published by the workflow over Trusted Publishing — no token exists anywhere. `0.1.0` (hand-published, **unsigned, cannot gain an attestation**) and `0.1.1` are also on npm. **GitHub Pages is on.** `origin/main` is public and scrubbed. **Never push `private-history`; never merge it into `main`** |
-| supported | **24 GB+ Apple Silicon, local tier only.** The `api` tier was descoped (ADR-0073) |
-| next phase | **14c DONE 23 Sep → `14c′` inserted and decided: ADR-0087 A. Freeze its exit check first.** *Earlier state:* **14c — the reach. UNBLOCKED and nothing is queued ahead of it.** ADR-0075 accepted (option C) 20 Sep; 14b done; Phase 14 published; ADR-0077's counterfactual done. **§3 § *Start here* lists the live options in cost order** — 14c is the default, and two owner decisions and one short run sit beside it |
-| ADRs | run to **0087**; start new ones at 0088. ADR-0087 decided (A, `v0.2.0` held). ADR-0086 §6 decided: A. Also **0064**; 0082 is accepted in principle (TDD), with D blocked on Stryker — §4, in that order. 0079 largely retires 0064 and needs the owner too. **Decided and built 22 Sep: 0077 option B, 0084's retry.** Accepted this week: 0075 (option C), 0078, 0080, 0081, 0083, 0085 |
-| running | **nothing locally.** Both 14b probes finished; worker stopped, sandboxes swept, the checkout byte-identical before and after |
-| CI | **GREEN on `main`** — `test (20)`, `test (22)` and `contracts` all pass. Red from 18 Sep to 20 Sep; **three** causes, not the two that had been diagnosed, §3.0. Nothing product-side changed |
-| `gh` | authenticated **per tree**, not globally: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A zsh `chpwd` hook exports it; a **bash** shell never runs the hook, so set it explicitly |
+| branch | `main`, clean, **pushed**, 0 client references in the tracked tree |
+| tests | `npm run lint && npm test` → **831 passing**, 1 skipped · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
+| version | **`0.2.0`**, published 24 Sep. Six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2); use `npm version X --no-git-tag-version` for the first and last. `ci.yml` checks four, `release.yml` five, **neither checks the lockfile** |
+| published | `sidecrew@0.2.0` on npm as `latest` with provenance; `io.github.lvlrSajjad/sidecrew` on the MCP Registry lists `0.1.2` and `0.2.0`. Release = green CI on the commit, then `git tag -a vX.Y.Z` and push the tag; `release.yml` has no `workflow_dispatch` (use `gh run rerun <id> --failed`). **Never push `private-history`** |
+| tool cache | **`~/.sidecrew/tools/stryker-8.7.1`** is installed on this machine (62 MB, no project-owned tools inside it). `sidecrew tools` reports it |
+| clones | **none on disk.** Make one with `scripts/pinned-clone.sh <project> <commit> <dest>` for any measurement (ADR-0088 addendum) |
+| supported | **24 GB+ Apple Silicon, local tier only** (ADR-0073) |
+| next phase | **14d — retrieval, `v1.0.0`** · §3 |
+| ADRs | run to **0089**; start new ones at **0090**. Open: **0089** (the fix option, 1.0 prerequisite), **0064** (mostly retired by 0079). Decided this week: 0086 (C, and §6 = B), 0087 (A, amended per declaration), 0088, 0082 (in principle, TDD) |
+| running | **nothing.** Workers stopped, sandboxes swept, clones deleted |
+| CI | **green** on `main` and on the `v0.2.0` release run |
+| `gh` | authenticated **per tree**: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A bash shell must set it explicitly |
+| Phase 14's passive exit check | still live: first-run failures on outside projects, window ends **5 Oct 2026** (item 3 of §3's history, below) |
 
 ## 2. Phase 14 — PUBLISHED. How it got there, and what each step cost.
 
@@ -169,78 +146,57 @@ now fixed, and neither of which the gate would ever have caught:**
 
 ## 3. What to do next
 
-### Starting Phase 14c in a fresh session — paste this, then read nothing else first
+### Starting Phase 14d in a fresh session — paste this
 
-> Start phase 14c of sidecrew. Read `CLAUDE.md`, `docs/plan/HANDOFF.md`,
-> `docs/plan/prompts/phase-14c-the-reach.md` (the exit check is **frozen** — do not restate it, do not
-> amend §3 or §4), **ADR-0075** (the design, option C) and `docs/specs/pipeline.md`. Then `git status`
-> and `git log -5`. Build first; the measurement is the last thing and its rule already exists.
+> Start phase 14d of sidecrew. Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/plan/PHASES.md` § *14d*
+> (including its **two** 1.0 prerequisites and the exit-check shape), **ADR-0079** (the starting point,
+> with its addendum), `docs/plan/VISION.md`, and `experiments/planner-cost/README.md` (the method, the
+> 19 Sep amendment, and the 20 Sep result). Then `git status` and `git log -5`. **Write the 14d ADR
+> first** (the relevance problem, answered rather than noted), **then freeze the exit check** in
+> `docs/plan/prompts/phase-14d-retrieval.md`, **then size the measurement**. Build ADR-0079 option A
+> (recon-as-report) as the first piece. Nothing runs until the owner says when.
 
-**The four numbers it will otherwise go hunting for**, all from ADR-0075, measured on `project-a`:
+**The numbers it will otherwise go hunting for** (`experiments/planner-cost/`, measured 19–20 Sep):
 
 | | |
 |---|---|
-| TypeScript files under `src/` | 2,160 |
-| over the whole-file ceiling (~22,674 chars) | **71 — 3.3 %** |
-| what those 71 are **by bytes** | **48.1 %** |
-| so `Reach` **before** 14c | **≈ 0.519** — and the exit check demands **≥ 0.85** |
+| `R` at `N = 12` / `N = 41` | **2.84** / **1.07** (both FAIL; 1.0 needs `R ≤ 1.0` at `N = 12`) |
+| `P_total` at 12 / 41 tasks | 265,607 / 343,144 Opus tokens |
+| fixed planning cost `F` | **≈ 233,500 tokens**, 88 % of the total at `N = 12` and 68 % at `N = 41`; the per-task term is ≈ 2,700 |
+| what the fixed cost is | overwhelmingly **Opus reading**: 15.5 M cache reads against 89 k of output |
+| instrument | `scripts/planner-tokens.mjs`, dedup by `message.id` keeping the last; subagent transcripts are in `<session>/subagents/`. **A subagent transcript is a clean window by construction**, so spawn planners as subagents and read `--agents` |
 
-**The prerequisite is already built**: ADR-0076's `deriveLineRange` reads the TypeScript AST, which is
-what option C splices by. It shipped in Phase 14.
+**The traps, each already paid for once:**
 
-**The trap, in one line:** `S_small` may **not** come from Phase 11 or the go/no-go — the gate changed
-twice on 22 Sep and an old baseline against a new `S_big` measures this phase *plus* those two
-decisions. Re-measure it in the same run. `prompts/phase-14c-the-reach.md` §2 is the long version.
+- **Re-plan and re-gate both arms under today's gate.** The 20 Sep plans were gated before ADR-0084,
+  ADR-0077 B and ADR-0086 B. An old arm against a new one would measure this phase plus three gate
+  changes, which is 14c's §2 trap one level up. The 20 Sep plans are also at an older project commit.
+- **Measure on a pinned clone** (`scripts/pinned-clone.sh`), never the working checkout, which moves
+  daily. **Refuse if the dependency manifests differ**, and the script does.
+- **The quality veto is what makes it an overnight.** `R` itself is planning tokens (daytime, minutes
+  per pass). The veto needs the plans gated: an estimated **~106 gated tasks** (12 + 41, both arms), which is
+  **5–6 h** going by 14c′ (83 tasks in 4 h), an estimate until the plans exist. Start after **02:05** (ADR-0083).
+- **Relevance is not machine-checkable.** A machine confirms a location *exists*; the user is the
+  proposed relevance oracle (ADR-0079), batched, once per cycle, or the loop pays the fixed cost `n` times.
 
-### Start here — everything live, in cost order
+**The expected number of overnights to `v1.0.0`: 1 (14d), 2 if `R` lands in (1.0, 2.0] and inserts
+14d′, and one contingency.** ADR-0089 needs no overnight: re-score stored survivors, then a daytime fix.
 
-**Nothing is blocked and nothing is half-finished.** Phase 14 is published, CI is green, the tree is
-clean. Items **0 → 2** below are completed work, kept because each cost a finding; **they are history,
-not a queue.** These are the live options:
+### The board — everything live, in order
 
 | | what | cost | needs |
 |---|---|---|---|
-| **A** | **Phase 14c — symbol-scoped return**. **BUILT 22 Sep (ADR-0086)**; what is left is the measurement | `--after` census (seconds) · then **one quiet 2–4 h run** if `Reach ≥ 0.85` | the owner on **ADR-0086 §6** first. **Exit check FROZEN 22 Sep** — `prompts/phase-14c-the-reach.md` |
-| **B** | ~~Decide ADR-0084's mitigation~~ **DECIDED and BUILT, 22 Sep** — a regression must reproduce to count | done | — |
-| **C** | ~~Implement ADR-0077 option B~~ **DONE, 22 Sep** — a test-file type error is recorded, not fatal, **under added strictness flags only** | done | — |
-| **D** | ~~Decide ADR-0082 in principle~~ **ACCEPTED 23 Sep, as test-first development** (ADR-0082 addendum) | done | — |
-| **E** | **ADR-0082 option D** — the yield of tests that kill a mutant **inside a named line range** | one run | **ADR-0088 first**: sidecrew provides its own pinned Stryker from a tool cache and leaves the project intact (owner's rule, 23 Sep). A devDependency in a client repo is **off the table**. **BUILT 23 Sep** (`src/tools.ts`, `src/integrity.ts`, `sidecrew tools install`). **Next: freeze D's rule, then run it on a clone of project-a** |
-| **F** | **Phase 14's exit check** — passive, §3.3. Window ends **5 Oct 2026** | watching | nothing |
+| **A** | **Phase 14d** — retrieval, cut `v1.0.0` | 3–4 sessions + 1 overnight (unsized) | nothing; the ADR comes first |
+| **B** | **ADR-0089** — close the type-only-assertion hole; **a 1.0 prerequisite** | ~1 session, no overnight | re-score stored workload #1 survivors first (how many killed only the body mutant), then the owner picks the option. Recommendation: **B** (require a kill other than the whole-body removal), with **A** as the detector's cheap first line |
+| **C** | **What raises ADR-0082 D's `Y`** | a probe | not scheduled. D's funnel says the worker cannot build a test against a NestJS service (2/14 ever passed on the original code; both then killed). The candidate levers are the service's own specs as context, or a larger worker |
+| **D** | Phase 14's passive exit check | watching | nothing; window ends 5 Oct |
 
-**The owner's sequencing, 22 Sep: ADR-0084 first, then 14c — done, so 14c (A) is the next build.**
-The reasoning is worth keeping: every item here ends in a measurement, and all of them are taken with
-an instrument that had a known ~6 % false-failure rate. Fixing that first makes every later number
-cleaner, which is why it went ahead of the bigger prize.
-
-**14c's exit check is frozen** (`prompts/phase-14c-the-reach.md`, 22 Sep, before the phase started).
-Its §2 is the one to read first: **`S_small` may not come from Phase 11 or the go/no-go**, because
-ADR-0084 and ADR-0077 option B both changed the gate on 22 Sep and an old baseline against a new
-`S_big` would measure this phase plus those two decisions.
-
-**The run is 2–4 hours, not a night** — derived from probe 1: the suite is ~225 s and is paid only by
-candidates that compile, so a *successful* 14c run costs more than a failed one, and ADR-0084's retry
-adds a second suite run per regression-only failure. What it needs is a **quiet** machine (ADR-0066)
-and not to span **02:00 local** (ADR-0083).
-
-**B and C are both done.** What is left on this board is **A (Phase 14c)**, the two open decisions
-(D and E), and the passive exit check.
-
-**ADR-0084's caveat is closed, 22 Sep** — 50 runs of project-b: `0/50` `[0.000, 0.071]` against
-project-a's `3/50` `[0.013, 0.165]`, Fisher p = 0.24. The *difference* is not established and would
-need ~100–130 runs per project to be. It does not matter: on a suite that does not flake **the retry
-never fires**, so it is free exactly where it is useless.
-
-**Three decisions (B, C, D) are stacked and none blocks another.** B is the cheapest and rests on the
-firmest number. C is measured and ready. D is the biggest idea and its measurement is E, which is the
-one thing here that needs a dependency decision before it can run at all.
-
-**Do not start 14c or 14d against a stale plan** — `PHASES.md` § *The framework these phases are
-building toward* is the table of which phase makes which step of the vision true, and it has a row for
-ADR-0082.
+**Do not re-open** ADR-0075, ADR-0086 or ADR-0087 (decided, built, measured), or ADR-0088 (built and
+proven on three runs).
 
 ---
 
-### This week's completed work, kept for what each one cost
+### Earlier completed work (20–22 Sep) — history, not a queue, kept for what each one cost
 
 **0. Fix CI — DONE, 20 Sep.** `main` is green on `d71edbe`: `test (20)`, `test (22)` and
 `contracts` all pass. It had been red on every push since at least 18 Sep and went unnoticed because
@@ -380,86 +336,48 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **ADR-0082 — sidecrew writes the oracle it is judged by (**accepted in principle 23 Sep, as TDD** — proposed 21 Sep, the owner's own
-  proposal).** Every step of the loop but two is already `VISION.md`'s; **the delta is that the oracle
-  stops being borrowed from the project and starts being manufactured** — the worker writes tests
-  covering the region about to change, gated by workload #1, *before* the change exists. It is not
-  circular: the ordering plus ADR-0016's gate pins the test to the old behaviour before there is a
-  change to accommodate. **For #2b it is the first candidate oracle that has ever existed**, which is
-  the part worth the owner's time.
-  **Recommendation: D, then B, then C.** D is one short run — the yield of asking a worker for tests
-  that kill a mutant **inside a named line range** (ADR-0013 already scopes mutation that way).
-  Workload #1's *untargeted* yield on real projects is 3/8, 4/8, 4/10, so the targeted number is what
-  every version of this rests on and nobody has it. **Freeze D's rule before running it.**
-  Does not block, and does not block ADR-0077-B either; that one is the cheaper win and is available
-  now.
+- **ADR-0089 — which fix closes the type-only-assertion hole.** A 1.0 prerequisite (owner, 24 Sep); the
+  option is not chosen. Measure first: re-score the stored workload #1 survivors from their mutation
+  reports and count how many killed *only* the empty-body mutant. That number says how inflated every
+  published workload #1 rate is, and it can be read without re-running anything. Recommendation: **B**,
+  with A as a first line.
+- **ADR-0064** — philosophical, blocks nothing, largely retired by ADR-0079. Standing recommendation:
+  B now, C not yet.
+- **The fixtures' `package.json` still list Stryker as a devDependency.** The verifier no longer reads
+  them (ADR-0088); removing them rewrites the fixtures' lockfiles. Cosmetic, the owner's call.
+- **`fixtures/jest-fixture` needs `npm install`** for `verifier-jest.slow` to run. That is a download and
+  wants the owner's OK. It has not been run since ADR-0088 changed where Stryker comes from.
+- **A client symbol name is on public `main`** (`getSpendVsReplacement`, five tracked files, the reduced
+  case behind ADR-0035 and ADR-0039). Already pushed, so removing it does not retract it. Flagged, the
+  owner's call.
 
-- **ADR-0084's mitigation — re-run the suite once before recording a regression-only failure.**
-  Measured overnight: this project's suite fails 11 tests intermittently, at **3/50 = 0.060**
-  `[0.013, 0.165]` of runs — statistically indistinguishable from `D = 2/19 = 0.105` `[0.013, 0.331]`.
-  **So `D` was most likely never the gate's error**; `verifyChange` reported what it saw and the suite
-  moved underneath it.
-  **The mitigation is free on the happy path** (only a candidate that already failed on `tests_ok`
-  pays), **cannot rescue a candidate that genuinely breaks tests** (those break twice), and is the
-  standard already applied by hand to `snc-27`. **Against:** it makes a verdict a function of two runs,
-  which is a `ChangeVerdict` contract change, and a 6 % floor is a property of *this* project.
-  Recommendation: **do it, behind a flag defaulting on, recording both readings rather than collapsing
-  them** — ADR-0066's rule is that the recorded disagreement is the output, not the better number.
-  **It does not block ADR-0077 option B and B does not block it**; B adds no exposure to the suite that
-  today's gate does not already have.
-- **ADR-0077 option B — MEASURED and waiting on a yes or no.** Should the gate accept a change whose
-  only remaining problem is a **type error in a test file**, provided every test still *passes*?
-  Measured 21 Sep: **14 of 15** such changes pass the project's own suite, 95 % `[0.681, 0.998]`,
-  against `S₁₄`'s `[0.008, 0.221]` — **the intervals do not overlap.** On the same 30 tasks a B-shaped
-  gate scores **16** where today's scores 2.
-  **A and C are retired** by that number. **What B costs** is the gate's simplest sentence: *"the
-  tests were not touched, at all"* becomes *"the tests still pass, though some no longer type-check"*.
-  **And the same run named B's own weak point** — `snc-27` failed with 82 regressions and passed a
-  second reading of the same bytes with 0, on an idle machine. B leans the gate onto the clause that
-  did that, so **characterising `D` where pressure is excluded is on B's critical path**, §ADR-0066
-  addendum. Recommendation: **yes in principle, and find out what causes the 82-vs-0 before shipping
-  it.** ADR-0082 would make B matter less but does not replace it.
-- **ADR-0075 — DECIDED 20 Sep: option C, symbol-scoped return.** The worker returns one
-  declaration's new text and sidecrew splices it back by AST range, so the bound becomes the *symbol*
-  rather than the file and a 60-line method inside a 4,000-line service comes into reach. **ADR-0076
-  had already landed its prerequisite**, the AST range finder, so 14c can start on it directly.
-  Nothing further is owed here; it is listed only so the next session does not re-open it.
-- **ADR-0079 — recon before planning + the framework it belongs to** (addendum, 20 Sep). The owner's
-  generalised loop — Opus plans a gathering session, workers report, Opus asks the user, workers act,
-  repeat — **is `VISION.md`'s philosophy section and `BACKLOG` edge idea 1 (Phase 13b)**, which still
-  owes its own ADR. Target: planning is **233,500 fixed tokens, 68 % of the total even at 41 tasks**,
-  overwhelmingly Opus *reading*. Open problem, in the vision's words: *existence is checkable by
-  machine; relevance is not*. The owner's *"ask the user"* step is a candidate answer — the **user as
-  relevance oracle** — and the constraint is that each cycle must be batched and cheap, or the loop
-  pays the 68 % `n` times. The proposal proper: sidecrew reports *"your
-  config says 0 errors, `--strictNullChecks` says 763 files — want to fix them?"*, fixes them, then
-  offers to turn the flag on. Recommendation: **A now** (recon only), **B next** (fix, scoped to
-  shapes that survive today), **C once ADR-0077 is decided**, never D. The blocker on C is honest and
-  specific: on the flagship example the gate currently clears 2/30, so recon-then-fix would quantify
-  work the tool cannot do. **It also supplies the consent argument ADR-0077 option B was missing.**
-- **ADR-0064** — what #2a can address is a property of a project's *configuration*, not its code.
-  Philosophical, blocks nothing, and the owner asked to discuss it. **Largely retired by ADR-0079**:
-  recon makes the fact a behaviour rather than a caveat, so B and C here matter much less. Discussed
-  20 Sep; the standing recommendation is **B now, C not yet** — `strictNullChecks` migrations are
-  exactly where ADR-0077 says the gate cannot credit the work, though `noUnusedLocals`-style
-  raised-bar work does survive and a narrower C could be defended on it.
-- **The personal site's employer/testbed inference — handled 21 Sep.** `lvlrsajjad.github.io` names
-  the employer on its homepage (`worksFor`, and an experience entry) and described sidecrew's
-  measurements as taken on *"commercial"* codebases *"neither of them mine"*. Fine apart; together an
-  inference nobody decided to publish. **Owner's call: drop "commercial"** — it breaks the chain and
-  costs nothing, because *"not written by me, not modified to make this work"* is what makes the
-  measurement honest and is equally true of an open-source codebase. Done in three files, committed,
-  **not pushed** — that repo is the owner's. **sidecrew's own `docs/` site deliberately keeps
-  "commercial"**: it names no employer, so the word carries no inference there, and CLAUDE.md blesses
-  it as exactly as strong a claim as naming the client and publishable.
-- **A client symbol name is in the tracked tree, and on public `main`.**
-  `getSpendVsReplacement` appears in five tracked files — a test comment, `BACKLOG`, `CHANGELOG` and
-  `DECISIONS` — as the reduced case that ADR-0035 and ADR-0039 were written about. It is the client's
-  code, not their name, and it survived the ADR-0051 allowlist rebuild. **It is already pushed, so
-  removing it now does not retract it**, and rewriting those four documents costs the diagnostic
-  history that makes them worth having. Flagged rather than fixed: the call is the owner's.
+*Decided this week and not to be re-opened:* ADR-0086 §6 (**B**, 23 Sep), ADR-0087 (**A**, amended per
+declaration), ADR-0088 (built), ADR-0082 (**accepted in principle as TDD**), `v0.2.0` (**cut**),
+ADR-0089 (**a 1.0 prerequisite**).
 
 ## 5. Standing hazards — all learned expensively
+
+- **npm installs peer dependencies, and that put the wrong compiler into sidecrew's own tool cache**
+  (ADR-0088 spike, 23 Sep): `typescript` 7.0.2 and `vitest` 4.1.11, which Stryker then used instead of the
+  project's. The cache is installed with `legacy-peer-deps` and `strykerStatus` refuses one holding a
+  project-owned tool. **Any future tool cache needs the same guard.**
+- **Measure on a pinned clone, never the working checkout** (ADR-0088 addendum). It moved 36 commits in
+  one day. `scripts/pinned-clone.sh` refuses when the dependency manifests differ, because the copied
+  `node_modules` would then be the wrong one. Fingerprint the working checkout before and after anyway.
+- **`git status` from inside a larger repository is the repository's, not the project's.** The integrity
+  check's first run raised a false alarm on the in-repo fixtures; it is scoped with `-- .` now. Any
+  check that reads status must scope it.
+- **A subagent told to run no commands may still run one.** Both D planners made a stray no-op `true`
+  call and reported it. Nothing was disturbed, but a background measurement is only protected by the
+  instruction, so **do not run planning subagents beside a measurement that a stray command could
+  poison** unless their tools are restricted.
+- **"No mutant killed" is two situations, and the message used to say the wrong one.** When every
+  mutant is a `CompileError`, nothing ran, and the old text said *"the test passes against every changed
+  version"*. That misdirected a repair, and it is how ADR-0089 stayed hidden inside the fixture test
+  written to catch it. Fixed; `noKillMessage` is the one place that sentence is built.
+- **A verdict field must not be derived from how far the candidate got.** `target_scope` was read off
+  the compile stage's counts, so 26 confinement failures said `"file"`. Fixed; decide recorded rules
+  from the task and the plan.
 
 - **Stage explicit paths. Never `git add -A` or `git commit -a`.** Peer sessions share this worktree.
 - **The pre-push scan stopped a real leak on 20 Sep, and the leak was in a *safety check*.** An
