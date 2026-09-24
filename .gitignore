@@ -88,3 +88,9 @@ experiments/reach/results/*.log
 experiments/reach/results/*-report.json
 # The working checkout's fingerprints: hashes plus its HEAD, which is only a commit id but is local state.
 experiments/reach/results/watch-*.txt
+
+# ADR-0082 D: workload #1 plans against a client module quote its code, and the exemplars are tests of
+# it. The population list names client files. All local; the counts and hashes are committed.
+experiments/test-first/plans/
+experiments/test-first/local/
+experiments/test-first/results/*.log
