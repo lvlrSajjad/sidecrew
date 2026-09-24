@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { afterEach, describe, it, expect } from "vitest";
 import { testSuffixFor } from "../src/plan.js";
 import {
+  noKillMessage, uncountedStatuses,
   JEST_CONFIG_FILES,
   MUTATION_REPORT,
   NEVER_COPY,
@@ -702,5 +703,37 @@ describe("the sandbox's node_modules — ADR-0034", () => {
       "'getWinstonConfig' cannot be named without a reference to '../../../../Users/x/node_modules/logform'.";
     expect(/\bTS2883\b/.test(real)).toBe(true);
     expect(/\bTS2883\b/.test("src/a.ts(3,5): error TS2345: Argument of type 'string'")).toBe(false);
+  });
+});
+
+describe("noKillMessage — the two meanings of killed == 0 (ADR-0005)", () => {
+  const m = (survived: number, no_coverage = 0, timeout = 0) =>
+    ({ score: 0, killed: 0, survived, no_coverage, timeout, killed_ids: [] });
+
+  it("never says a changed version passed when none ran — every mutant a compile error", () => {
+    // ADR-0082 D, 24 Sep 2026: 2 mutants, both CompileError. The old sentence sent a planner to repair
+    // an exemplar that was never the problem.
+    const said = noKillMessage("f", m(0), { CompileError: 2 });
+    expect(said).toContain("nothing in f could be mutated");
+    expect(said).toContain("every one failed to compile");
+    expect(said).not.toContain("against every changed version");
+  });
+
+  it("says there were no mutants at all when Stryker made none", () => {
+    expect(noKillMessage("f", m(0), {})).toContain("made no mutants in its line range");
+  });
+
+  it("still blames the test when mutants ran and survived, and counts the discarded ones", () => {
+    const said = noKillMessage("f", m(3), { CompileError: 1 });
+    expect(said).toContain("3 survived");
+    expect(said).toContain("1 failed to compile and were discarded");
+    expect(said).toContain("every changed version that ran");
+  });
+});
+
+describe("uncountedStatuses", () => {
+  it("counts what parseMutationReport leaves out, for the file under test", () => {
+    const report = { files: { "src/a.ts": { mutants: [{ status: "CompileError" }, { status: "Killed" }, { status: "CompileError" }] } } };
+    expect(uncountedStatuses(report, "src/a.ts")).toEqual({ CompileError: 2 });
   });
 });

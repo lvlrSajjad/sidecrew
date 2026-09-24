@@ -1,0 +1,240 @@
+{
+  "measured": true,
+  "kind": "adr-0082-d-result",
+  "computed_at": "2026-09-24T05:25:36.908251+00:00",
+  "rule": "docs/plan/prompts/adr-0082-d.md \u00a72\u2013\u00a73 (frozen 24 Sep 2026) and its \u00a71 amendments",
+  "Y_pooled": {
+    "k": 2,
+    "n": 20,
+    "rate": 0.1,
+    "ci95": [
+      0.012,
+      0.317
+    ]
+  },
+  "Y_big": {
+    "k": 1,
+    "n": 10,
+    "rate": 0.1,
+    "ci95": [
+      0.003,
+      0.445
+    ]
+  },
+  "Y_small": {
+    "k": 1,
+    "n": 10,
+    "rate": 0.1,
+    "ci95": [
+      0.003,
+      0.445
+    ]
+  },
+  "Y_plannable_only": {
+    "k": 2,
+    "n": 16,
+    "rate": 0.125,
+    "ci95": [
+      0.016,
+      0.383
+    ]
+  },
+  "fork": "B NOT AFFORDABLE AS IT STANDS \u2014 principle stays; next, measure what raises Y",
+  "big_wholly_below_small": false,
+  "denominator_note": "all 20 declarations; unplannable and unverified-exemplar modules count as not surviving",
+  "exemplars": {
+    "planned_modules": 15,
+    "verified": 13
+  },
+  "cost": {
+    "run_wall_s": 1215,
+    "survivors": 2,
+    "wall_s_per_pinned_region": 607.5
+  },
+  "survivor_mutation_scores": [
+    0.6666666666666666,
+    0.014705882352941176
+  ],
+  "per_declaration": [
+    {
+      "task_id": "big-01",
+      "arm": "big",
+      "module": "m01",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-02",
+      "arm": "big",
+      "module": "m02",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-03",
+      "arm": "big",
+      "module": "m03",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-04",
+      "arm": "big",
+      "module": "m04",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-05",
+      "arm": "big",
+      "module": "m05",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-06",
+      "arm": "big",
+      "module": "m06",
+      "unplannable": false,
+      "exemplar_verified": false,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-07",
+      "arm": "big",
+      "module": "m07",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-08",
+      "arm": "big",
+      "module": "m08",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-09",
+      "arm": "big",
+      "module": "m09",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "big-10",
+      "arm": "big",
+      "module": "m01",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": true,
+      "mutation_score": 0.6666666666666666
+    },
+    {
+      "task_id": "small-01",
+      "arm": "small",
+      "module": null,
+      "unplannable": true,
+      "exemplar_verified": false,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-02",
+      "arm": "small",
+      "module": "m11",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-03",
+      "arm": "small",
+      "module": null,
+      "unplannable": true,
+      "exemplar_verified": false,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-04",
+      "arm": "small",
+      "module": null,
+      "unplannable": true,
+      "exemplar_verified": false,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-05",
+      "arm": "small",
+      "module": "m14",
+      "unplannable": false,
+      "exemplar_verified": false,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-06",
+      "arm": "small",
+      "module": "m15",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-07",
+      "arm": "small",
+      "module": "m16",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": true,
+      "mutation_score": 0.014705882352941176
+    },
+    {
+      "task_id": "small-08",
+      "arm": "small",
+      "module": "m17",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-09",
+      "arm": "small",
+      "module": null,
+      "unplannable": true,
+      "exemplar_verified": false,
+      "survived": false,
+      "mutation_score": null
+    },
+    {
+      "task_id": "small-10",
+      "arm": "small",
+      "module": "m19",
+      "unplannable": false,
+      "exemplar_verified": true,
+      "survived": false,
+      "mutation_score": null
+    }
+  ]
+}

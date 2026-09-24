@@ -556,6 +556,52 @@ export function parseMutationReport(report: unknown, sourceFile?: string): Mutat
   return MutationResult.parse({ score, killed, survived, timeout, no_coverage, killed_ids });
 }
 
+/**
+ * Mutants Stryker made that `parseMutationReport` does not count: `CompileError` above all, which the
+ * type checker produces and discards. Message only, never the verdict (the contract's four counts are
+ * unchanged), so `noKillMessage` can say *why* nothing was killed.
+ */
+export function uncountedStatuses(report: unknown, sourceFile?: string): Record<string, number> {
+  const files = (report as RawReport | null)?.files ?? {};
+  const wanted = sourceFile === undefined ? null : sourceFile.split(sep).join("/");
+  const keys = Object.keys(files);
+  const matching = wanted === null ? keys : keys.filter((k) => k.split(sep).join("/").endsWith(wanted));
+  const out: Record<string, number> = {};
+  for (const key of matching.length > 0 ? matching : keys) {
+    for (const mutant of files[key]?.mutants ?? []) {
+      const status = String(mutant.status);
+      if (!COUNTED.has(status)) out[status] = (out[status] ?? 0) + 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * The sentence for `killed == 0`, which is two different situations (ADR-0005), and the old wording
+ * said the wrong one for the second.
+ *
+ * When all four counts are zero, **no changed version of the function ever ran**, usually because every
+ * mutant Stryker made was a type error the checker discarded. The old message said *"the test passes …
+ * against every changed version of it"*, which is false there, and it sent a planner off to repair an
+ * exemplar that was never the problem (ADR-0082 D, 24 Sep 2026: 2 and 1 mutants, all `CompileError`).
+ */
+export function noKillMessage(fn: string, m: MutationResult, uncounted: Record<string, number>): string {
+  const ran = m.survived + m.no_coverage + m.timeout;
+  const compileErrors = uncounted.CompileError ?? 0;
+  if (ran === 0) {
+    const made = Object.values(uncounted).reduce((n, k) => n + k, 0);
+    return made === 0
+      ? `nothing in ${fn} could be mutated: Stryker made no mutants in its line range, so no test of it can ` +
+        "kill anything (ADR-0005). This is about the function, not the test."
+      : `nothing in ${fn} could be mutated: Stryker made ${made} mutant(s) and ${compileErrors === made ? "every one" : `${compileErrors}`} ` +
+        "failed to compile, so the type checker discarded them and no changed version ever ran. No test of this " +
+        "function can kill anything (ADR-0005). This is about the function, not the test.";
+  }
+  return `no mutant of ${fn} was killed: ${m.survived} survived, ${m.no_coverage} were never reached, ` +
+    `${m.timeout} timed out${compileErrors > 0 ? `, and ${compileErrors} failed to compile and were discarded` : ""}. ` +
+    "The test passes against the original code and against every changed version that ran.";
+}
+
 // ── the sandbox ───────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -909,13 +955,7 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
       } else {
         stage_reached = "done";
         mutation = parseMutationReport(report, target.sourceFile);
-        if (mutation.killed === 0) {
-          problems.push(
-            `no mutant of ${target.functionName} was killed: ${mutation.survived} survived, ` +
-            `${mutation.no_coverage} were never reached, ${mutation.timeout} timed out. ` +
-            `The test passes against the original code and against every changed version of it.`,
-          );
-        }
+        if (mutation.killed === 0) problems.push(noKillMessage(target.functionName, mutation, uncountedStatuses(report, target.sourceFile)));
       }
     }
   } finally {

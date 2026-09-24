@@ -127,20 +127,33 @@ describe("verifyTs on the fixture", () => {
     expect(verdict.error).toContain("hello-world");
   }, 120_000);
 
-  it("fails a candidate that passes and asserts something, but kills nothing", async () => {
-    // Cheap pass the static check does not catch (ADR-0006): a real assertion about a real call that
-    // no mutant of the function can break. The mutation stage is the only thing standing here.
+  it("says a function with nothing mutable is about the function, not the test", async () => {
+    // This test used to be "fails a candidate that passes … but kills nothing", on `applyAll`. Its one
+    // mutant is a type error the checker discards, so it never exercised a weak test against live
+    // mutants, and the old message said "the test passes against every changed version", which is
+    // false (ADR-0082 D found the same defect on a real project, 24 Sep 2026). Kept, with the truth.
     const verdict = await verifyTs(
       candidate("applyAll:stateful_sequence:9", 'import { applyAll } from "../src/machine";\nimport { it, expect } from "vitest";\nit("x", () => { expect(typeof applyAll("draft", [])).toBe("string"); });\n'),
       { target: target({ source: "src/machine.ts", function: "applyAll" }) },
     );
-    expect(verdict.compile_ok).toBe(true);
-    expect(verdict.pass_ok).toBe(true);
-    expect(verdict.tautological).toBe(false);
-    expect(verdict.stage_reached).toBe("done");
-    expect(verdict.mutation?.killed).toBe(0);
     expect(verdict.survived).toBe(false);
-    expect(verdict.error).toContain("no mutant of applyAll was killed");
+    expect(verdict.mutation).toMatchObject({ killed: 0, survived: 0, timeout: 0, no_coverage: 0 });
+    expect(verdict.error).toContain("nothing in applyAll could be mutated");
+    expect(verdict.error).not.toContain("against every changed version");
+  }, 300_000);
+
+  it("KNOWN HOLE (ADR-0089): a type-only assertion survives by killing the empty-body mutant", async () => {
+    // Recorded as the gate behaves today so the hole cannot close or widen unnoticed. Measured
+    // 24 Sep 2026: `typeof slugify(x) === "string"` kills 1 of 12 mutants (score 0.083), is not
+    // tautological to the detector, and survives. Flip these expectations when ADR-0089 is decided.
+    const verdict = await verifyTs(
+      candidate("slugify:happy_path:9", 'import { slugify } from "../src/strings";\nimport { it, expect } from "vitest";\nit("x", () => { expect(typeof slugify("Hello World")).toBe("string"); });\n'),
+      { target: target({ source: "src/strings.ts", function: "slugify" }) },
+    );
+    expect(verdict.tautological).toBe(false);
+    expect(verdict.mutation?.killed).toBe(1);
+    expect(verdict.mutation!.score).toBeLessThan(0.1);
+    expect(verdict.survived).toBe(true);
   }, 300_000);
 
   it("does not hand a candidate the kills the previous candidate earned", async () => {

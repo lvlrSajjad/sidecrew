@@ -1,6 +1,15 @@
 # Changelog
 ## Unreleased
 
+**ADR-0082 D measured: `Y` = 2/20 `[0.012, 0.317]` → B is not affordable as it stands.** Test-first
+stays accepted in principle; next comes a measurement of what raises `Y`. Where it breaks: of 14 tasks,
+2 ever passed on the original code, and both killed a mutant in the region. The worker's problem is
+writing a test that compiles and runs against a NestJS service, not writing a sensitive one.
+**Found on the way: ADR-0089**, a type-only assertion survives workload #1's gate by killing the
+empty-body mutant (proposed, owner's call), and one of D's two survivors scored 0.015. **Fixed:** the
+verifier's "no mutant killed" message said *"passes against every changed version"* when none had run.
+It now names compile errors, and the fixture test that hid this tells the truth.
+
 **Phase 14c′ measured: one declaration per task → PROCEED to 14d.** `S′_big` 15/41 = 0.366 `[0.221,
 0.531]`, `S′_small` 10/42 = 0.238 `[0.121, 0.395]`, and B's safety check clean (0 combined regressions,
 0 of 27 files worse). On the same 27 files where 14c's file-sized tasks survived 1/27, one-declaration

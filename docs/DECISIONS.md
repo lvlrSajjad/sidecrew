@@ -6574,3 +6574,39 @@ verifier no longer reads it, and removing it would rewrite their lockfiles, whic
 *the change's size binds, not the file's*, is borne out on the same 27 files: 1/27 → 25/83.
 `prompts/phase-14c-prime.md` §5.
 
+
+---
+
+## ADR-0089 — A type-only assertion survives workload #1's gate by killing the empty-body mutant (PROPOSED)
+
+**Status:** **proposed, 24 Sep 2026** · found while fixing a false message ADR-0082 D exposed · needs the
+owner · bears on non-negotiable #2 (workload #1's iff), ADR-0006 (tautologies), ADR-0005
+
+### What was found
+
+`expect(typeof slugify("Hello World")).toBe("string")` **survives** the gate on `fixtures/ts-fixture`:
+compiles, passes, not tautological to the detector, and kills **1 of 12** mutants (score 0.083). The one
+it kills is, almost certainly, the mutant that empties the body so the function returns `undefined`. Any
+assertion that the result exists and has the right type kills that one, and nothing else. The spec
+itself lists `expect(typeof result).toBe("string")` as an invariant that proves nothing (§ Shapes).
+
+**It stayed hidden because the fixture test for exactly this case could not show it.** That test used
+`applyAll`, whose only mutant is a type error, and the verifier's message said *"the test passes
+against every changed version of it"*, which was false and is now fixed (it names compile errors, and
+says a function with no live mutants is about the function). The corrected fixture now pins the hole as
+the gate behaves today, labelled KNOWN HOLE, so it cannot close or widen unnoticed.
+
+**It is not hypothetical:** ADR-0082 D's second survivor scored **0.015**, about 1 of 68.
+
+### Options
+
+- **A — the tautology detector flags a type-only sole assertion** (`typeof x` equality, `toBeDefined`,
+  `instanceof` as the only check). Cheap and static; it misses the same move written another way.
+- **B — survival requires a kill other than the whole-body removal**, i.e. Stryker's `BlockStatement`
+  mutant on the function's own body. That is exact about the loophole and costs nothing at run time.
+- **C — a minimum mutation score for survival.** Blunt: it changes the iff everywhere, and a real test of
+  a large function can score low honestly.
+
+**Recommendation: B, with A as the detector's cheap first line.** Before deciding, **re-score history**:
+count how many recorded workload #1 survivors killed *only* the body mutant. That says how inflated every
+published workload #1 rate is, and it can be done from the stored reports without re-running anything.

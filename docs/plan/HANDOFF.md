@@ -34,7 +34,7 @@ which cannot be retracted (ADR-0051).
 
 **Phase 14c′ — DONE 24 Sep 06:05 → PROCEED to 14d** by its frozen rule. `S′_big` 15/41 [0.221, 0.531], `S′_small` 10/42 [0.121, 0.395]; B's safety check clean. `prompts/phase-14c-prime.md` §5. **`v0.2.0` is the owner's call again, and the rule recommends cutting it.** Nothing pushed since `da1bf67`.
 
-**ADR-0082 D — planned, verifying exemplars (24 Sep, from 06:09).** Rule frozen and amended three times, all dated and all before any outcome: `prompts/adr-0082-d.md`. 15 of 19 modules planned by Sonnet subagents. `scripts/d-verify-exemplars.sh`, then `scripts/d-run.sh`, then `python3 scripts/results-d.py`. **Keep the clone until D is done.**
+**ADR-0082 D — DONE 24 Sep 07:24: `Y` = 2/20 → B not affordable as it stands** (`prompts/adr-0082-d.md` §6). The worker cannot yet build a test that runs against a NestJS service; once one runs, it kills (2/2). **New, needs the owner: ADR-0089**, a type-only assertion survives workload #1's gate (fixture: 1 of 12 killed, still survives; one D survivor scored 0.015). Recommendation: B, after re-scoring history from stored reports. The clone is deleted.
 
 - ADR-0086 §6 **option B built and the default** (`symbol_gate: "declaration"`): a symbol task is judged
   by its declaration, and nothing outside it may get worse.
