@@ -74,6 +74,15 @@ def survivors(arm, ids):
     }
 
 
+def first_cache_read(transcript):
+    """The first message's cache read: the harness a pass got back from a sibling's cache (prompt note, 25 Sep)."""
+    for line in open(transcript):
+        e = json.loads(line)
+        if e.get("type") == "assistant":
+            return e["message"].get("usage", {}).get("cache_read_input_tokens", 0) or 0
+    return 0
+
+
 rows = {}
 for arm in ARMS:
     plan, ids = tasks_of(arm)
@@ -83,10 +92,16 @@ for arm in ARMS:
     d = decompose.decompose(transcript)
     n = len(ids)
     k, run = survivors(arm, ids)
+    shared = first_cache_read(transcript)
+    normalised = d["P_total"] + shared
     rows[arm] = {
         "N": n,
         "P_total": d["P_total"],
-        "R": round(d["P_total"] / n / W_UPPER, 3) if n else None,
+        "R_as_measured": round(d["P_total"] / n / W_UPPER, 3) if n else None,
+        "harness_from_sibling_cache": shared,
+        "P_total_normalised": normalised,
+        # §3 is applied to this one: what a pass started alone pays (prompt note, 25 Sep ~00:20).
+        "R": round(normalised / n / W_UPPER, 3) if n else None,
         "split": {x: d[x] for x in ("harness", "reading", "output", "output_counted_twice", "residual")},
         "reading_by_tool": d["reading_by_tool"],
         "retrieval_calls": d["retrieval_calls"],
@@ -131,6 +146,8 @@ report = {
     "void_base_transcripts": void,
     "S0": s0, "S1": s1,
     "R1_at_N12": r1, "R0_at_N12": rows["base-n12"]["R"],
+    "R1_at_N12_as_measured": rows["retr-n12"]["R_as_measured"],
+    "normalisation": "R is harness-normalised: P_total plus the first message's cache read (prompt file note, 25 Sep ~00:20, written before R₁ existed)",
     "veto": veto,
     "fork": fork if not void else f"VOID — base transcript(s) {void} used retrieval; re-run those passes before reading anything",
     "prediction_preregistered": "R₁ in (1.5, 2.3)",
@@ -139,4 +156,4 @@ Path(out).write_text(json.dumps(report, indent=2, ensure_ascii=False))
 print(json.dumps({k: report[k] for k in ("R1_at_N12", "R0_at_N12", "S0", "S1", "veto", "fork", "void_base_transcripts")}, indent=2, ensure_ascii=False))
 for arm in ARMS:
     r = rows[arm]
-    print(f"{arm:9s} N={r['N']:3d} P_total={r['P_total']:>8,} R={r['R']} survived={r['survived']} retrieval_calls={r['retrieval_calls']}")
+    print(f"{arm:9s} N={r['N']:3d} P_total={r['P_total']:>8,} (+{r['harness_from_sibling_cache']:,}) R={r['R']} (as measured {r['R_as_measured']}) survived={r['survived']} retrieval_calls={r['retrieval_calls']}")
