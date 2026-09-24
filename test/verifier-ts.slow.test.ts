@@ -133,7 +133,7 @@ describe("verifyTs on the fixture", () => {
     // mutants, and the old message said "the test passes against every changed version", which is
     // false (ADR-0082 D found the same defect on a real project, 24 Sep 2026). Kept, with the truth.
     const verdict = await verifyTs(
-      candidate("applyAll:stateful_sequence:9", 'import { applyAll } from "../src/machine";\nimport { it, expect } from "vitest";\nit("x", () => { expect(typeof applyAll("draft", [])).toBe("string"); });\n'),
+      candidate("applyAll:stateful_sequence:9", 'import { applyAll } from "../src/machine";\nimport { it, expect } from "vitest";\nit("x", () => { expect(applyAll("draft", []).length).toBeGreaterThan(0); });\n'),
       { target: target({ source: "src/machine.ts", function: "applyAll" }) },
     );
     expect(verdict.survived).toBe(false);
@@ -142,17 +142,30 @@ describe("verifyTs on the fixture", () => {
     expect(verdict.error).not.toContain("against every changed version");
   }, 300_000);
 
-  it("KNOWN HOLE (ADR-0089): a type-only assertion survives by killing the empty-body mutant", async () => {
-    // Recorded as the gate behaves today so the hole cannot close or widen unnoticed. Measured
-    // 24 Sep 2026: `typeof slugify(x) === "string"` kills 1 of 12 mutants (score 0.083), is not
-    // tautological to the detector, and survives. Flip these expectations when ADR-0089 is decided.
+  it("CLOSED (ADR-0089 A): a type-only assertion is flagged before it can survive", async () => {
+    // Was the KNOWN HOLE: measured 24 Sep 2026, `typeof slugify(x) === "string"` killed 1 of 12 mutants
+    // (score 0.083), was not tautological to the detector, and survived.
     const verdict = await verifyTs(
       candidate("slugify:happy_path:9", 'import { slugify } from "../src/strings";\nimport { it, expect } from "vitest";\nit("x", () => { expect(typeof slugify("Hello World")).toBe("string"); });\n'),
       { target: target({ source: "src/strings.ts", function: "slugify" }) },
     );
+    expect(verdict.tautological).toBe(true);
+    expect(verdict.survived).toBe(false);
+  }, 300_000);
+
+  it("KNOWN HOLE, narrowed (ADR-0089, 25 Sep): an existence check survives on a crash kill", async () => {
+    // What the build found. `slugify` has a declared return type, so its emptied body is a CompileError
+    // and never runs — option B has nothing to exclude. The one kill is `normalize("")`, which makes the
+    // function THROW: any test that merely calls it kills that. Recorded as the gate behaves, so the hole
+    // cannot close or widen unnoticed; flip it when the owner decides whether a crash-only kill counts.
+    const verdict = await verifyTs(
+      candidate("slugify:happy_path:8", 'import { slugify } from "../src/strings";\nimport { it, expect } from "vitest";\nit("x", () => { expect(slugify("Hello World").length >= 0).toBe(true); });\n'),
+      { target: target({ source: "src/strings.ts", function: "slugify" }) },
+    );
     expect(verdict.tautological).toBe(false);
-    expect(verdict.mutation?.killed).toBe(1);
-    expect(verdict.mutation!.score).toBeLessThan(0.1);
+    expect(verdict.mutation?.body_mutant_id).toBeNull();
+    expect(verdict.mutation?.killed_mutators).toEqual(["StringLiteral"]);
+    expect(verdict.mutation?.killed_reasons[0]).toMatch(/normalization form/i);
     expect(verdict.survived).toBe(true);
   }, 300_000);
 

@@ -312,6 +312,9 @@ export function shouldRetry(verdict: Verdict, contradiction: Contradiction | nul
     };
   }
   if (verdict.tautological) return { retry: true, reason: "tautological — it passes without testing the function" };
+  if (m !== null && m.killed > 0) {
+    return { retry: true, reason: "killed only the mutant that empties the whole body — assert on the value (ADR-0089)" };
+  }
   return { retry: true, reason: "killed no mutant" };
 }
 

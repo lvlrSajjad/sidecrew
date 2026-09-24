@@ -18,7 +18,7 @@ progress** — a workload a machine cannot check does not belong here at any pri
 1. Worker inference never touches the Anthropic API **on the local tier** — reached over `http://localhost:<port>/v1` (mlx_lm.server), never via a subagent. Machines with less than 24 GB installed (the owner's "16 GB or smaller") are the `api` tier and their worker is Haiku (ADR-0009, ADR-0045): the tier is decided by **installed** RAM, never by free RAM, so a machine that can host a worker never falls back silently, and `BatchResult` records which tier ran. The guarantee is enforced in `src/schemas.ts`, not assumed: a `local` run that spent Claude tokens on worker inference does not serialise.
 2. **One gate per workload, and each is an iff in `src/schemas.ts` rather than a convention.**
    Workload #1 (tests): survive ⇔ compiles ∧ passes on original code ∧ kills ≥ 1 mutant of the function
-   under test ∧ non-tautological. Workload #2a (behaviour-preserving changes): survive ⇔ the diff was
+   under test **other than the one that empties its whole body** (ADR-0089) ∧ non-tautological. Workload #2a (behaviour-preserving changes): survive ⇔ the diff was
    confined ∧ `tsc` clean in the task's files with none introduced elsewhere ∧ every test that passed
    before still passes — ADR-0048, and the seven cheap ways to pass it are blocked by name. A verdict
    that claims a survival its own fields do not support does not serialise, on either.

@@ -22,6 +22,7 @@ export type TautologyCode =
   | "constant_assertions"
   | "self_comparison"
   | "snapshot_only"
+  | "type_only_assertions"
   | "function_never_called"
   | "copied_exemplar";
 
@@ -209,7 +210,7 @@ interface Assertion {
   matcher: string;
   /** The matcher's own argument text, or null for a matcher called with none. */
   expected: string | null;
-  kind: "meaningful" | "constant" | "self" | "snapshot";
+  kind: "meaningful" | "constant" | "self" | "snapshot" | "type_only";
   /** The call site as written, for the message the retry reads. Set by the Swift scanner only. */
   text?: string;
 }
@@ -340,8 +341,24 @@ function classifySwift(name: string, subject: string, expected: string | null, c
   return "meaningful";
 }
 
+/**
+ * ADR-0089 option A: an assertion about a value's **type or existence** rather than the value. Every one
+ * of these holds for any function that returns something of the right shape, so a test made only of them
+ * kills nothing but the mutant that empties the body — which option B no longer counts. This is the cheap
+ * first line that says so before a mutation run is spent; it misses the same move written another way,
+ * which is why B is the rule and this is the early warning.
+ */
+const TYPE_ONLY_MATCHERS = new Set(["toBeDefined", "toBeInstanceOf"]);
+const isTypeOnly = (subject: string, matcher: string, expected: string | null): boolean => {
+  const s = normalise(subject);
+  if (TYPE_ONLY_MATCHERS.has(matcher)) return true;
+  if (EQUALITY_MATCHERS.has(matcher) && /^typeof\b/.test(s)) return true;
+  return EQUALITY_MATCHERS.has(matcher) && /\binstanceof\b/.test(s) && normalise(expected ?? "") === "true";
+};
+
 function classify(subject: string, matcher: string, expected: string | null): Assertion["kind"] {
   if (SNAPSHOT_MATCHERS.has(matcher)) return "snapshot";
+  if (isTypeOnly(subject, matcher, expected)) return "type_only";
   if (isConstantExpression(subject) && (expected === null || isConstantExpression(expected))) return "constant";
   if (expected !== null && EQUALITY_MATCHERS.has(matcher) && normalise(subject) === normalise(expected)) return "self";
   return "meaningful";
@@ -421,7 +438,7 @@ export function analyseTautology(
   if (found.length === 0) {
     findings.push({ code: "no_assertions", message: "the test makes no assertions at all", line: 1 });
   } else if (meaningful === 0) {
-    for (const kind of ["constant", "self", "snapshot"] as const) {
+    for (const kind of ["constant", "self", "snapshot", "type_only"] as const) {
       const first = found.find((a) => a.kind === kind);
       if (!first) continue;
       findings.push({ code: CODE_FOR[kind], message: MESSAGE_FOR[dialect][kind](first, functionName), line: at(first.index) });
@@ -431,7 +448,7 @@ export function analyseTautology(
   return { tautological: findings.length > 0, assertions: found.length, meaningful, findings };
 }
 
-const CODE_FOR = { constant: "constant_assertions", self: "self_comparison", snapshot: "snapshot_only" } as const;
+const CODE_FOR = { constant: "constant_assertions", self: "self_comparison", snapshot: "snapshot_only", type_only: "type_only_assertions" } as const;
 
 type Message = (a: Assertion, fn: string) => string;
 
@@ -439,7 +456,7 @@ type Message = (a: Assertion, fn: string) => string;
  * One set per dialect, because the message is read by a worker model on its single retry and the
  * fastest way to waste that retry is to quote it syntax from a language it is not writing.
  */
-const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Message>> = {
+const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot" | "type_only", Message>> = {
   typescript: {
     constant: (a, fn) =>
       `every assertion is constant — \`expect(${normalise(a.subject)})\` holds whatever ${fn} does`,
@@ -447,6 +464,9 @@ const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Mess
       `every assertion compares a value with itself — \`expect(${normalise(a.subject)}).${a.matcher}(${normalise(a.expected ?? "")})\` cannot fail`,
     snapshot: (a, fn) =>
       `the only assertions are snapshots, which pin whatever ${fn} returns today rather than what it should return`,
+    type_only: (a, fn) =>
+      `every assertion checks a type or that a value exists — \`expect(${normalise(a.subject)}).${a.matcher}(…)\` holds ` +
+      `for any ${fn} that returns something of that shape. Assert on the value itself (ADR-0089)`,
   },
   swift: {
     constant: (a, fn) =>
@@ -457,6 +477,9 @@ const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Mess
     // that adding a snapshot library to the matcher list is a one-line change rather than a branch.
     snapshot: (a, fn) =>
       `the only assertions are snapshots, which pin whatever ${fn} returns today rather than what it should return`,
+    // Unreachable today: the Swift scanner does not classify type-only assertions (ADR-0089 A is TS-first).
+    type_only: (a, fn) =>
+      `every assertion checks a type or that a value exists — \`${a.text ?? normalise(a.subject)}\` holds for any ${fn} that returns something`,
   },
 };
 

@@ -21,7 +21,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 import { DEFAULT_VERIFIER_CONCURRENCY } from "../concurrency.js";
 import { run } from "../exec.js";
 import { prepareStryker, projectPackageDir, strykerStatus, toolStatusMessage } from "../tools.js";
-import { MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
+import { behaviouralKills, MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
 import { TEST_FILE_PATTERN } from "../confinement.js";
 import { analyseTautology, type TautologyReport } from "./tautology.js";
 import {
@@ -515,7 +515,37 @@ ${jest}${plugins}${ignore}  // The type checker is what keeps mutants that canno
 /** Statuses that say something about the test. Everything else is Stryker talking about itself. */
 const COUNTED = new Set(["Killed", "Survived", "Timeout", "NoCoverage"]);
 
-interface RawMutant { id?: unknown; status?: unknown }
+interface RawPos { line?: unknown; column?: unknown }
+interface RawMutant { id?: unknown; status?: unknown; mutatorName?: unknown; statusReason?: unknown; location?: { start?: RawPos; end?: RawPos } }
+
+/** Mutators that remove a function's whole body when applied to its outermost node (ADR-0089). */
+const BODY_MUTATORS = new Set(["BlockStatement", "ArrowFunction"]);
+
+type Pos = [number, number];
+const pos = (p: RawPos | undefined): Pos | null =>
+  typeof p?.line === "number" && typeof p?.column === "number" ? [p.line, p.column] : null;
+const before = (a: Pos, b: Pos): boolean => a[0] < b[0] || (a[0] === b[0] && a[1] <= b[1]);
+
+/**
+ * The whole-body-removal mutant among `mutants`, or null — ADR-0089 option B.
+ *
+ * It is the `BlockStatement` or `ArrowFunction` mutant whose location **contains every other mutant's**:
+ * with Stryker scoped to one function's line range, the outermost block is that function's body. A
+ * whole-file report has no such mutant (two functions, two disjoint bodies), and that is null, which
+ * leaves survival exactly as it was. A lone `BlockStatement` with nothing else to contain is the body
+ * mutant too: a function whose only mutant is its body removal gives no test anything to prove.
+ */
+export function bodyMutant(mutants: readonly RawMutant[]): string | null {
+  const located = mutants
+    .map((m) => ({ m, start: pos(m.location?.start), end: pos(m.location?.end) }))
+    .filter((x): x is { m: RawMutant; start: Pos; end: Pos } => x.start !== null && x.end !== null);
+  const outer = located.filter((c) => BODY_MUTATORS.has(String(c.m.mutatorName))
+    && located.every((o) => before(c.start, o.start) && before(o.end, c.end)));
+  // Two candidates can both contain everything only if they share a span (an arrow and its block body);
+  // either is the body removal, and the smaller id is chosen so the answer is stable.
+  if (outer.length === 0) return null;
+  return outer.map((c) => String(c.m.id)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0]!;
+}
 interface RawReport { files?: Record<string, { mutants?: RawMutant[] }> }
 
 /**
@@ -538,14 +568,24 @@ export function parseMutationReport(report: unknown, sourceFile?: string): Mutat
 
   const counts: Record<string, number> = { Killed: 0, Survived: 0, Timeout: 0, NoCoverage: 0 };
   const killed_ids: string[] = [];
+  const killed_mutators: string[] = [];
+  const killed_reasons: string[] = [];
+  const counted: RawMutant[] = [];
   for (const key of selected) {
     for (const mutant of files[key]?.mutants ?? []) {
       const status = String(mutant.status);
       if (!COUNTED.has(status)) continue;
       counts[status] = (counts[status] ?? 0) + 1;
-      if (status === "Killed") killed_ids.push(String(mutant.id));
+      counted.push(mutant);
+      if (status === "Killed") {
+        killed_ids.push(String(mutant.id));
+        killed_mutators.push(typeof mutant.mutatorName === "string" ? mutant.mutatorName : "unknown");
+        killed_reasons.push((typeof mutant.statusReason === "string" ? mutant.statusReason : "").split("\n")[0]!.trim().slice(0, 200));
+      }
     }
   }
+  // Across the selected files only when there is one: bodies in two files cannot be one function's.
+  const body_mutant_id = selected.length === 1 ? bodyMutant(counted) : null;
 
   const killed = counts.Killed ?? 0;
   const survived = counts.Survived ?? 0;
@@ -553,7 +593,7 @@ export function parseMutationReport(report: unknown, sourceFile?: string): Mutat
   const no_coverage = counts.NoCoverage ?? 0;
   const denominator = killed + timeout + survived + no_coverage;
   const score = denominator === 0 ? 0 : (killed + timeout) / denominator;
-  return MutationResult.parse({ score, killed, survived, timeout, no_coverage, killed_ids });
+  return MutationResult.parse({ score, killed, survived, timeout, no_coverage, killed_ids, killed_mutators, body_mutant_id, killed_reasons });
 }
 
 /**
@@ -588,6 +628,13 @@ export function uncountedStatuses(report: unknown, sourceFile?: string): Record<
 export function noKillMessage(fn: string, m: MutationResult, uncounted: Record<string, number>): string {
   const ran = m.survived + m.no_coverage + m.timeout;
   const compileErrors = uncounted.CompileError ?? 0;
+  if (m.killed > 0) {
+    // Reached only when every kill was the body removal (ADR-0089): `killed ≥ 1` and still no evidence.
+    return `the only mutant of ${fn} this test killed is the one that empties its whole body — any ` +
+      "assertion that the function returns something kills that one, so it says nothing about what the " +
+      `function does (ADR-0089). ${m.survived} other mutant(s) survived. Assert on the returned value, not ` +
+      "on its type or its existence.";
+  }
   if (ran === 0) {
     const made = Object.values(uncounted).reduce((n, k) => n + k, 0);
     return made === 0
@@ -955,7 +1002,7 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
       } else {
         stage_reached = "done";
         mutation = parseMutationReport(report, target.sourceFile);
-        if (mutation.killed === 0) problems.push(noKillMessage(target.functionName, mutation, uncountedStatuses(report, target.sourceFile)));
+        if (behaviouralKills(mutation) === 0) problems.push(noKillMessage(target.functionName, mutation, uncountedStatuses(report, target.sourceFile)));
       }
     }
   } finally {

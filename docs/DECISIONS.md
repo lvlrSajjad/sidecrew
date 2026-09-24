@@ -6615,7 +6615,9 @@ verifier no longer reads it, and removing it would rewrite their lockfiles, whic
 
 **Status:** **a 1.0 prerequisite, decided by the owner 24 Sep 2026**, and `v1.0.0` is not cut until it is
 closed. **Option chosen by the owner, 24 Sep 2026: B, with A as the detector's first line, and verdicts
-recording each kill's mutator** (the re-score addendum below) · **not yet built** · found while fixing a
+recording each kill's mutator** (the re-score addendum below) · **built 25 Sep 2026, and the build found the
+premise was mostly wrong: the hole is crash kills, not the body removal — NOT closed; a new owner decision
+is open** (addendum below) · found while fixing a
 false message ADR-0082 D exposed · bears on non-negotiable #2 (workload #1's iff), ADR-0006 (tautologies), ADR-0005
 
 ### What was found
@@ -6646,6 +6648,51 @@ the gate behaves today, labelled KNOWN HOLE, so it cannot close or widen unnotic
 **Recommendation: B, with A as the detector's cheap first line.** Before deciding, **re-score history**:
 count how many recorded workload #1 survivors killed *only* the body mutant. That says how inflated every
 published workload #1 rate is, and it can be done from the stored reports without re-running anything.
+
+### ADR-0089 addendum, 25 Sep 2026 — built: B in the iff, A as the first line
+
+- **B.** `MutationResult` records `killed_mutators` (each killed id's Stryker mutator, in order) and
+  `body_mutant_id`: the `BlockStatement` or `ArrowFunction` mutant whose location contains every other
+  mutant in the mutated range — with Stryker scoped to one function's lines, its whole body. **Survive ⇔
+  compile_ok ∧ pass_ok ∧ ¬tautological ∧ a kill other than `body_mutant_id`**, enforced in `survives()`,
+  so a verdict that claims otherwise does not serialise. A whole-file report has no single outermost body
+  (null), and a Muter report has no such operator (null): both keep the old rule exactly. A function whose
+  only mutant is its body removal can yield no survivor, which is the point.
+- **A.** The tautology detector flags a test whose every assertion is about a type or existence —
+  `typeof x` equality, `toBeDefined`, `toBeInstanceOf`, `x instanceof Y` is `true` —
+  as `type_only_assertions`, before a mutation run is spent. It misses the same move written another way
+  (`expect(f(x).length >= 0).toBe(true)`), which is why B is the rule.
+- **The message and the retry** name the case: *the only mutant killed empties the whole body — assert on
+  the value.*
+- **Old verdicts** parse unchanged: the new fields default to `[]` and `null`, which is the old rule.
+- **Old verdicts** keep their meaning; every kill now also records Stryker's reason (`killed_reasons`).
+
+**What the build found, and it overturns this ADR's premise.** On the fixture, Stryker's report for the
+original `typeof slugify(x)` test shows the body removal is a **`CompileError`** — a function with a declared
+return type does not compile with an empty body, so the type checker discards that mutant and it never
+runs. **The one kill was `normalize("")`, which makes `slugify` throw** (reason: *"The normalization form
+should be one of NFC, NFD, NFKC, NFKD"*). So:
+
+- **A closes the example this ADR was written about** (the `typeof` test is now tautological), on a real run.
+- **B is correct and rarely fires in TypeScript**: only where an emptied body still compiles (untyped,
+  `void`, `any`). It stays — it is exact for that shape and costs nothing.
+- **The general hole is *crash kills*: a test that only calls the function kills every mutant that makes
+  it throw.** `expect(slugify(x).length >= 0).toBe(true)` still **survives** on exactly that kill, and is
+  pinned as `KNOWN HOLE, narrowed` in `test/verifier-ts.slow.test.ts`.
+
+**The owner's new decision (proposed options):**
+- **E — count only kills whose reason is an assertion failure**, not an exception thrown from the code
+  under test. Exact about the loophole; depends on reading Stryker's `statusReason`, which is per-runner
+  text (vitest and jest word it differently), so it needs a fixture per runner.
+- **F — require a kill from a mutant that does not throw on the test's input** — the same idea asked of
+  the mutant rather than the message; needs a second run of the killed mutants, which costs time.
+- **C (the original) — a minimum score**: blunt, and still available.
+
+`killed_reasons` is recorded from now on precisely so E can be measured on real survivors before it is
+chosen. **ADR-0089 therefore stays a 1.0 prerequisite and is not closed.** No published workload #1 rate
+has moved; the ≤ 2-of-11 bound was about body-only kills, and crash kills need their own re-score (the
+stored verdicts do not keep reasons, so it is a daytime Stryker run on the published modules — the
+owner's go).
 
 ## ADR-0090 — Retrieval is admitted, never judged relevant; the fixed cost is not mostly reading, and the 14d exit rule has to be read with that (PROPOSED)
 

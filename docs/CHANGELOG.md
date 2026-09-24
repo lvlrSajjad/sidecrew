@@ -25,6 +25,13 @@
   **95 % in source** — ADR-0079 option B's population exists. It found two things: the report did not
   record the project's commit (now `ReconReport.commit`), and the gate's test predicate calls support files
   under a project's test directory source (a question in `BACKLOG.md`, not a change). ADR-0079 addendum.
+- **ADR-0089 built (A and B) — and the build found the hole is mostly elsewhere, so it is NOT closed.**
+  A test made only of type/existence checks is now flagged tautological (A — closes the ADR's own `typeof`
+  example, verified on a real Stryker run), and survival needs a kill other than the whole-body removal (B,
+  in the iff). But a typed function's emptied body does not compile, so B rarely fires: the kill the
+  `typeof` test earned was a mutant that made the function **throw**. Crash kills are the real hole and a
+  new owner decision (options E/F in the ADR); verdicts now record each kill's mutator and reason so it can
+  be measured. Old verdicts keep their meaning; no published rate moved.
 - **Owner decisions, 24 Sep:** ADR-0090 accepted with §5 = **B** (`14d′` attacks the output term; written into
   the frozen rule before any retrieval-arm pass), and ADR-0089 = **B**, with A as the detector's first line.
 - **ADR-0089's re-score, from stored records only.** Verdicts keep Stryker's ids but not which mutator

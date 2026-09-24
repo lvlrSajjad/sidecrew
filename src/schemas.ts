@@ -186,8 +186,43 @@ export const MutationResult = z.object({
   timeout: NonNegInt,
   no_coverage: NonNegInt,
   killed_ids: z.array(z.string()),
+  /**
+   * The mutator behind each killed id, in the same order — `BlockStatement`, `ConditionalExpression`, …
+   * **ADR-0089**: the re-score of 24 Sep could only bound how many survivors killed nothing but the body
+   * removal, because verdicts kept ids and the report that named them was deleted with the sandbox.
+   * Empty on a verdict written before this field existed.
+   */
+  killed_mutators: z.array(z.string()).default([]),
+  /**
+   * **ADR-0089 option B.** The mutant that removes the function's whole body — Stryker's `BlockStatement`
+   * or `ArrowFunction` whose location contains every other mutant in the mutated range — or null when
+   * there is none (Muter has no such operator; a whole-file report has no single outermost body).
+   *
+   * Killing it proves only that the function returns *something*: `expect(typeof f(x)).toBe("string")`
+   * kills it and nothing else. So a kill of this mutant alone is not a survival.
+   */
+  body_mutant_id: z.string().nullable().default(null),
+  /**
+   * The first line of Stryker's `statusReason` for each kill, in order — **recorded, never gated.** The
+   * 25 Sep build found the hole ADR-0089 describes is mostly not the body removal: a typed function's
+   * emptied body does not compile, and the kill a type-only test earned was a mutant that made the
+   * function **throw**. Whether a crash-only kill should count is the owner's open question, and this is
+   * the data it will be decided on.
+   */
+  killed_reasons: z.array(z.string().max(200)).default([]),
+}).refine((m) => m.killed_mutators.length === 0 || m.killed_mutators.length === m.killed_ids.length, {
+  message: "killed_mutators, when recorded, names the mutator of every killed id", path: ["killed_mutators"],
+}).refine((m) => m.killed_reasons.length === 0 || m.killed_reasons.length === m.killed_ids.length, {
+  message: "killed_reasons, when recorded, has one entry per killed id", path: ["killed_reasons"],
 });
 export type MutationResult = z.infer<typeof MutationResult>;
+
+/**
+ * Kills that are evidence about behaviour: every kill except the whole-body removal (ADR-0089 option B).
+ * On a verdict with no body mutant recorded this is simply `killed`.
+ */
+export const behaviouralKills = (m: MutationResult): number =>
+  m.body_mutant_id !== null && m.killed_ids.includes(m.body_mutant_id) ? m.killed - 1 : m.killed;
 
 export const Stage = z.enum(["compile", "pass", "mutation", "done"]);
 export type Stage = z.infer<typeof Stage>;
@@ -208,7 +243,7 @@ const VerdictFields = z.object({
 
 /** Survive ⇔ compiles ∧ passes ∧ kills ≥ 1 mutant ∧ non-tautological. The one rule the whole project rests on. */
 export const survives = (v: z.infer<typeof VerdictFields>): boolean =>
-  v.compile_ok && v.pass_ok && !v.tautological && (v.mutation?.killed ?? 0) >= 1;
+  v.compile_ok && v.pass_ok && !v.tautological && v.mutation !== null && behaviouralKills(v.mutation) >= 1;
 
 // Enforced as an iff rather than computed on construction, so a Verdict that reached us from disk, from
 // a worker run or from a future verifier cannot quietly claim a survival its own fields don't support.
@@ -217,7 +252,7 @@ export const Verdict = VerdictFields.superRefine((v, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["survived"],
-      message: `survived must equal compile_ok ∧ pass_ok ∧ ¬tautological ∧ mutation.killed ≥ 1 (here: ${survives(v)})`,
+      message: `survived must equal compile_ok ∧ pass_ok ∧ ¬tautological ∧ a kill other than the body removal (ADR-0089) (here: ${survives(v)})`,
     });
   }
 });
