@@ -6580,7 +6580,8 @@ verifier no longer reads it, and removing it would rewrite their lockfiles, whic
 ## ADR-0089 — A type-only assertion survives workload #1's gate by killing the empty-body mutant (PROPOSED)
 
 **Status:** **a 1.0 prerequisite, decided by the owner 24 Sep 2026**, and `v1.0.0` is not cut until it is
-closed. **Which option closes it is still open**, and waits on the re-score below · found while fixing a
+closed. **Option chosen by the owner, 24 Sep 2026: B, with A as the detector's first line, and verdicts
+recording each kill's mutator** (the re-score addendum below) · **not yet built** · found while fixing a
 false message ADR-0082 D exposed · bears on non-negotiable #2 (workload #1's iff), ADR-0006 (tautologies), ADR-0005
 
 ### What was found
@@ -6611,3 +6612,193 @@ the gate behaves today, labelled KNOWN HOLE, so it cannot close or widen unnotic
 **Recommendation: B, with A as the detector's cheap first line.** Before deciding, **re-score history**:
 count how many recorded workload #1 survivors killed *only* the body mutant. That says how inflated every
 published workload #1 rate is, and it can be done from the stored reports without re-running anything.
+
+## ADR-0090 — Retrieval is admitted, never judged relevant; the fixed cost is not mostly reading, and the 14d exit rule has to be read with that (PROPOSED)
+
+**Status:** **accepted by the owner, 24 Sep 2026 — §2 as written, and §5 option B** (written into the
+frozen rule's `14d′` row the same day, before any retrieval-arm planner pass) · written first in Phase
+14d, as PHASES.md requires · builds on ADR-0079 (and its addendum), bears on ADR-0044, ADR-0048,
+`experiments/planner-cost/` §4
+
+### 1. What the fixed cost is made of — measured today, and it corrects a sentence repeated in five files
+
+HANDOFF, PHASES, VISION, BACKLOG and ADR-0079's addendum all say the fixed planning cost is
+*"overwhelmingly Opus reading: 15.5M cache reads against 89k of output"*. **Cache reads are not in
+`P_total`.** `experiments/planner-cost/` §2 excludes them by rule, so they cannot be most of a number
+they are not part of. What `P_total` is actually made of had never been split.
+
+`scripts/planner-decompose.py` splits it, from the two 20 Sep planner transcripts, without re-running
+anything. Every message's new tokens are either the **harness** (the first message's cache write: system
+prompt, tool definitions, the brief), **reading** (a later cache write, minus the previous message's
+output — what tool results added), or **output**, which `P_total` counts **twice**: once as output, and
+again as a cache write when the next message re-sends it. The three add back to `P_total` within 2 %.
+`experiments/planner-cost/results/decomposition-2026-09-24.json`, measured.
+
+| | `N = 12` | `N = 41` | fixed part, from the two points |
+|---|---|---|---|
+| `P_total` | 265,607 | 343,144 | ≈ 233,500 (the 20 Sep fit) |
+| **harness** | 45,877 · **17 %** | 46,000 · 13 % | ≈ 46,000 — all of it |
+| **reading** (tool results) | 94,978 · **36 %** | 122,086 · 36 % | ≈ 84,000 |
+| **output × 2** | 130,164 · **49 %** | 177,788 · 52 % | ≈ 110,000 |
+
+**Of the reading**, at `N = 12` / `N = 41`: file contents (`cat`/`sed`/`Read`) **65 % / 37 %**, `grep`
+18 % / 25 %, **ad-hoc analysis scripts the planner wrote itself** 10 % / 12 %, listings (`ls`/`wc`/`find`)
+4 % / 18 %, sidecrew's own output **2 % / 3 %**, `tsc` under 1 %. *(Corrected the same day, before
+anything was committed: the first classifier matched on substrings, a scratchpad path contains this
+project's name, and it filed those scripts as sidecrew's output at 12 % / 33 %.)* The scripts are the
+telling part: the planner wrote its own tools for **reference counts, unreferenced exports, unused
+declarations and which symbols fit the rewrite budget**, which are predicate questions in §2.1's
+sense. **Of the output**, most is thinking: visible text and tool inputs are ~67k characters
+at `N = 12`, a fraction of 65k tokens. That split is *estimated* — thinking is stored redacted.
+
+**So the fixed term is about a fifth harness, a third reading, and half Opus's own output.** Reading is
+the largest term retrieval can reach directly; it is not the largest term.
+
+### 2. The relevance problem, answered
+
+PHASES.md: *"A machine can confirm a symbol exists; it cannot confirm it is relevant. Ten confirmed,
+real, useless locations pass the gate and save nothing."* ADR-0079's addendum proposed the user as the
+relevance oracle. **This ADR decides differently, and narrower**: relevance is not gated by anyone. It
+does not need to be, for four reasons that together close the Goodhart shape rather than note it.
+
+**2.1 Two kinds of retrieval question, and only one of them has a relevance problem.**
+
+| | example | who answers | relevance |
+|---|---|---|---|
+| **predicate** | *which files gain errors under `--strictNullChecks`* · *who references `X`* · *which declarations exceed the rewrite ceiling* | **a machine** — `tsc`, the TypeScript AST | **is the predicate.** The asker chose it; the answer is exact and exhaustive, and re-running it reproduces it |
+| **judgement** | *which of these 40 files handle retries* · *what pattern does this module use for errors* | **a worker reads**, and returns cited claims | **not checkable**, and §2.2–2.4 are why that is acceptable |
+
+Predicate questions are the whole of ADR-0079 option A, and at `N = 41` they are **well over half of the
+reading already** (grep + listings + the planner's own scripts + sidecrew's output = 58 %). They need no model and no oracle. The build
+order in §4 takes them first for that reason.
+
+**2.2 A judgement answer has an admission rule, and it is an iff in `src/schemas.ts`.** A claim is
+admitted ⇔ it cites a file, a line span and a verbatim excerpt; every excerpt lies inside that span of
+the file at the recorded `sha256` — byte for byte, or word for word once line-leading comment markers
+and whitespace are taken out (the prompt file's second amendment, after the 7B was measured joining
+lines); every cited file is one the question gave; and the answer fits its budget. **No uncited claim,
+no elided and no paraphrased citation is admitted**, and a refused claim is counted, never carried. This is existence, checked by a machine — the half PHASES.md says a machine can do — and
+nothing in it pretends to be relevance.
+
+**2.3 Why existence is enough: retrieval produces reading, never work.**
+
+- **It cannot make a wrong change survive.** A retrieval answer is an input to Opus's plan. The change
+  gate (ADR-0048) judges each candidate against the project's own `tsc` and suite without reference to
+  how the plan was made. The property every other number here rests on is untouched by construction —
+  which is the test the rest of this design applies to anything new.
+- **Irrelevance has a bounded, pre-stated cost.** Ten useless-but-real locations cost Opus the tokens of
+  one answer, and the budget caps an answer. The worst case is `budget × questions`, fixed before a run,
+  against the ~84,000 fixed reading tokens it replaces. **A Goodhart pass is a small, known overspend,
+  not a hidden one.**
+- **Irrelevance is metered where it lands.** `R` is Opus tokens, so a retriever returning junk *raises*
+  `R`. The Goodhart shape needs a metric that rewards *locations confirmed*; sidecrew never reports one,
+  and §3 forbids it.
+- **Omission — the dangerous direction — lands in gates that already exist.** A retriever that misses the
+  file a change needs produces a plan whose task needs a file it does not list. The validator refuses
+  some of those (`planner-cost` §4.1 exclusion 1); the gate fails the rest on confinement or on an error
+  introduced elsewhere. Neither becomes a survivor. It shows up as **lower survival**, which is exactly
+  what the quality veto measures.
+
+**2.4 The user's role, narrowed from ADR-0079.** The user decides **scope** — which bar, which flag,
+which part of the codebase — once per cycle, on a recon report. **Not per-location relevance**: a user
+cannot judge forty locations more cheaply than Opus can, and asking them to is the chatty loop PHASES.md
+warns inverts the product. ADR-0079 option A is exactly this: *"your config reports 0, this flag reports
+763 — do you want to see them?"* is a scope question, and the report is a predicate answer.
+
+### 3. What this rules out
+
+- **No survival rate for retrieval.** A retrieval answer is admitted or not; it does not *survive*, and
+  no table may report *"locations confirmed"* as though it were a quality number.
+- **No retrieval answer is shown to a user as a finding.** It is Opus's input. What the user sees is a
+  predicate report (option A), or a plan, or survivors.
+- **No offer to fix what recon counts** — PHASES.md's rule for option A, made a schema property rather
+  than a convention: a `ReconReport` whose `fix_offered` is not literally `false` does not serialise.
+
+### 4. What 14d builds, in order, and what each is aimed at
+
+| | piece | term it attacks, and its measured share of `P_total` at `N = 12` / `N = 41` | relevance risk |
+|---|---|---|---|
+| 1 | **`sidecrew recon`** — ADR-0079 option A, a predicate report per strictness flag | the *"how many, where"* reading: `tsc` + listings + a share of `grep` | none |
+| ~~2~~ | ~~a compact mode for sidecrew's own planner-facing output~~ — **dropped**: sidecrew's output is **0.6 % / 1.0 %** once classified correctly | — | — |
+| 3 | **predicate retrieval** — reference counts, unreferenced exports, declaration sizes against the rewrite ceiling, from the AST: the four questions the planner wrote its own scripts for | `grep` + listings + scripts: **11.5 % / 19.7 %** | none |
+| 4 | **judgement retrieval** — a worker reads, returns cited claims under §2.2 | file contents: **23 % / 13 %** | bounded, §2.3 |
+| 5 | **the change-planner contract uses 1–4**, with a stated budget per question | all of the above | — |
+
+**All four remaining pieces were built on 24 Sep**: 1 `sidecrew recon`, 3 `sidecrew query`, 4 `sidecrew read`
+(budget and match rule in the prompt file's two amendments), 5 the change-planner's §1′. What remains of
+14d is the measurement, which is an owner's night.
+
+### 5. The arithmetic the exit rule has to be read with — the owner's decision
+
+The exit check PHASES.md shapes is `R` at `N = 12`: `R ≤ 1.0` → cut `v1.0.0`; `1.0 < R ≤ 2.0` → INSERT
+`14d′`; `R > 2.0` → STOP. At `N = 12`, `R ≤ 1.0` means `P_total ≤ 93,528` and `R ≤ 2.0` means
+`P_total ≤ 187,056`. Against §1's measured terms — arithmetic, not a measurement of any retrieval arm:
+
+- **The harness alone is 45,877 — 49 % of the whole `R ≤ 1.0` budget**, before a single file is read.
+- **If retrieval removed *all* reading and output did not move, `R` = 1.88.** INSERT, not PROCEED.
+- **To stay out of STOP with output unchanged, reading must fall from 94,978 to 11,015 — by 88 %.**
+- **`R ≤ 1.0` needs output to fall by at least 63 % *and* reading to vanish**, or more of both.
+
+**Two consequences, and the second is the one the owner should see before 3–4 sessions are spent:**
+
+1. **PROCEED is reachable only if retrieval also shrinks what Opus writes and thinks.** That is
+   plausible — less material, less reasoning over it — and it is not something retrieval does directly.
+2. **`14d′` as PHASES.md names it — *"cache the reading across runs"* — cannot reach `R ≤ 1.0` either.**
+   It attacks the same 36 %, and the same arithmetic caps it at 1.88. An inserted phase whose lever
+   cannot reach its own exit is the *"insert something here"* PHASES.md warns against, in a better
+   disguise.
+
+**Options for the owner:**
+
+- **A — the rule stands as shaped.** 14d measures honestly, and the modal outcome is `14d′` or STOP.
+  STOP publishes `v0.x` with the curve, which the 20 Sep result already supports.
+- **B — the thresholds stand, and `14d′`'s named content changes now to the output term**:
+  *sidecrew writes the plan* — Opus emits a compact decision list and sidecrew expands it into a
+  `ChangePlan` (the plan JSON was ~30k characters of Opus output at `N = 12` and ~68k at `N = 41`, each
+  paid twice) — with the reading cache as its second half.
+- **C — re-shape the rule** (a different `N`, or a harness-free planner). Not recommended: it moves
+  the bar after learning the arithmetic, which is what freezing exists to prevent, and a harness is
+  part of what a real user pays.
+
+**Recommendation: B.** It changes no threshold, so it is not a thumb on the scale. It names a `14d′`
+that can in principle reach its own exit, and it is the only one of the three that keeps the fork
+honest *and* useful. **The decision is legitimate until the first retrieval-arm planner pass**, because
+no number that it could be tuned to exists before then. After that pass, the fork is closed.
+
+### 6. What is not decided here
+
+- **Where recon runs** — ADR-0079 left it open. It is a CLI subcommand **and** an MCP tool, because the
+  owner's framing (*"Opus decides to add these checks to the plan"*) points at MCP and a subcommand is
+  how a person tries it. Neither is a pre-flight inside `run`/`fix`.
+- **The judgement-answer budget** — a number, chosen when piece 4 is built, and stated in the frozen rule
+  before the retrieval arm runs.
+- **ADR-0079 options B and C** — unchanged: B after ADR-0077's shapes are measured under a flag, C after B.
+
+### ADR-0089 addendum, 24 Sep 2026 — the re-score, from stored records only
+
+The step this ADR asks for first: *how many recorded workload #1 survivors killed only the empty-body
+mutant?* **It cannot be answered exactly from disk, and the reason is itself a finding:** a verdict keeps
+Stryker's `killed_ids`, not which mutator each id was, and the Stryker reports are deleted with the
+sandbox. So what the stored records give is an **upper bound**: a survivor that killed exactly one mutant
+*could* be a body-only kill; one that killed two or more cannot be.
+
+| survivors, from | n | killed exactly one mutant | killed ≥ 2 |
+|---|---|---|---|
+| project-a, first module (the published 3/8) | 3 | **0** | 3 (12–14 kills) |
+| project-a, second module (the published 4/8) | 4 | **2** | 2 (5 each) |
+| project-b (the published 4/10) | 4 | **0** | 4 (2–23 kills) |
+| ADR-0082 D, project-a | 2 | **1** — the 0.015 survivor this ADR was found from | 1 |
+| this repository's fixtures | 12 | **0** | 12 |
+
+**The two suspects in the published rates are both tests of one function that has exactly one mutant in
+total**, so "killed one" is also "killed all": they are only body-only kills if that single mutant is the
+body removal. Which mutant it is needs Stryker's per-mutant report for that one function — a single
+daytime mutation run on project-a, which needs the owner's go like any run on a client project.
+
+**What it does to the published numbers, at worst:** project-a's second module 4/8 → 2/8, project-a
+combined 7/16 → 5/16; project-a's first module and project-b are unaffected. At best, nothing moves.
+
+**What it adds to the options:** whichever is chosen, verdicts should record **which mutator** each
+killed id was, so the next re-score is exact rather than a bound — option B needs that field anyway,
+because "a kill other than the whole-body removal" is a statement about mutators. The recommendation
+stays **B, with A as the detector's first line**, and the owner still picks.

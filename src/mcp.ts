@@ -1,6 +1,6 @@
 // `sidecrew mcp` — the stdio MCP server Claude Code launches.
 //
-// Ten tools, and the same ten functions the CLI calls; nothing here has logic of its own beyond
+// Thirteen tools, and the same thirteen functions the CLI calls; nothing here has logic of its own beyond
 // turning an exception into a message a model can act on. The input schemas are the contract's own
 // zod schemas (`src/schemas.ts`), so a tool cannot accept something the pipeline would later refuse.
 //
@@ -15,9 +15,12 @@ import { generate, runBatch, discoverWorkers, portsFromEnv } from "./batch.js";
 import { changeEscalationBatch, escalationBatch } from "./escalate.js";
 import { validateChangePlan } from "./fix-validate.js";
 import { runFix } from "./fix.js";
+import { query, QUERY_KINDS, renderQuery } from "./query.js";
+import { read, renderRead } from "./read.js";
+import { recon } from "./recon.js";
 import { reviewQueueFor } from "./run.js";
 import { loadPlan, verifyCandidate, functionOfTaskId } from "./plan.js";
-import { Candidate, WorkerTask } from "./schemas.js";
+import { Candidate, StrictnessFlag, WorkerTask } from "./schemas.js";
 import { statusReport } from "./status.js";
 import { validatePlan } from "./validate.js";
 
@@ -212,6 +215,86 @@ export function buildServer(): McpServer {
       model: z.string().optional().describe("recorded as suggested_model; sonnet unless you say otherwise"),
     },
     async ({ run_id, dir, model }) => answer(() => changeEscalationBatch(run_id, { dir, model })),
+  );
+
+  // ── Phase 14d: recon (ADR-0079 option A, ADR-0090 §4 piece 1) ──────────────────────────────────
+
+  server.tool(
+    "sidecrew_recon",
+    "How many TypeScript errors a project has under its own configuration, and how many each stricter " +
+      "compiler flag would add — split into source files and test files, with the worst files and the " +
+      "commonest error codes. Answers \"how many TypeScript issues are there?\" completely, and is the " +
+      "report to put in front of the user before planning a strictness migration: \"your config reports " +
+      "0, --strictNullChecks reports 763 — do you want to see them?\". Runs the project's own tsc in a " +
+      "copy of the project on this machine: no worker, no network, and zero Claude tokens beyond reading " +
+      "the report. A minute or more per flag on a large project. It COUNTS and does not offer to fix: " +
+      "sidecrew cannot yet deliver most strictness-flag fixes, because the errors they cause land in test " +
+      "files a task may not edit — so do not promise the user a fix on the strength of this number.",
+    {
+      project: z.string().describe("the project root: a package.json, a tsconfig and an installed node_modules"),
+      tsconfig: z.string().optional().describe("relative to the project; default tsconfig.json"),
+      flags: z.array(StrictnessFlag).optional().describe("which flags to measure; default --strictNullChecks, --noImplicitAny, --noImplicitReturns, --noUnusedLocals, --noUnusedParameters"),
+      top: z.number().int().positive().optional().describe("worst files listed per flag; default 10"),
+    },
+    async ({ project, tsconfig, flags, top }) => answer(() => recon(project, { tsconfig, flags, top })),
+  );
+
+  server.tool(
+    "sidecrew_query",
+    "Predicate questions about a TypeScript project, answered by its own compiler instead of by you " +
+      "reading files: `refs` (who references a declaration — the compiler's references, not a grep's), " +
+      "`unreferenced` (exports nothing outside their own file uses, with decorated classes marked because " +
+      "reflection is invisible to a reference count), `sizes` (which files fit a whole-file rewrite and how " +
+      "many of a too-big file's declarations fit as symbol tasks), `diagnostics` (where the errors are, " +
+      "and with a flag only what the flag adds). Use it while planning instead of writing grep or analysis " +
+      "scripts: that reading is most of what a plan costs you. No worker, zero Claude tokens beyond the " +
+      "answer, seconds for refs and sizes, a compile for diagnostics. Every list is capped and says so. " +
+      "Answers are compact text by default; format: json for the contract.",
+    {
+      kind: z.enum(QUERY_KINDS as [string, ...string[]]).describe("refs | unreferenced | sizes | diagnostics"),
+      project: z.string().describe("the project root, with its tsconfig and installed node_modules"),
+      tsconfig: z.string().optional().describe("relative to the project; default tsconfig.json"),
+      symbols: z.array(z.string()).optional().describe("refs only: project-relative file:Name or file:Class.member"),
+      under: z.string().optional().describe("a project-relative directory or file to restrict to"),
+      flag: StrictnessFlag.optional().describe("diagnostics only: list what this flag adds"),
+      codes: z.array(z.string()).optional().describe("diagnostics only: e.g. TS6133"),
+      limit: z.number().int().positive().optional().describe("items listed; default 50, and the total is always exact"),
+      format: z.enum(["text", "json"]).optional().describe("default text: one line per item, which is the cheap read"),
+    },
+    async ({ kind, project, tsconfig, symbols, under, flag, codes, limit, format }) => {
+      try {
+        const a = await query(kind as (typeof QUERY_KINDS)[number], project, { tsconfig, symbols, under, flag, codes, limit });
+        return format === "json" ? ok(a) : { content: [{ type: "text" as const, text: renderQuery(a) }] };
+      } catch (e) {
+        return failed(e);
+      }
+    },
+  );
+
+  server.tool(
+    "sidecrew_read",
+    "Ask the local worker to read up to 10 files and answer one question — \"which of these handle " +
+      "retries\", \"what does this module do on a missing record\" — instead of reading them yourself. " +
+      "Only claims whose EVERY quote a machine found byte-for-byte inside the lines they cite come back, " +
+      "each with file:lines; invented or paraphrased evidence is dropped and only counted. Admitted means " +
+      "the evidence exists, NOT that the claim is relevant or complete: open the cited lines before you " +
+      "act on anything load-bearing, and treat nothing_found as 'read it yourself', never as 'absent'. " +
+      "Runs on this machine, zero Claude tokens, 10–60 s. Needs a worker up (sidecrew serve). Budget: at " +
+      "most 15 of these per plan (ADR-0090) — a question per group of files, not per file.",
+    {
+      project: z.string().describe("the project root"),
+      question: z.string().min(1).describe("one question, answerable from the files"),
+      files: z.array(z.string()).min(1).max(10).describe("project-relative paths, at most 10 and 60,000 characters in all"),
+      format: z.enum(["text", "json"]).optional().describe("default text: claims and locations only, which is the cheap read"),
+    },
+    async ({ project, question, files, format }) => {
+      try {
+        const a = await read(project, { question, files });
+        return format === "json" ? ok(a) : { content: [{ type: "text" as const, text: renderRead(a) }] };
+      } catch (e) {
+        return failed(e);
+      }
+    },
   );
 
   return server;

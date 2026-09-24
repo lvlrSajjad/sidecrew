@@ -25,8 +25,10 @@ Three things this settles, and the third is the one that changes what gets built
 3. **Retrieval is the shape of the product, not an optimisation of it.** *"Scan the code, go through
    several files, report back"* is `BACKLOG.md` § *The edge ideas* item 1, and as of 20 Sep 2026 it
    has a measured target rather than a premise: planning costs **233,500 fixed tokens** on a real
-   project — **68 % of the total even at 41 tasks** — and that fixed term is overwhelmingly Opus
-   *reading*: 15.5M cache reads against 89k of output. It is the one part of the cost curve that does
+   project — **68 % of the total even at 41 tasks** — and that fixed term is
+   ~~overwhelmingly Opus *reading*: 15.5M cache reads against 89k of output~~ — *corrected 24 Sep
+   (ADR-0090 §1): about a third reading, half Opus's own output, a fifth harness; cache reads are not
+   in the number at all*. It is the one part of the cost curve that does
    not amortise by itself, and it is exactly what this paragraph describes attacking.
 
 The honest caveat, from the same measurements: a local model that returns ten *confirmed* locations

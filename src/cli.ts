@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // sidecrew CLI. Subcommands mirror simframe:
-// doctor | models | serve | stop | status | plan | run | verify | generate | escalate | review | bench | mcp
+// doctor | models | serve | stop | status | plan | run | verify | generate | escalate | review | bench | recon | query | read | mcp
 import { doctor, DEFAULT_PORT, readMemory } from "./doctor.js";
 import { runMcp } from "./mcp.js";
 import { modelsCommand } from "./models.js";
@@ -8,6 +8,10 @@ import { serve, stop, status } from "./serve.js";
 import { bench, benchDeterminism } from "./bench.js";
 import { escalateCommand, fixCommand, fixReportCommand, fixSweepCommand, fixValidateCommand, generateCommand, planCommand, reviewCommand, runCommand, verifyCommand } from "./run.js";
 
+import { QUERY_KINDS, queryCommand, type QueryKind } from "./query.js";
+import { readCommand } from "./read.js";
+import { reconCommand } from "./recon.js";
+import { StrictnessFlag } from "./schemas.js";
 import { installStryker, strykerStatus, toolStatusMessage } from "./tools.js";
 
 const [cmd = "help", ...rest] = process.argv.slice(2);
@@ -51,6 +55,22 @@ const usage = `sidecrew — local workers behind a verifier, for Claude Code
                                        the tasks no worker could pass — a file too large to return
                                        whole, a pre-existing tsc error the ask does not cover.
                                        --no-compile is the fast structural pass and skips both
+  sidecrew recon [DIR] [--tsconfig F] [--flags --strictNullChecks,--noUnusedLocals] [--top N] [--json]
+                                       how many tsc errors the project has as configured, and what each
+                                       stricter flag would add — source and test files apart. Runs the
+                                       project's own tsc in a copy; no worker, no tokens. Counts, never
+                                       offers to fix (ADR-0079 option A, ADR-0090)
+  sidecrew query refs         --symbol FILE:Name [--symbol …]   who references a declaration (the compiler's answer)
+  sidecrew query unreferenced [--under DIR]                    exports nothing outside their file uses
+  sidecrew query sizes        [--under DIR]                    what fits a whole-file rewrite, and what fits as symbol tasks
+  sidecrew query diagnostics  [--flag F] [--codes TS6133,…] [--under DIR]
+                                       where the errors are — only what F adds, when given
+         all: [--project DIR] [--tsconfig F] [--limit N] [--json]. Predicate retrieval for a planner
+         (ADR-0090): the project's own compiler, no worker, every list capped and says so
+  sidecrew read --question "…" --file PATH [--file …] [--project DIR] [--json]
+                                       a local worker reads ≤ 10 files and answers; only claims whose every
+                                       quote is found byte-for-byte where it cites are admitted (ADR-0090
+                                       §2.2). Needs a worker (sidecrew serve); zero Claude tokens
   sidecrew verify <test-file> --plan <test_plan.json> [--function F] [--test-target T] [--keep-sandbox] [--json]
   sidecrew generate (<task.json> | --plan P --function F --shape S) [--out FILE]
   sidecrew plan <test_plan.json> [--quick] [--test-target T] [--json]
@@ -241,6 +261,56 @@ const main = async () => {
       // Non-zero when nothing survived, so a script can tell "the run worked and found nothing" from
       // "the run worked". A dry run has no survivors by construction and is always 0.
       process.exitCode = has(rest, "--dry-run") || result.stats.survived > 0 ? 0 : 1;
+      return;
+    }
+
+    case "recon": {
+      const named = value(rest, "--flags");
+      const flags = named?.split(",").map((f) => f.trim()).filter((f) => f !== "")
+        .map((f) => {
+          const flag = f.startsWith("--") ? f : `--${f}`;
+          const parsed = StrictnessFlag.safeParse(flag);
+          if (!parsed.success) throw new Error(`${flag} is not a strictness flag recon can add — one of: ${StrictnessFlag.options.join(" ")}`);
+          return parsed.data;
+        });
+      const top = Number(value(rest, "--top") ?? NaN);
+      await reconCommand({
+        // The first bare argument that is not a flag's value.
+        project: rest.find((a, i) => !a.startsWith("--") && !["--flags", "--tsconfig", "--top"].includes(rest[i - 1] ?? "")) ?? ".",
+        tsconfig: value(rest, "--tsconfig"),
+        flags,
+        top: Number.isFinite(top) && top > 0 ? top : undefined,
+        json: has(rest, "--json"),
+      });
+      return;
+    }
+
+    case "query": {
+      const kind = rest[0] as QueryKind | undefined;
+      if (kind === undefined || !QUERY_KINDS.includes(kind)) throw new Error(`sidecrew query needs one of: ${QUERY_KINDS.join(", ")}`);
+      const argv = rest.slice(1);
+      const symbols = argv.flatMap((a, i) => (a === "--symbol" && argv[i + 1] ? [argv[i + 1]!] : a.startsWith("--symbol=") ? [a.slice(9)] : []));
+      const flagArg = value(argv, "--flag");
+      const flag = flagArg === undefined ? undefined : StrictnessFlag.parse(flagArg.startsWith("--") ? flagArg : `--${flagArg}`);
+      const limit = Number(value(argv, "--limit") ?? NaN);
+      await queryCommand(kind, {
+        project: value(argv, "--project") ?? ".",
+        tsconfig: value(argv, "--tsconfig"),
+        under: value(argv, "--under"),
+        symbols,
+        flag,
+        codes: value(argv, "--codes")?.split(",").map((c) => c.trim()).filter((c) => c !== ""),
+        limit: Number.isFinite(limit) && limit > 0 ? limit : undefined,
+        json: has(argv, "--json"),
+      });
+      return;
+    }
+
+    case "read": {
+      const files = rest.flatMap((a, i) => (a === "--file" && rest[i + 1] ? [rest[i + 1]!] : a.startsWith("--file=") ? [a.slice(7)] : []));
+      const question = value(rest, "--question");
+      if (question === undefined) throw new Error('sidecrew read needs --question "…" and at least one --file');
+      await readCommand({ project: value(rest, "--project") ?? ".", question, files, json: has(rest, "--json") });
       return;
     }
 

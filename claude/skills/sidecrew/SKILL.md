@@ -1,6 +1,6 @@
 ---
 name: sidecrew
-description: Farm narrow, verifiable work out to local MLX worker models behind a gate a machine can run, so Claude plans and reviews survivors instead of doing the work. The main workload is behaviour-preserving code changes to a project that already exists — type errors, renames, null guards, API migrations, dead code — gated by the project's own suite plus tsc (`/sidecrew fix`). It also writes unit tests for a Swift/TypeScript module, gated by compile→run→mutation (`/sidecrew run`). Use whenever the user asks to fix every type error, rename something everywhere, add null checks, migrate off an API, remove dead code, add tests, raise coverage, or mentions sidecrew, mutation testing, Muter or Stryker — even if they don't say "sidecrew". Do NOT hand-write the bulk of it yourself in this repo; that is what the workers are for.
+description: Farm narrow, verifiable work out to local MLX worker models behind a gate a machine can run, so Claude plans and reviews survivors instead of doing the work. The main workload is behaviour-preserving code changes to a project that already exists — type errors, renames, null guards, API migrations, dead code — gated by the project's own suite plus tsc (`/sidecrew fix`). It also writes unit tests for a Swift/TypeScript module, gated by compile→run→mutation (`/sidecrew run`). Use whenever the user asks how many TypeScript errors a project has (or would have under a stricter flag), to fix every type error, rename something everywhere, add null checks, migrate off an API, remove dead code, add tests, raise coverage, or mentions sidecrew, mutation testing, Muter or Stryker — even if they don't say "sidecrew". Do NOT hand-write the bulk of it yourself in this repo; that is what the workers are for.
 ---
 
 # sidecrew
@@ -106,6 +106,25 @@ though they were:
   rate you quote, and re-run the task.
 - `refused` is non-null — the worker said the change cannot be made inside those files. Usually it is
   right, and the thing to fix is the **plan**.
+
+### `/sidecrew recon [project]` — "how many TypeScript issues are there?"
+`sidecrew_recon` with `project` set. It runs the project's own `tsc` as configured and once per stricter
+flag, in a copy, and returns what each flag would **add** — source files and test files apart, the worst
+files, the commonest codes. No worker, no tokens beyond reading it; a minute or more per flag on a big
+project. Put the sentence in front of the user — *"your config reports 0; `--strictNullChecks` reports
+763, 163 of them in tests"* — and **let them choose the scope**. Two rules (ADR-0090):
+- **It counts; it does not offer.** Do not promise a fix on the strength of the number. Fixes under a
+  strictness flag mostly narrow a type, the narrowed type lands in test files no task may edit, and that
+  shape measured 2/30 (ADR-0077). The report says so itself (`fix_offered: false`).
+- **An already-on flag is not a zero.** `already_on: true` means the project has it; nothing was run.
+
+### Reading a codebase without reading it — `sidecrew_query` and `sidecrew_read` (ADR-0090)
+While planning, ask instead of reading. **`sidecrew_query`** answers predicate questions with the
+project's own compiler — `refs`, `unreferenced` (a `DECORATED` class may be reached by reflection),
+`sizes` (what fits a rewrite), `diagnostics` — no worker, seconds. **`sidecrew_read`** has the local
+worker read ≤ 10 files and answer one question; only claims whose quotes a machine found where they cite
+come back. **Admitted is not true**: open the cited lines before acting on a load-bearing claim, and treat
+`nothing_found` as *read it yourself*. The change-planner uses both when its brief turns retrieval on.
 
 ### What the gate cannot see
 `survives ⇔ confined ∧ compile_ok ∧ tests_ok`, and a comment is neither a type nor a test. Measured: the

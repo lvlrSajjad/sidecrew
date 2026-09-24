@@ -1482,3 +1482,362 @@ export const FixResult = FixResultFields.superRefine((r, ctx) => {
   }
 });
 export type FixResult = z.infer<typeof FixResultFields>;
+
+// ── Phase 14d: recon, the predicate half of retrieval (ADR-0079 option A, ADR-0090) ───────────────
+
+/** Errors and the files carrying them, for one side of the source/test split. */
+export const ReconSplit = z.object({ errors: NonNegInt, files: NonNegInt });
+export type ReconSplit = z.infer<typeof ReconSplit>;
+
+/** One file a flag adds errors to. `test` is the gate's own predicate (`isTestArtefact`), not a copy. */
+export const ReconFile = z.object({
+  file: z.string().min(1),
+  errors: z.number().int().positive(),
+  test: z.boolean(),
+});
+
+export const ReconCode = z.object({ code: z.string().regex(/^TS\d+$/), count: z.number().int().positive() });
+
+/**
+ * What one strictness flag would add to the project's own configuration.
+ *
+ * **`already_on` means the project's resolved configuration enables the flag**, read from `tsc
+ * --showConfig`, and then nothing was run for it: re-running the same compiler would report zero added
+ * errors, and "zero" and "you already have this" are different answers to the user's question.
+ */
+export const ReconFlagFields = z.object({
+  flag: StrictnessFlag,
+  already_on: z.boolean(),
+  /** Errors this flag adds over the baseline, per file and never negative: `source + tests + config`. */
+  added: NonNegInt.nullable(),
+  source: ReconSplit.nullable(),
+  /**
+   * Added errors in test files. Reported separately because they are the ones a behaviour-preserving
+   * task may not edit (ADR-0046), and they sank `null_guard` in 21 of 21 cases (ADR-0077).
+   */
+  tests: ReconSplit.nullable(),
+  /** Added errors `tsc` reported against no file — a flag the project's toolchain rejects, say. */
+  config_errors: NonNegInt.nullable(),
+  top_files: z.array(ReconFile),
+  top_codes: z.array(ReconCode),
+  ms: NonNegInt,
+});
+export type ReconFlag = z.infer<typeof ReconFlagFields>;
+
+const reconFlagConsistent = (f: ReconFlag, ctx: z.RefinementCtx, at: (string | number)[] = []): void => {
+  const counted = [f.added, f.source, f.tests, f.config_errors].filter((v) => v !== null).length;
+  if (f.already_on && counted !== 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [...at, "added"], message: `${f.flag} is already on, so nothing was run for it and it can carry no counts` });
+  }
+  if (!f.already_on && counted !== 4) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [...at, "added"], message: `${f.flag} was run, so added, source, tests and config_errors are all measured` });
+  }
+  if (f.already_on || f.source === null || f.tests === null || f.config_errors === null || f.added === null) return;
+  if (f.added !== f.source.errors + f.tests.errors + f.config_errors) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [...at, "added"], message: `added (${f.added}) is not source + tests + config errors (${f.source.errors + f.tests.errors + f.config_errors})` });
+  }
+  if (f.top_files.length > f.source.files + f.tests.files) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [...at, "top_files"], message: "more top files than files the flag added errors to" });
+  }
+};
+
+export const ReconFlag = ReconFlagFields.superRefine((f, ctx) => reconFlagConsistent(f, ctx));
+
+/**
+ * `sidecrew recon`: the project's own `tsc` error count, and what each stricter flag would add — ADR-0079
+ * option A, and piece 1 of ADR-0090 §4.
+ *
+ * **A predicate report, so relevance is not in question** (ADR-0090 §2.1): the user asked *how many*,
+ * and every number here is `tsc`'s own, exact and re-runnable. Nothing in it came from a model.
+ *
+ * **`fix_offered` is the literal `false`, and that is the gate.** PHASES.md: *"what it must not do yet:
+ * offer to fix what it counts"* — `null_guard` under a strictness flag measured 2/30 (ADR-0077), and a
+ * report that quantifies work the gate cannot deliver converts a quiet limitation into a loud broken
+ * promise. A report that offers does not serialise; the day it may, this changes with an ADR.
+ */
+export const ReconReport = z.object({
+  version: z.literal(1),
+  /** As the caller gave it. Never written into this repository: it names somebody's checkout. */
+  project: z.string().min(1),
+  tsconfig: z.string().min(1),
+  /** The project's own compiler, which is the one every number here is from. */
+  typescript: z.string().nullable(),
+  created: z.string().datetime(),
+  /** False when `tsc --showConfig` did not answer; then no flag can be known to be already on, and every one was run. */
+  config_read: z.boolean(),
+  baseline: z.object({
+    errors: NonNegInt,
+    source: ReconSplit,
+    tests: ReconSplit,
+    config_errors: NonNegInt,
+    /** Files `tsc` had in the program — never zero, or the compiler did not run (ADR-0037). */
+    program_files: z.number().int().positive(),
+    /** Test files in that program: a narrowed type can reach them, and no task may edit them (ADR-0071). */
+    tests_in_program: NonNegInt,
+    top_codes: z.array(ReconCode),
+    ms: NonNegInt,
+  }),
+  flags: z.array(ReconFlagFields),
+  fix_offered: z.literal(false),
+  note: z.string().min(1),
+}).superRefine((r, ctx) => {
+  const seen = new Set<string>();
+  r.flags.forEach((f, i) => {
+    reconFlagConsistent(f, ctx, ["flags", i]);
+    if (seen.has(f.flag)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["flags", i, "flag"], message: `${f.flag} is reported twice` });
+    seen.add(f.flag);
+    if (f.already_on && !r.config_read) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["flags", i, "already_on"], message: "the configuration was not read, so no flag can be known to be already on" });
+    }
+  });
+  const b = r.baseline;
+  if (b.errors !== b.source.errors + b.tests.errors + b.config_errors) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["baseline", "errors"], message: "baseline errors is not source + tests + config errors" });
+  }
+});
+export type ReconReport = z.infer<typeof ReconReport>;
+
+// ── Phase 14d: predicate retrieval — `sidecrew query` (ADR-0090 §4 piece 3) ───────────────────────
+//
+// The four questions the 20 Sep planners wrote their own scripts for, answered by the project's own
+// compiler: who references a declaration, which exports nothing outside their file uses, what fits the
+// rewrite ceiling, and where a flag's errors are. Predicate questions (ADR-0090 §2.1): the answer is
+// exact and re-runnable, so its relevance is the question the planner chose.
+//
+// **Every list is capped and says so.** `total` is what the compiler found and `truncated` is true
+// exactly when fewer were listed: a capped answer that reads as complete is the shape of five defects
+// in this repository already (HANDOFF §5, *"anything this tool truncates for display…"*).
+
+const QueryLocation = z.object({ file: z.string().min(1), line: z.number().int().positive() });
+
+const QueryCommon = {
+  version: z.literal(1),
+  project: z.string().min(1),
+  tsconfig: z.string().min(1),
+  created: z.string().datetime(),
+  ms: NonNegInt,
+  /** How many the compiler found, before the cap. */
+  total: NonNegInt,
+  truncated: z.boolean(),
+};
+
+export const RefsAnswer = z.object({
+  ...QueryCommon,
+  kind: z.literal("refs"),
+  items: z.array(z.object({
+    file: z.string().min(1),
+    name: z.string().min(1),
+    /** False when no declaration of that name is in that file; then every count is zero. */
+    found: z.boolean(),
+    /** References, the declaration itself excluded. */
+    references: NonNegInt,
+    /** Distinct files those references are in, the declaring file included. */
+    files: NonNegInt,
+    /** How many of the references are in test files — which a behaviour-preserving task may not edit. */
+    from_tests: NonNegInt,
+    locations: z.array(QueryLocation),
+    locations_truncated: z.boolean(),
+  })),
+});
+
+export const UnreferencedAnswer = z.object({
+  ...QueryCommon,
+  kind: z.literal("unreferenced"),
+  /** The project-relative prefix scanned, or null for the whole program. */
+  under: z.string().nullable(),
+  /** Exported declarations examined. `total` is how many of them had no reference outside their file from a non-test file. */
+  scanned: NonNegInt,
+  items: z.array(z.object({
+    file: z.string().min(1),
+    name: z.string().min(1),
+    line: z.number().int().positive(),
+    kind: z.string().min(1),
+    /**
+     * A decorated class is reached by reflection — DI, an ORM's entity glob, a controller registry — and
+     * a reference count cannot see that. The 20 Sep planner refused eight tasks on exactly this. Recorded,
+     * never filtered: the planner decides, and it decides knowing.
+     */
+    decorated: z.boolean(),
+    /** References from test files. Non-zero means removing it breaks a test, which the gate would catch. */
+    refs_from_tests: NonNegInt,
+  })),
+});
+
+export const SizesAnswer = z.object({
+  ...QueryCommon,
+  kind: z.literal("sizes"),
+  under: z.string().nullable(),
+  /** `MAX_FIX_TOKENS`: what a worker can return in one answer (ADR-0047 §2). */
+  ceiling: z.number().int().positive(),
+  /** Files, of `total`, whose whole-file rewrite fits under the ceiling. */
+  fitting: NonNegInt,
+  items: z.array(z.object({
+    file: z.string().min(1),
+    chars: NonNegInt,
+    /** `rewriteCost`, the validator's own estimate, so this can never disagree with a refusal. */
+    rewrite_tokens: NonNegInt,
+    fits: z.boolean(),
+    /** For a file that does not fit: its uniquely nameable declarations, and how many of them fit alone (ADR-0086). */
+    declarations: NonNegInt.nullable(),
+    declarations_fitting: NonNegInt.nullable(),
+  })),
+});
+
+export const DiagnosticsAnswer = z.object({
+  ...QueryCommon,
+  kind: z.literal("diagnostics"),
+  under: z.string().nullable(),
+  /** The flag added on top of the project's configuration, or null for the configuration as it is. */
+  flag: StrictnessFlag.nullable(),
+  /** When a flag is set, only errors the baseline did not already have are listed. */
+  added_only: z.boolean(),
+  codes: z.array(z.string().regex(/^TS\d+$/)),
+  items: z.array(z.object({
+    file: z.string().min(1),
+    line: z.number().int().positive(),
+    code: z.string().regex(/^TS\d+$/),
+    message: z.string().max(200),
+  })),
+});
+
+export const QueryAnswer = z.discriminatedUnion("kind", [RefsAnswer, UnreferencedAnswer, SizesAnswer, DiagnosticsAnswer])
+  .superRefine((a, ctx) => {
+    if (a.items.length > a.total) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items"], message: `${a.items.length} items listed but total is ${a.total}` });
+    }
+    if (a.truncated !== (a.items.length < a.total)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["truncated"], message: "truncated must be true exactly when fewer items are listed than were found" });
+    }
+    if (a.kind === "refs") {
+      a.items.forEach((it, i) => {
+        if (!it.found && (it.references !== 0 || it.files !== 0 || it.locations.length !== 0)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", i], message: `${it.name} was not found, so it has no references` });
+        }
+        if (it.from_tests > it.references || it.locations.length > it.references) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", i], message: "more test references or locations than references" });
+        }
+        if (it.locations_truncated !== (it.locations.length < it.references)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", i, "locations_truncated"], message: "locations_truncated must be true exactly when fewer locations are listed than references" });
+        }
+      });
+    }
+    if (a.kind === "unreferenced" && a.total > a.scanned) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["total"], message: "more unreferenced exports than exports scanned" });
+    }
+    if (a.kind === "sizes") {
+      if (a.fitting > a.total) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["fitting"], message: "more fitting files than files" });
+      a.items.forEach((it, i) => {
+        if (it.fits !== (it.rewrite_tokens <= a.ceiling)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", i, "fits"], message: "fits must equal rewrite_tokens ≤ ceiling" });
+        }
+        if ((it.declarations === null) !== (it.declarations_fitting === null) || (it.declarations_fitting ?? 0) > (it.declarations ?? 0)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["items", i, "declarations"], message: "declarations and declarations_fitting are both counted or both null, and fitting ≤ declarations" });
+        }
+      });
+    }
+    if (a.kind === "diagnostics" && a.added_only && a.flag === null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["added_only"], message: "added_only needs a flag to be added over" });
+    }
+  });
+export type QueryAnswer = z.infer<typeof QueryAnswer>;
+
+// ── Phase 14d: judgement retrieval — `sidecrew read` (ADR-0090 §2.2, §4 piece 4) ───────────────────
+
+/**
+ * The caps, stated in `prompts/phase-14d-retrieval.md`'s 24 Sep amendment **before this code existed**.
+ * Changing one changes what a measured `R₁` means, so it needs a dated amendment there first.
+ */
+export const READ_BUDGET = {
+  max_claims: 8,
+  max_claim_chars: 300,
+  min_quote_chars: 12,
+  max_quote_chars: 400,
+  max_rendered_chars: 4000,
+  max_files: 10,
+  max_input_chars: 60_000,
+} as const;
+
+export const ReadRefusal = z.enum([
+  /** The cited file is not one the question gave the reader. */
+  "file_not_given",
+  /** The cited lines are not in the file. */
+  "lines_out_of_range",
+  /** The quote is not inside the cited lines, byte for byte or word for word — its evidence does not exist there. */
+  "quote_not_found",
+  /** Shorter than the floor, where a quote could be found almost anywhere, or longer than the cap. */
+  "quote_size",
+  /** A claim with no citation, or a claim longer than the cap: not checkable. */
+  "uncited",
+  "claim_too_long",
+  /** Admitted on its own, and past the answer's claim or character budget. */
+  "over_budget",
+]);
+export type ReadRefusal = z.infer<typeof ReadRefusal>;
+
+export const ReadCitation = z.object({
+  file: z.string().min(1),
+  start_line: z.number().int().positive(),
+  end_line: z.number().int().positive(),
+  quote: z.string().min(READ_BUDGET.min_quote_chars).max(READ_BUDGET.max_quote_chars),
+  /**
+   * `exact`: the quote is byte for byte inside the lines. `normalised`: it is once line-leading comment
+   * markers are removed and whitespace collapsed on both sides — the same words, contiguous and in order
+   * (the prompt file's second 24 Sep amendment). Never anything looser.
+   */
+  match: z.enum(["exact", "normalised"]),
+}).refine((c) => c.end_line >= c.start_line, { message: "end_line before start_line" });
+
+export const ReadClaim = z.object({
+  claim: z.string().min(1).max(READ_BUDGET.max_claim_chars),
+  citations: z.array(ReadCitation).min(1),
+});
+
+/**
+ * What `sidecrew read` returns: a local worker read the files and answered the question, and **only the
+ * claims whose every citation a machine found, byte for byte, are here** (ADR-0090 §2.2).
+ *
+ * **Admitted means existence, and nothing more.** The machine checked that each quote is where the
+ * worker said it is. Whether the claim is *relevant* nobody checked, by design: its cost is capped by
+ * `READ_BUDGET` and metered by `R`, and a claim that misleads a plan produces tasks the change gate then
+ * fails (ADR-0090 §2.3). There is no survival rate here and none may be computed from it (§3).
+ *
+ * **Refused claims are counted, never carried** (non-negotiable #3: raw worker output never reaches
+ * Claude). The raw answer is on disk at `raw_path` for a person diagnosing the reader.
+ */
+export const ReadAnswer = z.object({
+  version: z.literal(1),
+  project: z.string().min(1),
+  question: z.string().min(1),
+  files: z.array(z.object({ path: z.string().min(1), sha256: z.string().regex(/^[0-9a-f]{64}$/), lines: NonNegInt }))
+    .min(1).max(READ_BUDGET.max_files),
+  worker: z.object({
+    kind: z.literal("local"),
+    model: z.string().min(1),
+    revision: z.string(),
+    temperature: z.literal(0),
+    seed: z.number().int(),
+  }),
+  usage: z.object({ prompt_tokens: NonNegInt, completion_tokens: NonNegInt }),
+  wall_ms: NonNegInt,
+  outcome: z.enum(["answered", "nothing_found", "unparsed"]),
+  claims: z.array(ReadClaim).max(READ_BUDGET.max_claims),
+  refused: z.record(ReadRefusal, z.number().int().positive()),
+  /** Characters of the text rendering Opus reads — what the budget caps. */
+  rendered_chars: NonNegInt.max(READ_BUDGET.max_rendered_chars),
+  raw_path: z.string().nullable(),
+  /** Zero, always: the local tier spends no Claude tokens on the reader (non-negotiable #1). */
+  claude_tokens: z.literal(0),
+}).superRefine((a, ctx) => {
+  if ((a.outcome === "answered") !== (a.claims.length > 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["outcome"], message: "outcome is answered exactly when at least one claim was admitted" });
+  }
+  const given = new Set(a.files.map((f) => f.path));
+  const lines = new Map(a.files.map((f) => [f.path, f.lines]));
+  a.claims.forEach((c, i) => c.citations.forEach((cite, j) => {
+    // The one check a schema can make without the file: the citation points inside a file it was given.
+    if (!given.has(cite.file) || cite.end_line > (lines.get(cite.file) ?? 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["claims", i, "citations", j], message: `${cite.file}:${cite.start_line}-${cite.end_line} is not inside a file the question gave` });
+    }
+  }));
+});
+export type ReadAnswer = z.infer<typeof ReadAnswer>;

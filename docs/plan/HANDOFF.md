@@ -12,9 +12,10 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 24 Sep 2026, ~08:00. `v0.2.0` is published. Nothing is running, nothing is
-half-finished, the tree is clean and pushed, and no pinned clone is left on disk. The next thing is
-Phase 14d — §3 has the paste-in prompt.**
+**Last updated: 24 Sep 2026, ~14:30. Phase 14d is BUILT: ADR-0090, the frozen exit check, and all of
+§4 — `sidecrew recon`, `sidecrew query`, `sidecrew read`, the planner's §1′. What is left is the
+measurement, which the owner runs at night. Nothing is running (the 7B used for a probe is stopped);
+nothing is pushed since `v0.2.0`. ADR-0090 §5 and ADR-0089 were decided by the owner the same day: **B** and **B**.**
 
 ### What happened on 22–24 Sep, in one table
 
@@ -27,6 +28,7 @@ Phase 14d — §3 has the paste-in prompt.**
 | **ADR-0082 D** — can a worker write the test first? | `Y` **2/20** [0.012, 0.317] → **B not affordable as it stands** (principle stays accepted) | `prompts/adr-0082-d.md` §6 |
 | **ADR-0089** — a type-only assertion survives workload #1's gate | found, pinned as a KNOWN HOLE test, **a 1.0 prerequisite** (owner) | ADR-0089 |
 | **`v0.2.0`** | **published**: npm `latest` with SLSA provenance, MCP Registry, from `v0.2.0` at `61eb7f2` | CHANGELOG |
+| **14d built** | **ADR-0090** (relevance: *admitted, never judged*) · exit check **frozen** · **`recon`, `query`, `read`, planner §1′** built · **found:** `P_total` is 17 % harness / 36 % reading / 49 % Opus output, so all-reading-removed gives **`R` = 1.88** | ADR-0090, `prompts/phase-14d-retrieval.md` |
 
 *Verify before trusting it:* `git log -1 --format='%h %s'` should be the commit that last touched
 this file. If later commits changed the phase state and this file was not among them, the rule in
@@ -38,15 +40,15 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 | | |
 |---|---|
-| branch | `main`, clean, **pushed**, 0 client references in the tracked tree |
-| tests | `npm run lint && npm test` → **831 passing**, 1 skipped · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
+| branch | `main`. Phase 14d's build is **committed locally, not pushed**; `origin/main` is `7ec88df`. 0 client references in the tracked tree — **scan before any push** (§5) |
+| tests | `npm run lint && npm test` → **881 passing**, 1 skipped · `recon.slow` **1** + `query.slow` **2** (real `tsc` on the fix fixture) · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
 | version | **`0.2.0`**, published 24 Sep. Six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2); use `npm version X --no-git-tag-version` for the first and last. `ci.yml` checks four, `release.yml` five, **neither checks the lockfile** |
 | published | `sidecrew@0.2.0` on npm as `latest` with provenance; `io.github.lvlrSajjad/sidecrew` on the MCP Registry lists `0.1.2` and `0.2.0`. Release = green CI on the commit, then `git tag -a vX.Y.Z` and push the tag; `release.yml` has no `workflow_dispatch` (use `gh run rerun <id> --failed`). **Never push `private-history`** |
 | tool cache | **`~/.sidecrew/tools/stryker-8.7.1`** is installed on this machine (62 MB, no project-owned tools inside it). `sidecrew tools` reports it |
 | clones | **none on disk.** Make one with `scripts/pinned-clone.sh <project> <commit> <dest>` for any measurement (ADR-0088 addendum) |
 | supported | **24 GB+ Apple Silicon, local tier only** (ADR-0073) |
-| next phase | **14d — retrieval, `v1.0.0`** · §3 |
-| ADRs | run to **0089**; start new ones at **0090**. Open: **0089** (the fix option, 1.0 prerequisite), **0064** (mostly retired by 0079). Decided this week: 0086 (C, and §6 = B), 0087 (A, amended per declaration), 0088, 0082 (in principle, TDD) |
+| next phase | **14d measurement** — four planner passes by day, then the gated night · §3 |
+| ADRs | run to **0090**; start new ones at **0091**. Decided 24 Sep: **0090** (accepted; §5 = B), **0089** (option B — built next, 1.0 prerequisite). Open: **0064** (mostly retired by 0079). Decided this week: 0086 (C, and §6 = B), 0087 (A, amended per declaration), 0088, 0082 (in principle, TDD) |
 | running | **nothing.** Workers stopped, sandboxes swept, clones deleted |
 | CI | **green** on `main` and on the `v0.2.0` release run |
 | `gh` | authenticated **per tree**: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A bash shell must set it explicitly |
@@ -146,15 +148,30 @@ now fixed, and neither of which the gate would ever have caught:**
 
 ## 3. What to do next
 
-### Starting Phase 14d in a fresh session — paste this
+### Running Phase 14d's measurement — paste this, on a day the owner has named a night for
 
-> Start phase 14d of sidecrew. Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/plan/PHASES.md` § *14d*
-> (including its **two** 1.0 prerequisites and the exit-check shape), **ADR-0079** (the starting point,
-> with its addendum), `docs/plan/VISION.md`, and `experiments/planner-cost/README.md` (the method, the
-> 19 Sep amendment, and the 20 Sep result). Then `git status` and `git log -5`. **Write the 14d ADR
-> first** (the relevance problem, answered rather than noted), **then freeze the exit check** in
-> `docs/plan/prompts/phase-14d-retrieval.md`, **then size the measurement**. Build ADR-0079 option A
-> (recon-as-report) as the first piece. Nothing runs until the owner says when.
+> Run phase 14d's measurement of sidecrew. Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, **ADR-0090**, and
+> `docs/plan/prompts/phase-14d-retrieval.md` **in full** — §2–§3 are frozen, and the three dated notes
+> below them bind the run (piece 4's budget, the quote-match rule, the base-arm void check). Then
+> `git status` and `git log -5`. ADR-0090 §5 is decided (B) and already in §3's `14d′` row. Make a pinned clone of `project-a`
+> (`scripts/pinned-clone.sh`), write the two briefs (gitignored, identical but for the retrieval line),
+> and run the four planner passes as subagents — base arm first, retrieval arm second, one at a time.
+> Void any base-arm pass `planner-decompose.py` shows retrieval calls in. Validate all four plans,
+> **re-size** the night from their real task counts, and prepare the gated runs to start after 02:05.
+> Do not start the night without the owner's go.
+
+**What the build established, so the measurement session does not re-derive it:**
+
+| | |
+|---|---|
+| the relevance answer | **admitted, never judged** (ADR-0090 §2): predicate answers are exact by construction; judgement answers are admitted iff every claim cites a byte-checked span within a budget; irrelevance is bounded and shows up in `R`; omission shows up as lower survival; neither can make a wrong change survive |
+| what `P_total` is made of | `N = 12`: harness **45,877** · reading **94,978** · output × 2 **130,164** (`scripts/planner-decompose.py`, `experiments/planner-cost/results/decomposition-2026-09-24.json`) |
+| the ceiling | all reading removed, output unchanged → **`R` = 1.88**; staying out of STOP with output unchanged needs reading **−88 %** |
+| what is built | `sidecrew recon` · `sidecrew query refs\|unreferenced\|sizes\|diagnostics` · `sidecrew read` (admitted by citation; budget in the prompt file) · change-planner §1′ switched by the brief · `planner-decompose.py` counts retrieval calls |
+| the reader, probed | on the real 7B over sidecrew's own code: byte equality refused 9/10 (it joins lines), so quotes match word-for-word with layout removed; then 6 admitted, 4 refused, **2 of the 6 said more than their quote** — admitted ≠ true |
+| the reading, by tool (`N = 12` / `N = 41`) | file contents 65 % / 37 % · grep 18 % / 25 % · **the planner's own analysis scripts 10 % / 12 %** · listings 4 % / 18 % · sidecrew's output 2 % / 3 % (an earlier count of 12 % / 33 % was a classifier bug, corrected before commit) |
+| the frozen fork | `R₁ ≤ 1.0` PROCEED (cut 1.0, with ADR-0089) · `(1.0, 2.0]` INSERT `14d′` · `> 2.0` STOP · quality veto: `S₁`'s upper bound < `S₀` → STOP for retrieval as built |
+| the size | 4 planner passes (~2 h, day) + ~106 gated tasks (~5 h, one night after 02:05) — re-size from the real plans |
 
 **The numbers it will otherwise go hunting for** (`experiments/planner-cost/`, measured 19–20 Sep):
 
@@ -163,7 +180,7 @@ now fixed, and neither of which the gate would ever have caught:**
 | `R` at `N = 12` / `N = 41` | **2.84** / **1.07** (both FAIL; 1.0 needs `R ≤ 1.0` at `N = 12`) |
 | `P_total` at 12 / 41 tasks | 265,607 / 343,144 Opus tokens |
 | fixed planning cost `F` | **≈ 233,500 tokens**, 88 % of the total at `N = 12` and 68 % at `N = 41`; the per-task term is ≈ 2,700 |
-| what the fixed cost is | overwhelmingly **Opus reading**: 15.5 M cache reads against 89 k of output |
+| what the fixed cost is | **corrected 24 Sep (ADR-0090 §1):** ~17 % harness, ~36 % reading, ~49 % Opus's own output paid twice. The old *"overwhelmingly reading: 15.5 M cache reads"* counted cache reads, which `P_total` excludes |
 | instrument | `scripts/planner-tokens.mjs`, dedup by `message.id` keeping the last; subagent transcripts are in `<session>/subagents/`. **A subagent transcript is a clean window by construction**, so spawn planners as subagents and read `--agents` |
 
 **The traps, each already paid for once:**
@@ -180,14 +197,14 @@ now fixed, and neither of which the gate would ever have caught:**
   proposed relevance oracle (ADR-0079), batched, once per cycle, or the loop pays the fixed cost `n` times.
 
 **The expected number of overnights to `v1.0.0`: 1 (14d), 2 if `R` lands in (1.0, 2.0] and inserts
-14d′, and one contingency.** ADR-0089 needs no overnight: re-score stored survivors, then a daytime fix.
+14d′, and one contingency.** ADR-0089 needs no overnight: the re-score is done and B is chosen, so it is a daytime build.
 
 ### The board — everything live, in order
 
 | | what | cost | needs |
 |---|---|---|---|
-| **A** | **Phase 14d** — retrieval, cut `v1.0.0` | 3–4 sessions + 1 overnight (unsized) | nothing; the ADR comes first |
-| **B** | **ADR-0089** — close the type-only-assertion hole; **a 1.0 prerequisite** | ~1 session, no overnight | re-score stored workload #1 survivors first (how many killed only the body mutant), then the owner picks the option. Recommendation: **B** (require a kill other than the whole-body removal), with **A** as the detector's cheap first line |
+| **A** | **Phase 14d** — retrieval, cut `v1.0.0` | **built**; the measurement is left: ~2 h of planner passes by day + one ~5 h gated night | the owner naming a night (§5 is decided: B) |
+| **B** | **ADR-0089** — close the type-only-assertion hole; **a 1.0 prerequisite** | ~1 session, no overnight | **option B chosen 24 Sep**; build it with a control fixture and mutator names in verdicts. One daytime Stryker run would settle the ≤ 2/11 bound (owner's go) Recommendation: **B** (require a kill other than the whole-body removal), with **A** as the detector's cheap first line |
 | **C** | **What raises ADR-0082 D's `Y`** | a probe | not scheduled. D's funnel says the worker cannot build a test against a NestJS service (2/14 ever passed on the original code; both then killed). The candidate levers are the service's own specs as context, or a larger worker |
 | **D** | Phase 14's passive exit check | watching | nothing; window ends 5 Oct |
 
@@ -336,11 +353,14 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **ADR-0089 — which fix closes the type-only-assertion hole.** A 1.0 prerequisite (owner, 24 Sep); the
-  option is not chosen. Measure first: re-score the stored workload #1 survivors from their mutation
-  reports and count how many killed *only* the empty-body mutant. That number says how inflated every
-  published workload #1 rate is, and it can be read without re-running anything. Recommendation: **B**,
-  with A as a first line.
+- **Whether to run `sidecrew recon` on `project-a` now.** It is read-only, sandboxed and intact-checked,
+  needs no worker, and would give ADR-0079's sentence its real number. It was not run in session 1,
+  because the phase prompt says nothing runs on a client project until the owner says when.
+- **ADR-0089 — DECIDED 24 Sep: option B**, A as the detector's first line, and verdicts recording each
+  kill's mutator. A 1.0 prerequisite; **not yet built** — a daytime session. **The re-score is done (addendum, 24 Sep):** from stored records only an upper
+  bound is possible — verdicts keep Stryker ids, not mutator names — and it is **2 of 11** published
+  real-project survivors, both tests of one function with a single mutant. Worst case project-a's 4/8 → 2/8.
+  Settling it exactly is one daytime Stryker run on one project-a function, **the owner's go**.
 - **ADR-0064** — philosophical, blocks nothing, largely retired by ADR-0079. Standing recommendation:
   B now, C not yet.
 - **The fixtures' `package.json` still list Stryker as a devDependency.** The verifier no longer reads
@@ -353,7 +373,7 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 *Decided this week and not to be re-opened:* ADR-0086 §6 (**B**, 23 Sep), ADR-0087 (**A**, amended per
 declaration), ADR-0088 (built), ADR-0082 (**accepted in principle as TDD**), `v0.2.0` (**cut**),
-ADR-0089 (**a 1.0 prerequisite**).
+ADR-0089 (**a 1.0 prerequisite; option B**), ADR-0090 (**accepted; §5 = B**).
 
 ## 5. Standing hazards — all learned expensively
 

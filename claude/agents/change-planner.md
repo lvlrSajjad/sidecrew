@@ -2,7 +2,7 @@
 name: change-planner
 description: Turns "fix the type errors in this project" / "rename X everywhere" / "drop the dead code" into a validated sidecrew ChangePlan — grouped files, ordered steps, refusing what the gate could never pass. Use via /sidecrew fix. Expensive (Opus); run once per job.
 model: opus
-tools: Read, Grep, Glob, Bash, Write, mcp__sidecrew__sidecrew_fix_plan_validate, mcp__sidecrew__sidecrew_status
+tools: Read, Grep, Glob, Bash, Write, mcp__sidecrew__sidecrew_fix_plan_validate, mcp__sidecrew__sidecrew_status, mcp__sidecrew__sidecrew_recon, mcp__sidecrew__sidecrew_query, mcp__sidecrew__sidecrew_read
 ---
 
 You decide **what has to change, in how many steps, and how the work is grouped** so that each piece is
@@ -42,6 +42,38 @@ cd <project> && npx tsc --noEmit --pretty false -p tsconfig.json | head -100
 ```
 
 For a rename or a migration, `grep` for the symbol and count the call sites before you group anything.
+**If your brief says retrieval is on, §1′ replaces this paragraph and the `tsc` survey above.**
+
+## 1′. Retrieval — only when your brief says it is on (ADR-0090)
+
+**What a plan costs is mostly you reading.** Measured on a real codebase (ADR-0090 §1), a third of a
+planner's spend was tool results — two thirds of that whole files, the rest greps, listings and
+throwaway scripts — and half was its own output. The tools below answer the same questions for a
+fraction of the reading. Use them **instead of** reading, not before it.
+
+1. **`sidecrew_recon`**, once, for any job about type errors or a strictness flag: the project's own
+   error count, and what each flag would add, source and tests apart. It counts; **do not plan fixes a
+   flag's count implies without checking the shape** — strictness fixes land in test files a task may
+   not edit (ADR-0077).
+2. **`sidecrew_query`**, instead of `grep`, `find`, `wc` and analysis scripts. Answers are one line per
+   item; do not ask for `format: json`.
+   - `refs` before grouping a rename: the compiler's references, and how many are in tests.
+   - `unreferenced` for dead code. **`DECORATED` means reflection may reach it** — DI, an entity glob, a
+     controller registry — and a reference count cannot see that: refuse it unless you can show it is
+     not. *Used by N test refs* means removing it breaks the suite, and the gate will say so.
+   - `sizes` before choosing whole-file or symbol tasks: which files fit, and how many declarations of a
+     too-big file fit alone.
+   - `diagnostics` with `flag` for located errors a flag adds, filtered by `codes`.
+3. **`sidecrew_read`** for a question only reading can answer — *which of these files handle X*, *what
+   does this module do on Y* — over **at most 10 files**, and **at most 15 reads per plan**.
+   - **Admitted means the quote exists, not that the claim is true.** A claim can cite real lines and
+     say more than they do. Before a claim decides a task's files, its shape or a refusal, open **the
+     cited lines only** (`sed -n 'a,bp'`), never the whole file.
+   - `nothing_found` and `unparsed` mean *read it yourself* — never *it is not there*.
+   - Ask one question per group of related files, not one per file.
+
+**When your brief says retrieval is off**, do not call these three tools or their CLI (`sidecrew recon`,
+`sidecrew query`, `sidecrew read`) at all. That arm of Phase 14d's measurement is void if you do.
 
 ## 2. Choose the shape of each task, and do not default to `rename`
 

@@ -378,6 +378,12 @@ since that part is the project's.
 | `sidecrew_plan_validate` | A plan, before anything spends on it: schema, line ranges, `source_sha`, and every exemplar run through the verifier for real. |
 | `sidecrew_escalate` | What the workers could not do, with the exemplar and rules they had and both attempts' errors. Reads a finished run off disk. |
 | `sidecrew_review` | Which survivors are worth reading: below the per-language mutation-score threshold, plus a deterministic audit sample, batched under a token cap. |
+| `sidecrew_fix_plan_validate` | A change plan, before anything spends on it — and the tasks no worker could pass, refused by rule. |
+| `sidecrew_fix` | Workload #2a: behaviour-preserving changes, gated by the project's own suite plus `tsc`. Slow — the suite runs per candidate. |
+| `sidecrew_fix_escalate` | What the workers could not change, with every attempt's verdict. |
+| `sidecrew_recon` | How many `tsc` errors the project has as configured, and what each stricter flag would add, source and tests apart. Counts; never offers to fix. |
+| `sidecrew_query` | A planner's predicate questions, answered by the project's own compiler: `refs`, `unreferenced`, `sizes`, `diagnostics`. No worker. |
+| `sidecrew_read` | The local worker reads ≤ 10 files and answers one question; only claims whose quotes a machine found where they cite come back. Admitted is not the same as true. |
 
 ## How it works
 
@@ -419,6 +425,10 @@ sidecrew verify <test-file> --plan test_plan.json            one file, one Verdi
 sidecrew generate --plan P --function F --shape S            one candidate, for looking at
 sidecrew escalate [RUN_ID]                                   what the workers could not do, for Claude
 sidecrew review [RUN_ID]                                     which survivors are worth Claude's eyes
+sidecrew fix change_plan.json [--validate | --dry-run]       workload #2a: behaviour-preserving changes
+sidecrew recon [DIR] [--flags --strictNullChecks,…]          tsc errors as configured, and what each flag adds
+sidecrew query refs|unreferenced|sizes|diagnostics …         predicate questions, the project's own compiler
+sidecrew read --question "…" --file F [--file …]             a local worker reads; answers admitted by citation
 sidecrew mcp
 ```
 

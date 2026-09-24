@@ -15,12 +15,12 @@ const connect = async (): Promise<Client> => {
 };
 
 describe("the sidecrew MCP server", () => {
-  it("exposes exactly the ten tools the skill and the spec name", async () => {
+  it("exposes exactly the thirteen tools the skill and the spec name", async () => {
     const client = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       "sidecrew_escalate", "sidecrew_fix", "sidecrew_fix_escalate", "sidecrew_fix_plan_validate",
-      "sidecrew_generate", "sidecrew_plan_validate", "sidecrew_review",
+      "sidecrew_generate", "sidecrew_plan_validate", "sidecrew_query", "sidecrew_read", "sidecrew_recon", "sidecrew_review",
       "sidecrew_run_batch", "sidecrew_status", "sidecrew_verify",
     ]);
     await client.close();
@@ -48,6 +48,27 @@ describe("the sidecrew MCP server", () => {
     const d = tools.find((t) => t.name === "sidecrew_fix_escalate")?.description ?? "";
     expect(d).toMatch(/machine_failure/);
     expect(d).toMatch(/refused/);
+    await client.close();
+  });
+
+  it("says recon counts and does not offer to fix — PHASES.md 14d, ADR-0090 §3", async () => {
+    // A model that reads "763 errors" and promises the user a fix has converted a quiet limitation into
+    // a loud broken promise. The only place to stop it is the description it decides from.
+    const client = await connect();
+    const { tools } = await client.listTools();
+    const d = tools.find((t) => t.name === "sidecrew_recon")?.description ?? "";
+    expect(d).toMatch(/does not offer to fix/);
+    expect(d).toMatch(/zero Claude tokens/);
+    await client.close();
+  });
+
+  it("says an admitted read is evidence that exists, not a relevant or complete answer — ADR-0090 §2", async () => {
+    const client = await connect();
+    const { tools } = await client.listTools();
+    const d = tools.find((t) => t.name === "sidecrew_read")?.description ?? "";
+    expect(d).toMatch(/NOT that the claim is relevant/);
+    expect(d).toMatch(/zero Claude tokens/);
+    expect(d).toMatch(/at\s+most 15/);
     await client.close();
   });
 

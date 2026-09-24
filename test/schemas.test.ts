@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
   BatchResult, Candidate, ChangeBaseline, ChangeCandidate, ChangeEscalation, ChangePlan, ChangeTask,
-  ChangeVerdict, EscalationBatch, FixResult, ReviewQueue, StatusReport, TestPlan, Verdict,
+  ChangeVerdict, EscalationBatch, FixResult, QueryAnswer, ReadAnswer, ReconReport, ReviewQueue, StatusReport, TestPlan, Verdict,
   ValidationReport, WorkerTask, changeSurvives, crossesCalendarDay, survives, swapGrowthGb,
 } from "../src/schemas.js";
 
@@ -58,6 +58,8 @@ const SCHEMAS: Record<string, z.ZodTypeAny> = {
   ChangePlan, ChangeBaseline, ChangeTask, ChangeCandidate, ChangeVerdict, FixResult,
   // Phase 12 (ADR-0044 §4, ADR-0057). The 2a queue is its own shape, not a widened Escalation.
   ChangeEscalation,
+  // Phase 14d (ADR-0090). Recon's report: a count, never an offer.
+  ReconReport, QueryAnswer, ReadAnswer,
 };
 
 describe("docs/specs/pipeline.md ⇄ src/schemas.ts", () => {

@@ -980,6 +980,161 @@ workload-#1 escalation four permanently-null fields and make the discriminant a 
 `EscalationBatch` follows, and for the same reason: Claude is asked the question the worker could not
 answer, not a summary of it.
 
+# Recon — the predicate half of retrieval (Phase 14d)
+
+## ReconReport
+What `sidecrew recon` and `sidecrew_recon` return: the project's own `tsc` error count, and what each
+strictness flag would add over it — ADR-0079 option A, piece 1 of ADR-0090 §4. **Every number is the
+project's own compiler's**, run in a sandbox copy (the project is checked intact afterwards, ADR-0088),
+and no worker runs, so relevance is not in question: the user asked *how many* (ADR-0090 §2.1).
+```json
+{
+  "version": 1,
+  "project": "/path/to/project",
+  "tsconfig": "tsconfig.json",
+  "typescript": "5.9.3",
+  "created": "2026-09-24T10:00:00.000Z",
+  "config_read": true,
+  "baseline": {
+    "errors": 0,
+    "source": { "errors": 0, "files": 0 },
+    "tests": { "errors": 0, "files": 0 },
+    "config_errors": 0,
+    "program_files": 412,
+    "tests_in_program": 118,
+    "top_codes": [],
+    "ms": 21400
+  },
+  "flags": [
+    {
+      "flag": "--strictNullChecks",
+      "already_on": false,
+      "added": 763,
+      "source": { "errors": 600, "files": 90 },
+      "tests": { "errors": 163, "files": 30 },
+      "config_errors": 0,
+      "top_files": [
+        { "file": "src/orders/orders.service.ts", "errors": 41, "test": false },
+        { "file": "test/app.e2e-spec.ts", "errors": 22, "test": true }
+      ],
+      "top_codes": [{ "code": "TS18048", "count": 310 }, { "code": "TS2532", "count": 204 }],
+      "ms": 38100
+    },
+    {
+      "flag": "--noImplicitAny",
+      "already_on": true,
+      "added": null,
+      "source": null,
+      "tests": null,
+      "config_errors": null,
+      "top_files": [],
+      "top_codes": [],
+      "ms": 0
+    }
+  ],
+  "fix_offered": false,
+  "note": "A count, not an offer. ..."
+}
+```
+
+- **`added` is per file and never negative**: the sum over files of how many more errors the flag
+  reports there. A stricter compiler can report a different error at a site it already flagged, and a
+  difference of totals would let a lost error cancel a gained one. `added = source.errors +
+  tests.errors + config_errors`, enforced.
+- **`already_on`** is read from the compiler's own `tsc --showConfig`, never guessed from the tsconfig's
+  text, and then nothing is run for that flag and every count is `null`. *Zero* and *you already have
+  this* are different answers. If `--showConfig` did not answer, `config_read` is `false`, every flag
+  was run, and none may claim to be already on.
+- **`tests` is apart because it is the deliverability number.** A behaviour-preserving task may not
+  edit a test file (ADR-0046), and under `--strictNullChecks` the error that sank a fix was in a test
+  file in 21 of 21 cases (ADR-0077). `test` uses the gate's own predicate, `isTestArtefact`.
+- **`fix_offered` is the literal `false`.** PHASES.md 14d: recon must not offer to fix what it counts
+  while the gate cannot deliver it. A report that offers does not serialise; changing that needs an ADR.
+- **`program_files` is never zero**: a `tsc` that listed no files did not run (ADR-0037), and the
+  compile throws before a report exists.
+
+## QueryAnswer
+What `sidecrew query` and `sidecrew_query` return — ADR-0090 §4 piece 3, the four predicate questions the
+20 Sep planners wrote their own scripts for. One contract, discriminated on `kind`: `refs`,
+`unreferenced`, `sizes` or `diagnostics`. The example is `unreferenced`.
+```json
+{
+  "version": 1,
+  "project": "/path/to/project",
+  "tsconfig": "tsconfig.json",
+  "created": "2026-09-24T10:00:00.000Z",
+  "ms": 5400,
+  "total": 3,
+  "truncated": true,
+  "kind": "unreferenced",
+  "under": "src/common",
+  "scanned": 118,
+  "items": [
+    { "file": "src/common/format.ts", "name": "padLeft", "line": 12, "kind": "function", "decorated": false, "refs_from_tests": 0 },
+    { "file": "src/common/order.entity.ts", "name": "LegacyOrder", "line": 4, "kind": "class", "decorated": true, "refs_from_tests": 0 }
+  ]
+}
+```
+
+- **The compiler answers**: references come from the project's own TypeScript language service, loaded
+  from the project (ADR-0076), so a same-named local elsewhere is not a reference and an aliased import
+  is. `diagnostics` runs the project's `tsc` in a sandbox, like recon.
+- **`total` and `truncated` travel together**: `truncated` ⇔ fewer items are listed than were found,
+  enforced. A capped answer that reads as complete is the shape of five defects here already.
+- **`unreferenced` means no reference outside the declaring file from a non-test file.** `decorated`
+  marks what reflection may reach and a count cannot see; `refs_from_tests` marks what a removal would
+  break in the suite. Both are recorded and neither is filtered: the planner decides, knowing.
+- **`sizes` prices with `rewriteCost` against `MAX_FIX_TOKENS`**, the validator's own estimate, so it
+  cannot disagree with a refusal. For a file that does not fit it counts the **uniquely** nameable
+  declarations and how many fit alone — an ambiguous name is one `resolveSymbol` refuses.
+- **The MCP tool answers in text by default**, one line per item. The JSON repeats every key on every
+  item, and a planner's reading is what Phase 14d is measured on. `format: "json"` returns the contract.
+
+## ReadAnswer
+What `sidecrew read` and `sidecrew_read` return — judgement retrieval, ADR-0090 §2.2 and §4 piece 4. A
+local worker read the files and answered the question; **only claims whose every citation verified are
+here.** The caps are `READ_BUDGET`, frozen in `prompts/phase-14d-retrieval.md`'s 24 Sep amendment before
+this code existed.
+```json
+{
+  "version": 1,
+  "project": "/path/to/project",
+  "question": "Where is a price rounded, and how?",
+  "files": [{ "path": "src/money.ts", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "lines": 21 }],
+  "worker": { "kind": "local", "model": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "revision": "", "temperature": 0, "seed": 42 },
+  "usage": { "prompt_tokens": 612, "completion_tokens": 88 },
+  "wall_ms": 9400,
+  "outcome": "answered",
+  "claims": [
+    {
+      "claim": "roundTo rounds half away from zero with Math.round",
+      "citations": [{ "file": "src/money.ts", "start_line": 9, "end_line": 12, "quote": "Math.round(value * factor) / factor", "match": "exact" }]
+    }
+  ],
+  "refused": { "quote_not_found": 1 },
+  "rendered_chars": 121,
+  "raw_path": ".sidecrew/reads/2026-09-24T10-00-00-000Z-1a2b3c4d.txt",
+  "claude_tokens": 0
+}
+```
+
+- **Admitted means the evidence exists, and nothing more.** A citation verifies when its file is one the
+  question gave, its lines are in the file, and its quote — 12 to 400 characters — is inside those
+  lines **byte for byte** (`match: "exact"`) or, failing that, **word for word** once line-leading
+  comment markers are removed and whitespace collapsed on both sides (`"normalised"`). Elision and
+  paraphrase fail either way. One citation failing refuses the whole claim.
+- **Relevance is checked by nobody, on purpose** (ADR-0090 §2.3): the answer is capped, its cost is what
+  `R` measures, and a misleading claim produces tasks the change gate fails, never survivors. There is no
+  survival rate for a read and none may be computed from one (§3).
+- **Refused claims are counted by reason and never carried** (non-negotiable #3). The raw answer is on
+  disk at `raw_path`, under the gitignored `.sidecrew/`, for a person diagnosing the reader.
+- **`outcome`**: `answered` ⇔ at least one claim was admitted; `nothing_found` is an empty answer and
+  means *read the files yourself*, never *it is not there*; `unparsed` is an answer not in the shape asked.
+- **`claude_tokens` is the literal `0`**: the reader is the local tier's, and a run that spent Claude
+  tokens reading does not serialise (non-negotiable #1).
+- **The MCP tool answers in text by default**: each claim and its `file:lines`, not the quotes — the
+  machine checked them, and re-reading them is the cost this exists to remove.
+
 ## MCP tool signatures
 ```
 sidecrew_status(port: int | None = None, project: str | None = None) -> StatusReport
@@ -999,9 +1154,20 @@ sidecrew_fix(plan_path: str, concurrency: int | None = None, dry_run: bool = Fal
              keep_sandbox: bool = False) -> FixResult
 sidecrew_fix_escalate(run_id: str | None = None, dir: str | None = None,
                       model: str | None = None) -> ChangeEscalationBatch
+
+sidecrew_recon(project: str, tsconfig: str | None = None,
+               flags: list[StrictnessFlag] | None = None, top: int | None = None) -> ReconReport
+sidecrew_query(kind: "refs" | "unreferenced" | "sizes" | "diagnostics", project: str,
+               tsconfig: str | None = None, symbols: list[str] | None = None, under: str | None = None,
+               flag: StrictnessFlag | None = None, codes: list[str] | None = None,
+               limit: int | None = None, format: "text" | "json" = "text") -> str | QueryAnswer
+sidecrew_read(project: str, question: str, files: list[str],
+              format: "text" | "json" = "text") -> str | ReadAnswer
 ```
 
-The last three are workload #2a and are Phase 12's. `BACKLOG.md` held them back from Phase 10 on
+`sidecrew_recon`, `sidecrew_query` and `sidecrew_read` are Phase 14d's (ADR-0090). The first two are the
+project's own compiler and no worker: recon counts without offering to fix, query answers a planner's
+predicate questions. `sidecrew_read` is the local worker reading, admitted by citation. The three before it are workload #2a and are Phase 12's. `BACKLOG.md` held them back from Phase 10 on
 purpose: a tool Claude can call is only useful once something writes `ChangePlan`s for it to call with,
 and shipping one earlier would have shipped a tool that went stale before anyone used it. The thing that
 writes them is `claude/agents/change-planner.md`.

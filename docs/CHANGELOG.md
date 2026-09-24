@@ -1,4 +1,62 @@
 # Changelog
+## Unreleased — Phase 14d, built (the measurement waits for a night)
+
+- **`sidecrew query`** and **`sidecrew_query`** — ADR-0090 §4 piece 3. The four questions the 20 Sep
+  planners wrote their own scripts for, answered by the project's own TypeScript language service: `refs`
+  (the compiler's references, not a grep's, with test references counted), `unreferenced` (exports nothing
+  outside their file uses, **decorated classes marked** because reflection is invisible to a count),
+  `sizes` (what fits a whole-file rewrite, priced by the validator's own `rewriteCost`, and how many of a
+  too-big file's declarations fit as symbol tasks) and `diagnostics` (located errors, with a flag only what
+  it adds). Every list is capped, keeps its `total`, and `truncated` is enforced. Text by default.
+- **`sidecrew read`** and **`sidecrew_read`** — piece 4. The local worker reads ≤ 10 files and answers one
+  question; **a claim is admitted only when every quote it cites is inside the lines it names**, byte for
+  byte or word for word with layout removed. Refused claims are counted, never carried; `claude_tokens` is
+  the literal `0`. The budget (8 claims, 4,000 rendered characters, 15 reads per plan) was written into the
+  frozen prompt file before the code existed. **Probed on the real 7B over this repository's own code**
+  (10 claims, a construction check and not a rate): byte equality refused 9 of 10 — the 7B joins lines and
+  drops comment markers — so the match now tolerates layout, and still refuses elision and paraphrase.
+  **2 of the 6 claims then admitted said more than their quotes did**: admitted means the evidence exists,
+  not that it supports the sentence, and the tool and the planner contract say so.
+- **The change-planner's §1′** — piece 5: when its brief turns retrieval on, recon, query and read replace
+  its own reading, with the budget and the rule to open cited lines before a load-bearing claim. When it is
+  off, `scripts/planner-decompose.py` now counts retrieval calls, and a base-arm transcript with any is void.
+- **Owner decisions, 24 Sep:** ADR-0090 accepted with §5 = **B** (`14d′` attacks the output term; written into
+  the frozen rule before any retrieval-arm pass), and ADR-0089 = **B**, with A as the detector's first line.
+- **ADR-0089's re-score, from stored records only.** Verdicts keep Stryker's ids but not which mutator
+  each was, so the answer is a bound: **at most 2 of 11** published real-project workload #1 survivors could
+  be body-only kills, both tests of one function with a single mutant. Worst case, project-a's second
+  module moves 4/8 → 2/8; nothing else moves. One daytime Stryker run would settle it.
+- **Piece 2 dropped.** ADR-0090 §1's first classifier matched on substrings, and a scratchpad path contains
+  this project's name, so the planner's own analysis scripts were filed as sidecrew's validator output
+  (12 % / 33 % of reading). Reclassified by program the same day, before anything was committed: it is
+  2 % / 3 %, about 1 % of `P_total`, and not worth a mode.
+
+### Phase 14d, session 1
+
+- **`sidecrew recon [DIR]`** and the MCP tool **`sidecrew_recon`** — ADR-0079 option A. *"Your config
+  reports 0; `--strictNullChecks` reports 763, 163 of them in tests."* Runs the project's own `tsc` as
+  configured and once per stricter flag, in a sandbox copy with the project checked intact afterwards
+  (ADR-0088); reports what each flag **adds**, per file and never negative, source and test files apart,
+  with the worst files and commonest codes. A flag the project already has is read from `tsc
+  --showConfig` and reported as **already on**, not as zero. **It counts and never offers to fix**:
+  `ReconReport.fix_offered` is the literal `false`, so a report that offers does not serialise.
+- **ADR-0090 (proposed): retrieval is admitted, never judged relevant.** Predicate questions are answered
+  by a machine and their relevance *is* the predicate; judgement answers are admitted iff every claim
+  cites a verbatim, byte-checked span, within a budget. Irrelevance is bounded and metered by `R`;
+  omission lands in the gate that already exists; neither can make a wrong change survive.
+- **Measured, from the 20 Sep planner transcripts without re-running them** (`scripts/planner-decompose.py`,
+  `experiments/planner-cost/results/decomposition-2026-09-24.json`): planning's `P_total` is **17 %
+  harness, 36 % reading and 49 % Opus's own output** (paid twice) at `N = 12`. The repeated claim that the
+  fixed cost is *"overwhelmingly Opus reading"* counted cache reads, which `R` excludes; corrected in
+  PHASES, VISION and ROADMAP. **Removing all reading with output unchanged gives `R` = 1.88** — retrieval
+  alone cannot reach 14d's `R ≤ 1.0`, and ADR-0090 §5 asks the owner what `14d′` should be.
+- **Of the reading, file contents are 65 % at `N = 12`**, and at `N = 41` greps, listings and analysis
+  scripts the planner wrote itself are over half. Those scripts asked reference counts, unreferenced
+  exports and what fits the rewrite budget: predicate questions a machine can answer.
+- **Phase 14d's exit check is frozen** (`docs/plan/prompts/phase-14d-retrieval.md`), with a quality veto,
+  a pre-registered prediction (`R₁` in `(1.5, 2.3)`), and the measurement sized: 4 planner passes by day,
+  ~106 gated tasks in ~5 h overnight.
+
 ## v0.2.0 — the reach: a task can name a declaration, and a big file stops being refused (2026-09-24)
 
 **What changes for a user:** a behaviour-preserving task can now name one declaration (`symbols:

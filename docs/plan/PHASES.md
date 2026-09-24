@@ -34,7 +34,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | **14b** | **The editing ceiling: is it the model or the task?** — two probes on §2.2's declared task set | ✅ **`S₁₄ = 2/30`, both probes < 0.10 → PROCEED to 14c.** Neither: the workers do the work, the gate cannot credit it (**ADR-0077**, proposed) | **one evening · needs the machine** · no build, no version. Decides whether "any shape of change" is reachable at all |
 | **14c** | **The reach: symbol-scoped return** (ADR-0075 option C) — half a codebase is currently unaddressable | ✅ **23 Sep: `Reach` 0.519 → 0.911; `S_big` 0/9 vs `S_small` 1/18, intervals overlap → INSERT `14c′`** (ADR-0087). The worker clears the same share of errors on either side (0.304 vs 0.307); the change's size binds, not the file's · `v0.2.0` **held** (owner, 23 Sep) |
 | **14c′** | **A big change is not a big file** — inserted by 14c's frozen rule | ✅ **24 Sep: `S′_big` 15/41 [0.221, 0.531] vs `S′_small` 10/42 [0.121, 0.395]; safety clean → PROCEED to 14d.** Intervals overlap and the big arm's reaches below 0.30, so *usable* is a direction. Same 27 files as 14c: 1/27 → 25/83 once the unit is one declaration · `v0.2.0`: the owner's call, and the rule recommends cutting |
-| **14d** | **Retrieval: local models read the codebase** — the other half of the vision | ⬜ · **cut `v1.0.0`** | 3–4 sessions · **one overnight run** · needs its own ADR first: a machine confirms a symbol *exists*, not that it is *relevant* |
+| **14d** | **Retrieval: local models read the codebase** — the other half of the vision | 🟡 **built, 24 Sep; the measurement waits for a night.** ADR-0090 (relevance: *admitted, never judged*), exit check frozen (`prompts/phase-14d-retrieval.md`), and all of §4: `sidecrew recon` (ADR-0079 A), `sidecrew query`, `sidecrew read`, the planner's §1′. **Found:** the fixed cost is ~⅓ reading and ~½ Opus's own output, so removing all reading gives `R` = 1.88 at `N = 12` — ADR-0090 §5 waits on the owner · **cut `v1.0.0`** | 3–4 sessions · **one overnight run** (sized: ~5 h gated, after 02:05) |
 | 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · **post-1.0** · **ADR-0082 gives it a candidate oracle for the first time** | ADR-0031 options B/C · the remaining slice of the 90 %, and the one nothing measured so far says anything about. **ADR-0082 (proposed, 21 Sep) is the missing instrument**: a test written to the *expected* behaviour, by the worker, before the change. Needs its option D measured first |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
 | 17 | The edge ideas: fine-tune on survivors, worker pooling, two-model agreement | 🔷 proposed | `BACKLOG.md` § *The edge ideas* |
@@ -916,8 +916,8 @@ Local tier only; the api tier has no seed (ADR-0045 §5), and that branch is now
 
 **1 — local models read the codebase. §2.1 did not kill it; it confirmed the premise and then gave
 it a target.** The curve says planning is a large **fixed** cost (`F ≈ 233,500`, 68 % of the total
-even at `N = 41`) plus a small per-task one, and the fixed part is overwhelmingly Opus reading —
-15.5M cache reads against 89k of output. Item 1 attacks `F`, the one term that does not amortise by
+even at `N = 41`) plus a small per-task one. ~~and the fixed part is overwhelmingly Opus reading —
+15.5M cache reads against 89k of output.~~ **Corrected 24 Sep (ADR-0090 §1): cache reads are not in `P_total`; measured, the fixed cost is ~17 % harness, ~36 % reading and ~49 % Opus's own output, paid twice.** Item 1 attacks `F`, the one term that does not amortise by
 itself. The item
 rested on planning being expensive and mostly Opus reading code. Measured 19 Sep 2026: **22,134 Opus
 tokens per task planned** at `N = 12`, with **6.3M cache reads against 65k of output** — a planner
@@ -1041,7 +1041,7 @@ below are the order in which its parts become true**, not a list of features:
 **Two constraints that come from measurements and bind every phase here.**
 
 1. **Each cycle must be cheap for Opus.** Planning is **233,500 fixed tokens, 68 % of the total even
-   at 41 tasks**, overwhelmingly Opus *reading*. A loop that re-plans `n` times risks paying that `n`
+   at 41 tasks** — about half of it Opus's own output and a third reading (ADR-0090 §1). A loop that re-plans `n` times risks paying that `n`
    times, which inverts the product. Batched, one round trip per phase over a summary, **never per
    task**. *A chatty loop is a more expensive Opus session with extra steps*, and `R` would say so.
 2. **"Until satisfied" needs a machine-checkable definition, or the loop cannot terminate honestly.**
@@ -1253,6 +1253,16 @@ are not comparable — the mistake §4.4 exists to prevent, one level up.
 
 **3–4 sessions. One overnight run. Needs its own ADR first.**
 
+> **Status, 24 Sep 2026 — built; the measurement is what is left.** The ADR is **ADR-0090** (proposed;
+> §2 answers the relevance problem, §5 needs the owner). The exit check is **frozen** in
+> `prompts/phase-14d-retrieval.md` §2–§3, with a pre-registered prediction, the measurement sized at
+> ~5 h gated, and two dated amendments below it (piece 4's budget; the quote-match rule). Built, each
+> with a zod contract, a CLI subcommand, an MCP tool and tests: **`sidecrew recon`** (ADR-0079 option A;
+> `fix_offered` is the literal `false`), **`sidecrew query`** (refs, unreferenced, sizes, diagnostics, from
+> the project's own compiler), **`sidecrew read`** (the 7B reads, claims admitted only by verified
+> citation), and **the change-planner's §1′**, switched by the brief. Piece 2 was dropped: sidecrew's own
+> output is ~1 % of `P_total`. Next: the four planner passes by day, then the gated night.
+
 **That "overnight" is an unexamined estimate, and 14c's turned out not to survive being checked.** Both
 labels were written before any cost number existed; 14c's measured out at 2–4 h. This one is plausibly
 longer — **two** planner passes plus the gated runs behind them, and planning is 233,500 fixed tokens of
@@ -1263,9 +1273,12 @@ sized: from probe 1's per-stage costs and the plan's own task count.
 > Opus; Opus says okay, let's do this."* — the owner, `VISION.md`, 20 Sep 2026
 
 This is the half of the philosophy that is not built, and the measurements point straight at it:
-**68 % of planning cost is fixed and overwhelmingly Opus reading** — 15.5M cache reads against 89k of
-output. It is the one term in the cost curve that does not amortise with plan size, so it is the only
+**68 % of planning cost is fixed** ~~and overwhelmingly Opus reading — 15.5M cache reads against 89k of
+output~~. It is the one term in the cost curve that does not amortise with plan size, so it is the only
 thing that can move `R` below 1 at the plan sizes people actually start with.
+**Corrected 24 Sep (ADR-0090 §1): cache reads are not in `P_total`; measured, the fixed cost is ~17 % harness, ~36 % reading and ~49 % Opus's own output, paid twice.** **Removing all
+reading, with output unchanged, gives `R` = 1.88 at `N = 12`** — so retrieval alone does not reach the
+`R ≤ 1.0` below; ADR-0090 §5 puts that to the owner.
 
 **The ADR comes first, because this gate is weaker in kind than every other one here.** A machine can
 confirm a symbol **exists**; it cannot confirm it is **relevant**. Ten confirmed, real, useless
@@ -1328,8 +1341,12 @@ build it with a control fixture, and re-state any published workload #1 rate it 
 - **`R ≤ 1.0` → PROCEED: cut `v1.0.0`.** Coordination finally costs less than paying per task at the
   size people begin with, and the whole scorecard is defensible.
 - **`1.0 < R ≤ 2.0` → INSERT `14d′` — "the second lever."** Retrieval helped and did not close it.
-  `14d′` is the remaining fixed-cost reduction named in advance: cache the *reading* across runs of
-  the same project, so the 233k-token survey is paid once per codebase rather than once per plan.
+  ~~`14d′` is the remaining fixed-cost reduction named in advance: cache the *reading* across runs of
+  the same project, so the 233k-token survey is paid once per codebase rather than once per plan.~~
+  **Replaced by the owner, 24 Sep 2026 (ADR-0090 §5 option B), before any retrieval-arm number:**
+  caching the reading caps at `R` = 1.88 by the same arithmetic as retrieval, so `14d′` attacks the
+  **output** term — sidecrew expands a compact decision list from Opus into the `ChangePlan` — with the
+  reading cache as its second half.
   ADR-0065's key discipline applies — a cache whose key misses an input serves a stale answer.
   **`1.0` waits**, because cutting it on a tool that costs more than it saves at the starting size is
   the one thing the whole measurement programme exists to stop.

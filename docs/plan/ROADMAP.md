@@ -76,8 +76,8 @@ ADR-0076**, so the prerequisite is paid and 14c can start directly.
 ### 2. Retrieval — the half of the vision that is not built
 
 *"The local model scans the code, goes through several files, reports back; Opus says okay."* Its
-target is measured: **68 % of planning cost is fixed and overwhelmingly Opus reading** — 15.5M cache
-reads against 89k of output.
+target is measured: **68 % of planning cost is fixed** — about a third of it reading and half Opus's own
+output (ADR-0090 §1, 24 Sep; the earlier *"overwhelmingly reading"* counted cache reads, which `R` excludes).
 
 Needs its own ADR first, because its gate is weaker **in kind**: a machine confirms a symbol
 **exists**, never that it is **relevant**, and ten confirmed-useless locations pass while saving
@@ -177,8 +177,8 @@ lifting saves.** The curve is strongly favourable with size; the first thing a n
 > *"The local model can scan the code, go through several files looking for something, report back to
 > Opus; Opus says okay, let's do this."*
 
-Nothing of this exists. And **68 % of planning cost is fixed, overwhelmingly Opus reading** — 15.5M
-cache reads against 89k of output. It is the one term in the cost curve that does not amortise with
+Nothing of this exists. And **68 % of planning cost is fixed** — a third reading, half Opus's own output, a
+fifth harness (ADR-0090 §1). It is the one term in the cost curve that does not amortise with
 plan size.
 
 ### The finding that should reorder the work

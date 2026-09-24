@@ -1,0 +1,80 @@
+{
+  "measured": true,
+  "experiment": "planner-cost",
+  "what": "ADR-0090 §1 — where the 20 Sep planners' new tokens went: harness, reading, or their own output",
+  "date": "2026-09-24",
+  "commit": "7ec88df",
+  "machine": {
+    "model": "Mac14,10",
+    "cpu": "Apple M2 Pro",
+    "ram_gb": 32,
+    "os": "macOS 26.6.2",
+    "node": "v20.20.0"
+  },
+  "instrument": "scripts/planner-decompose.py, over the two subagent transcripts results/planner-cost-2026-09-19.json and results/planner-cost-n41-2026-09-20.json name by their stable suffix. No planner was re-run.",
+  "transcripts": {
+    "N=12": "~/.claude/projects/<project-slug>/<session>/subagents/agent-acca4d1146a42ab8d.jsonl",
+    "N=41": "~/.claude/projects/<project-slug>/<session>/subagents/agent-af4a682e95c19df7c.jsonl"
+  },
+  "identity": "P_total ≈ harness + reading + 2 × output. Output is paid twice under P_total: once as output, once as the next message's cache write. The residual is negative by about the last message's output, which is never re-sent.",
+  "N=12": {
+    "messages": 50,
+    "P_total": 265607,
+    "harness": 45877,
+    "reading": 94978,
+    "output": 65082,
+    "output_counted_twice": 130164,
+    "residual": -5412,
+    "reading_by_tool": {
+      "file-read": 61877,
+      "grep": 16672,
+      "script": 9869,
+      "listing": 4106,
+      "sidecrew": 1675,
+      "tsc": 562,
+      "other": 217
+    }
+  },
+  "N=41": {
+    "messages": 90,
+    "P_total": 343144,
+    "harness": 46000,
+    "reading": 122086,
+    "output": 88894,
+    "output_counted_twice": 177788,
+    "residual": -2730,
+    "reading_by_tool": {
+      "file-read": 45138,
+      "grep": 30313,
+      "listing": 22337,
+      "script": 14890,
+      "sidecrew": 3464,
+      "(no tool result)": 3395,
+      "other": 2331,
+      "tsc": 113,
+      "git": 105
+    }
+  },
+  "shares": {
+    "N=12": {
+      "harness": 0.173,
+      "reading": 0.358,
+      "output_counted_twice": 0.49
+    },
+    "N=41": {
+      "harness": 0.134,
+      "reading": 0.356,
+      "output_counted_twice": 0.518
+    }
+  },
+  "ceilings_at_N12": {
+    "budget_for_R_le_1": 93528,
+    "budget_for_R_le_2": 187056,
+    "R_if_reading_zero_output_unchanged": 1.882,
+    "max_output_for_R_le_1_if_reading_zero": 23825,
+    "max_reading_for_R_le_2_if_output_unchanged": 11015,
+    "label": "arithmetic on measured terms, not a measurement of any retrieval arm"
+  },
+  "not_measured": "The split of output into visible text and thinking. Thinking is stored redacted; visible output (text + tool inputs) is ~67k characters at N=12 and ~113k at N=41, so thinking is most of the output. Estimated, not measured.",
+  "classifier_correction": "The first version of scripts/planner-decompose.py classified Bash calls by substring, and a scratchpad path contains this project's name, so ad-hoc analysis scripts and greps run from one were filed as 'sidecrew'. Reclassified by program the same day, before anything was committed: sidecrew's own output is 1.8 % / 2.8 % of reading, not 12 % / 33 %. The harness/reading/output split is unaffected."
+}
