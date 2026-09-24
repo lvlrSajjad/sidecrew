@@ -5568,6 +5568,40 @@ that says which one was built.
 asked the question the report answers. It is therefore both the smallest useful piece of the framework
 and the one that dodges the unsolved problem — which is a good reason to build it first.
 
+### ADR-0079 addendum, 24 Sep 2026 — option A's sentence, measured on project-a
+
+`sidecrew recon` on the unmodified `project-a` working checkout (NestJS + jest; 2,689 files in its
+`tsc` program, 450 of them test files by the gate's predicate), TypeScript 6.0.3, run by the owner.
+**Measured.** The commit was not recorded — the report had no field for it, which is the defect this run
+found and fixed (`ReconReport.commit`); the checkout moves daily, so this is a snapshot of one day.
+
+| | added errors | in source files | in test files | share in tests |
+|---|---|---|---|---|
+| **the project's own configuration** | **1** (baseline) | 1 in 1 file | 0 | — |
+| `--strictNullChecks` | **+11,604** | 6,954 in 524 files | 4,650 in 267 files | **40 %** |
+| `--noImplicitAny` | **+7,793** | 2,633 in 304 files | 5,160 in 202 files | **66 %** |
+| `--noImplicitReturns` | +118 | 112 in 49 files | 6 in 6 files | 5 % |
+| `--noUnusedLocals` | +116 | 114 in 34 files | 2 in 1 file | 2 % |
+| `--noUnusedParameters` | +48 | 42 in 34 files | 6 in 4 files | 13 % |
+
+**What it says, in ADR-0079's own terms:**
+
+- **The sentence is true at scale:** *"your config reports 1; `--strictNullChecks` reports 11,604."*
+  ADR-0063 measured 11,412 on 20 Sep at an earlier commit; the order of magnitude has held for four days
+  of a moving tree.
+- **The two type-narrowing flags are exactly the population ADR-0077 says the gate cannot yet deliver**:
+  40 % and 66 % of their errors are in test files, and that is a **lower bound** — see the next point.
+- **The three lint-shaped flags are option B's population, and it exists:** **282 errors, 95 % in source
+  files**, in about a hundred files. ADR-0079 singled these out as the raised bar whose fixes delete or add
+  a line rather than narrow a type. B is deliverable now on this project, scoped to them.
+- **The test/source split undercounts the test side.** The largest single file under `--strictNullChecks`
+  (780 errors) and under `--noImplicitAny` (326) are **support files under the project's test directory**
+  — setup and connection helpers, not `*.spec`/`*.test` files — and the gate's predicate
+  (`isTestArtefact`) calls them source. So recon reports them as source, faithfully to the gate. **The
+  question that raises is about the gate, not recon**: a plan may list such a file, and a worker may then
+  edit test infrastructure the suite runs on. Open in `BACKLOG.md`; not changed here, because widening the
+  predicate changes what every #2a gate has accepted and needs its own ADR.
+
 ## ADR-0080 — A release gate must ask the systems it publishes to, not its own copy of what they want
 
 **Status:** accepted · 21 Sep 2026 · implemented the same day · bears on ADR-0051's *prove it before

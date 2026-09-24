@@ -353,9 +353,12 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **Whether to run `sidecrew recon` on `project-a` now.** It is read-only, sandboxed and intact-checked,
-  needs no worker, and would give ADR-0079's sentence its real number. It was not run in session 1,
-  because the phase prompt says nothing runs on a client project until the owner says when.
+- **Recon ran on project-a (24 Sep, the owner's run; ADR-0079 addendum).** 1 error as configured;
+  `--strictNullChecks` +11,604, `--noImplicitAny` +7,793, and the lint-shaped flags +282 at **95 % in
+  source** — so **ADR-0079 option B (fix only the lint shapes) is deliverable on this project**; whether to
+  plan it is the owner's call. **Open:** the gate's test predicate calls support files under `test/`
+  source (BACKLOG, needs an ADR). Note the auto-mode classifier **blocks** sidecrew commands pointed at a
+  client checkout — the owner runs those, or adds a permission rule.
 - **ADR-0089 — DECIDED 24 Sep: option B**, A as the detector's first line, and verdicts recording each
   kill's mutator. A 1.0 prerequisite; **not yet built** — a daytime session. **The re-score is done (addendum, 24 Sep):** from stored records only an upper
   bound is possible — verdicts keep Stryker ids, not mutator names — and it is **2 of 11** published

@@ -14,6 +14,7 @@ const report = (over: Partial<ReconReport> = {}): ReconReport => ({
   version: 1,
   project: "/somewhere/project",
   tsconfig: "tsconfig.json",
+  commit: "7ec88df000000000000000000000000000000000",
   typescript: "5.9.3",
   created: "2026-09-24T10:00:00.000Z",
   config_read: true,

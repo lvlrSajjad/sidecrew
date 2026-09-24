@@ -992,6 +992,7 @@ and no worker runs, so relevance is not in question: the user asked *how many* (
   "version": 1,
   "project": "/path/to/project",
   "tsconfig": "tsconfig.json",
+  "commit": "7ec88df1b2c3d4e5f60718293a4b5c6d7e8f9a0b",
   "typescript": "5.9.3",
   "created": "2026-09-24T10:00:00.000Z",
   "config_read": true,
@@ -1050,6 +1051,8 @@ and no worker runs, so relevance is not in question: the user asked *how many* (
   file in 21 of 21 cases (ADR-0077). `test` uses the gate's own predicate, `isTestArtefact`.
 - **`fix_offered` is the literal `false`.** PHASES.md 14d: recon must not offer to fix what it counts
   while the gate cannot deliver it. A report that offers does not serialise; changing that needs an ADR.
+- **`commit`** is the project's git HEAD, or `null` outside git: a count whose subject is not recorded
+  can be neither reproduced nor contradicted.
 - **`program_files` is never zero**: a `tsc` that listed no files did not run (ADR-0037), and the
   compile throws before a report exists.
 

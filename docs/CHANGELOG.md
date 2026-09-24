@@ -20,6 +20,11 @@
 - **The change-planner's §1′** — piece 5: when its brief turns retrieval on, recon, query and read replace
   its own reading, with the budget and the rule to open cited lines before a load-bearing claim. When it is
   off, `scripts/planner-decompose.py` now counts retrieval calls, and a base-arm transcript with any is void.
+- **First real recon, on project-a (measured, 24 Sep):** own configuration 1 error; `--strictNullChecks`
+  +11,604 (40 % in test files), `--noImplicitAny` +7,793 (66 %), and the three lint-shaped flags +282 with
+  **95 % in source** — ADR-0079 option B's population exists. It found two things: the report did not
+  record the project's commit (now `ReconReport.commit`), and the gate's test predicate calls support files
+  under a project's test directory source (a question in `BACKLOG.md`, not a change). ADR-0079 addendum.
 - **Owner decisions, 24 Sep:** ADR-0090 accepted with §5 = **B** (`14d′` attacks the output term; written into
   the frozen rule before any retrieval-arm pass), and ADR-0089 = **B**, with A as the detector's first line.
 - **ADR-0089's re-score, from stored records only.** Verdicts keep Stryker's ids but not which mutator

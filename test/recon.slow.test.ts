@@ -15,6 +15,8 @@ describe.skipIf(!SLOW)("recon on a real compiler", () => {
     const r = await recon(PROJECT, { flags: ["--strictNullChecks", "--noImplicitAny", "--noUnusedLocals", "--noUnusedParameters"] });
     expect(ReconReport.safeParse(r).success).toBe(true);
     expect(r.config_read).toBe(true);
+    // The fixture lives in this repository, so its commit is this repository's HEAD.
+    expect(r.commit).toMatch(/^[0-9a-f]{40}$/);
     // The three planted errors, all in source files.
     expect(r.baseline.errors).toBe(3);
     expect(r.baseline.source.files).toBe(3);

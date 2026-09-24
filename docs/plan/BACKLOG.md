@@ -6,6 +6,20 @@
 - Ollama backend as alternative to mlx_lm.server (Ollama speaks the Anthropic Messages API since v0.14).
 - Kotlin (PIT) and Python (mutmut / cosmic-ray + SlipCover) verifiers — Phase 8.
 
+## Noticed by the first real recon (24 Sep 2026) — a question for an ADR, not a fix
+
+- **Is a support file under a project's test directory a test file?** `isTestArtefact` says a file is a
+  test when it is named `*.spec`/`*.test` (any dash/dot prefix) or sits under `__tests__`, `__mocks__` or
+  `__snapshots__`. project-a keeps setup, connection and mock helpers in its `test/` directory under plain
+  names, so the gate calls them **source**: a plan may list one and a worker may edit test infrastructure
+  the suite runs on, which ADR-0046's reason for forbidding test edits covers in spirit. Recon showed the
+  size of it: the largest single file under both `--strictNullChecks` and `--noImplicitAny` is one of these.
+  **Not changed**, because widening the predicate changes what every #2a gate has accepted, and
+  ADR-0081 is the reminder that four copies of this rule once disagreed. Options for the ADR: (a) anything
+  under a directory the runner's config treats as a test root; (b) anything the suite imports that no
+  production entry point does; (c) leave it, and have the validator warn. Measure how many #2a survivors
+  touched such a file before choosing.
+
 ## Noticed while building Phase 10 — all Phase 12's, and all deliberate
 Workload #2a ships as a CLI and nothing else, because each of these needs something Phase 12 builds
 first. Listed so they are decisions rather than omissions.

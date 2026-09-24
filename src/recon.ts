@@ -199,10 +199,12 @@ export async function recon(projectDir: string, opts: ReconOpts = {}): Promise<R
         findings.push(flagFinding(flag, baseCompile, { by_file: under.errors.by_file, codes: countCodes(under.message) }, top, under.ms));
       }
 
+      const head = await run("git", ["-C", resolve(projectDir), "rev-parse", "HEAD"], { timeoutMs: 30_000 });
       return ReconReport.parse({
         version: 1,
         project: projectDir,
         tsconfig,
+        commit: head.code === 0 ? head.stdout.trim() : null,
         typescript: typescriptVersion(resolve(projectDir)),
         created: new Date().toISOString(),
         config_read: options !== null,
@@ -234,7 +236,7 @@ const splitText = (s: ReconSplit): string => `${plural(s.errors, "error")} in ${
 export function renderRecon(r: ReconReport): string {
   const b = r.baseline;
   const out = [
-    `sidecrew recon — ${r.project} (${r.tsconfig}${r.typescript ? `, TypeScript ${r.typescript}` : ""})`,
+    `sidecrew recon — ${r.project} (${r.tsconfig}${r.typescript ? `, TypeScript ${r.typescript}` : ""}${r.commit ? `, at ${r.commit.slice(0, 10)}` : ""})`,
     "",
     `  your own configuration   ${plural(b.errors, "error")}` +
       (b.errors > 0 ? ` — source: ${splitText(b.source)} · tests: ${splitText(b.tests)}` : "") +

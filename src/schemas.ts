@@ -1560,6 +1560,11 @@ export const ReconReport = z.object({
   /** As the caller gave it. Never written into this repository: it names somebody's checkout. */
   project: z.string().min(1),
   tsconfig: z.string().min(1),
+  /**
+   * The project's git HEAD when the report was taken, or null outside git. A count whose subject is not
+   * recorded can be neither reproduced nor contradicted (HANDOFF §5); the first real recon lacked it.
+   */
+  commit: z.string().nullable(),
   /** The project's own compiler, which is the one every number here is from. */
   typescript: z.string().nullable(),
   created: z.string().datetime(),
