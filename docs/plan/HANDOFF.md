@@ -32,7 +32,9 @@ which cannot be retracted (ADR-0051).
 
 **ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) has its **rule frozen** (`prompts/adr-0082-d.md`, 24 Sep) and needs **one owner decision, who writes the exemplars** (recommendation: a Sonnet subagent). It is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
-**Phase 14c′ — LAUNCHED 23 Sep 22:14 on the owner's go; it sleeps until 02:05 and then runs.** Log: `experiments/reach/results/run-prime.log`. If it died: relaunch the same command before 02:00 only if it never started; a run that died mid-way is restarted after the next 02:00, never resumed across it (ADR-0069). Never re-plan.
+**Phase 14c′ — DONE 24 Sep 06:05 → PROCEED to 14d** by its frozen rule. `S′_big` 15/41 [0.221, 0.531], `S′_small` 10/42 [0.121, 0.395]; B's safety check clean. `prompts/phase-14c-prime.md` §5. **`v0.2.0` is the owner's call again, and the rule recommends cutting it.** Nothing pushed since `da1bf67`.
+
+**ADR-0082 D — planned, verifying exemplars (24 Sep, from 06:09).** Rule frozen and amended three times, all dated and all before any outcome: `prompts/adr-0082-d.md`. 15 of 19 modules planned by Sonnet subagents. `scripts/d-verify-exemplars.sh`, then `scripts/d-run.sh`, then `python3 scripts/results-d.py`. **Keep the clone until D is done.**
 
 - ADR-0086 §6 **option B built and the default** (`symbol_gate: "declaration"`): a symbol task is judged
   by its declaration, and nothing outside it may get worse.
