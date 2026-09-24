@@ -30,7 +30,7 @@ decomposed); **`v0.2.0` is held**; the 10 commits are **pushed**, and the parent
 tracked files and a redaction regex carried is redacted from the tree. It stays in the pushed history,
 which cannot be retracted (ADR-0051).
 
-**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
+**ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) has its **rule frozen** (`prompts/adr-0082-d.md`, 24 Sep) and needs **one owner decision, who writes the exemplars** (recommendation: a Sonnet subagent). It is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
 **Phase 14c′ — LAUNCHED 23 Sep 22:14 on the owner's go; it sleeps until 02:05 and then runs.** Log: `experiments/reach/results/run-prime.log`. If it died: relaunch the same command before 02:00 only if it never started; a run that died mid-way is restarted after the next 02:00, never resumed across it (ADR-0069). Never re-plan.
 
@@ -40,7 +40,7 @@ which cannot be retracted (ADR-0051).
   small)**, 6 steps, validated with no refusals, plan sha256 `a8f889a4…`
   (`results/task-set-prime-*.json`).
 - It runs on a **pinned clone** at `1d79d903f9` under `~/.sidecrew/clones/`. The working checkout has
-  moved 36 commits since and is never touched. Delete the clone after the run.
+  moved 36 commits since and is never touched. **Keep the clone after the run**: ADR-0082 D (`prompts/adr-0082-d.md`, frozen 24 Sep) measures on the same commit. Delete it after D.
 - **Launch**, when told: `TAG=prime WATCH=<working checkout> PLAN=experiments/reach/plans/project-a-2026-09-23-prime/change_plan.json EXPECT_SHA=a8f889a49ae96a3977ba0ddd2147fc0b34d9a3af41078cee2bb070f2a0703fa2 caffeinate -dims scripts/reach-run.sh`.
   It waits for 02:05 unless `START_AFTER` is set to a time that keeps the run clear of 02:00; the
   estimate is 2.5–4.5 h. Then run `python3 scripts/results-14c-prime.py <newest run dir> <plan>`.
