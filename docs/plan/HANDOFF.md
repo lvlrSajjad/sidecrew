@@ -32,7 +32,7 @@ which cannot be retracted (ADR-0051).
 
 **ADR-0082 accepted in principle (owner, 23 Sep), as test-first development:** #2b tests go red → green, #2a tests go green → green and are pinned. Its first measurement (D) has its **rule frozen** (`prompts/adr-0082-d.md`, 24 Sep) and needs **one owner decision, who writes the exemplars** (recommendation: a Sonnet subagent). It is **unblocked**: ADR-0088 is built, so sidecrew brings its own pinned Stryker and checks the project is intact after every job.
 
-**`v0.2.0` IS PUBLISHED, 24 Sep:** on npm as `latest` with SLSA provenance, and on the MCP Registry, from tag `v0.2.0` at `61eb7f2`; all three release jobs green on the first run. **Next: 14d** (freeze its `R` rule first); the owner is asked whether **ADR-0089** becomes a 1.0 prerequisite.
+**`v0.2.0` IS PUBLISHED, 24 Sep:** on npm as `latest` with SLSA provenance, and on the MCP Registry, from tag `v0.2.0` at `61eb7f2`; all three release jobs green on the first run. **Next: 14d** (freeze its `R` rule first); **ADR-0089 is a 1.0 prerequisite** (owner, 24 Sep): re-score stored survivors first, then choose the fix.
 
 **Phase 14c′ — DONE 24 Sep 06:05 → PROCEED to 14d** by its frozen rule. `S′_big` 15/41 [0.221, 0.531], `S′_small` 10/42 [0.121, 0.395]; B's safety check clean. `prompts/phase-14c-prime.md` §5. **`v0.2.0`: cut by the owner, 24 Sep.**
 

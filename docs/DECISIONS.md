@@ -6579,8 +6579,9 @@ verifier no longer reads it, and removing it would rewrite their lockfiles, whic
 
 ## ADR-0089 — A type-only assertion survives workload #1's gate by killing the empty-body mutant (PROPOSED)
 
-**Status:** **proposed, 24 Sep 2026** · found while fixing a false message ADR-0082 D exposed · needs the
-owner · bears on non-negotiable #2 (workload #1's iff), ADR-0006 (tautologies), ADR-0005
+**Status:** **a 1.0 prerequisite, decided by the owner 24 Sep 2026**, and `v1.0.0` is not cut until it is
+closed. **Which option closes it is still open**, and waits on the re-score below · found while fixing a
+false message ADR-0082 D exposed · bears on non-negotiable #2 (workload #1's iff), ADR-0006 (tautologies), ADR-0005
 
 ### What was found
 

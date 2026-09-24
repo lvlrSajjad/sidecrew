@@ -1312,6 +1312,14 @@ moved first release earlier, which was right. This is the phase where the worked
 end to end — **Opus decides, local models read *and* write, a mechanical gate judges, and the user
 sees only what survived.** That is the product the vision describes, and it is a fair `1.0`.
 
+### A second prerequisite for `v1.0.0`, added by the owner 24 Sep 2026
+
+**ADR-0089 must be closed before `v1.0.0` is cut, whatever `R` says.** Workload #1's gate lets a type-only
+assertion (`typeof f(x) === "string"`) survive by killing only the empty-body mutant. A 1.0 whose headline
+is *"Claude only sees what survived a gate a machine can run"* cannot ship with a gate that passes that.
+The order: re-score the stored workload #1 survivors (no run needed), choose the option on that number,
+build it with a control fixture, and re-state any published workload #1 rate it moves.
+
 ### Exit check — to be frozen **before** 14d starts, in this shape
 
 `R` at `N = 12`, the plan size a new user actually starts with, re-measured by
