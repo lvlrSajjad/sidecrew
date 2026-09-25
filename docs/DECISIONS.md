@@ -6999,3 +6999,51 @@ The independent analysis's deterministic-executor probe (the TypeScript language
 gate) is the first test of rung 1 against rung 2, at tier 1. An "affected files" query — the reverse import
 graph of a file, with its reflection blind spot named — is the owner's own example and a small addition to
 `sidecrew query`.
+
+## ADR-0093 — What `v1.0.0` means: the claim is true, and any user can get it
+
+**Status:** **the definition is the owner's, decided 25 Sep 2026; the four conditions below are this session's
+operationalisation of it — proposed, for the owner to confirm or change** · supersedes Phase 14d's
+`R ≤ 1.0 at N = 12` as the release condition (that bar's result, 2.07, stays reported as failed) · bears on
+ADR-0091 (a release claim is tier 3), ADR-0092, the independent analysis
+
+### The owner's words
+
+> For sure v1.0.0 means not only did we achieve what we claimed — *"we do what Claude Opus does, but in a
+> different and cheaper method"* — we can guarantee any user can achieve this by using sidecrew. That
+> doesn't mean we stop publishing till v1.
+
+### The claim, word by word, as conditions a machine or a frozen run can check
+
+1. **"What Claude Opus does"** — for every job type sidecrew *claims*, a delivered change is **as good as the
+   change Opus makes on its own**: measured against an Opus-alone arm on the same tasks, by the gate applied to
+   both and a blind review (Phase 11b's design: there the 7B matched Opus byte for byte on 18/19 renames).
+   **The claimed job types are listed, and nothing outside the list is claimed.** The owner's *"90 % is a
+   win"* is the scorecard's Shapes and Reach bars; the list says which 90 %.
+2. **"Cheaper"** — **dollars per delivered, gate-surviving task, sidecrew against Opus-alone**, where
+   Opus-alone pays its own session overhead and its own test runs, at stated job sizes, with replicates,
+   pre-registered and measured on **fresh** data (ADR-0091 tier 3). **Not tokens**: an output token and a
+   cache read are priced 40× apart. **And no job size may be more expensive than Opus-alone** — which is what
+   makes routing honest rather than circular: small jobs go to *Opus edits, sidecrew verifies* (ADR-0092 rung
+   4), which costs Opus-alone plus a free gate, and the saving is claimed only where it is measured.
+3. **"In a different method"** — the pipeline the vision describes: Opus plans or edits, mechanical tools and
+   local workers do what they can do exactly or behind a gate (ADR-0092), and **a machine-checked gate decides
+   what the user sees**. This condition is met by construction today; v1 keeps it true.
+4. **"Any user can achieve this"** — on projects **not used to build sidecrew**:
+   - the claimed quality and cost reproduce on **at least two outside projects** of the claimed stacks, run by
+     someone following only the README;
+   - every failure a new user hits is either fixed or refused by `doctor` with its cause and fix (ADR-0032's
+     shape; Phase 14's passive exit check is the first instance);
+   - **the guarantees hold on every job**: the project is intact afterwards (ADR-0088), one sound gate per
+     workload with its known holes closed (ADR-0089), honest refusal, determinism, the stated hardware floor;
+   - the CLI and MCP interface is stable (SemVer's meaning of 1.0).
+
+### What this changes
+
+- **0.x releases continue.** Each ships what is built and verified, with its numbers labelled measured or
+  indicative, and says plainly what is not yet claimed. **v0.3.0** can carry Phase 14d's tools and ADR-0089's
+  gate fix whenever the owner cuts it.
+- **Phase 14d's STOP is reported as the old bar failing,** not hidden and not re-scored into a pass.
+- **The road to v1 is the four conditions**, each reached by tier 0–2 work and proven once, at the end, by a
+  tier-3 run on fresh projects. V1-CHALLENGES §11's list is the first stretch of it; the Opus-alone
+  comparator (condition 1 and 2) is the missing instrument, and it is built before anything else is claimed.

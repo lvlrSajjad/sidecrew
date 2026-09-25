@@ -1057,6 +1057,12 @@ below are the order in which its parts become true**, not a list of features:
 
 ### Every phase ends with an exit check, and the fork is named before the phase runs
 
+> **`v1.0.0` is defined by ADR-0093 (owner, 25 Sep 2026):** the claim *"we do what Opus does, in a different and
+> cheaper way"* is true, **and** any user can get it — quality against an Opus-alone arm on listed job types,
+> dollars per delivered task never above Opus-alone, the gated pipeline, and reproduction on two outside
+> projects. 14d's `R ≤ 1.0 at N = 12` is retired as the release condition and reported as failed. 0.x
+> releases continue meanwhile.
+>
 > **From 25 Sep 2026, every exit check names its measurement tier (ADR-0091).** While the design is moving, a
 > phase exits on a **tier-1 probe** (5–10 tasks, 10–60 min, labelled *indicative*); a night-long frozen run
 > (tier 3) is spent only on a number that will be published or on a release claim, and a run that cannot

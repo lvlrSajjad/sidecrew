@@ -48,7 +48,7 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 | clones | **none on disk** (the 14d clone was deleted 25 Sep). Make one with `scripts/pinned-clone.sh` for any measurement |
 | supported | **24 GB+ Apple Silicon, local tier only** (ADR-0073) |
 | next phase | **no numbered phase** — the daytime list in §3, and the owner's v1.0 decision (§4) |
-| ADRs | run to **0092**; start new ones at **0093** (v1.0's meaning is the first). Decided 25 Sep: **0090** (accepted; §5 = B), **0089** (closed by F, merged), **0091** (measurement tiers), **0092** (mechanical first, in principle). Open: **0064** (mostly retired by 0079) |
+| ADRs | run to **0092**; start new ones at **0094**. **0093** defines v1.0 (owner) — its conditions await confirmation. Decided 25 Sep: **0090** (accepted; §5 = B), **0089** (closed by F, merged), **0091** (measurement tiers), **0092** (mechanical first, in principle). Open: **0064** (mostly retired by 0079) |
 | running | **nothing.** Workers stopped, sandboxes swept, clones deleted |
 | CI | **green** on `main` and on the `v0.2.0` release run |
 | `gh` | authenticated **per tree**: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A bash shell must set it explicitly |
@@ -375,10 +375,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **What `v1.0` means (proposed ADR-0093).** The independent analysis and this session agree: define v1.0 by the
-  **guarantees** — project intact, one sound gate per workload, honest refusal, determinism, a stable CLI/MCP
-  interface, published per-shape numbers — and make cost a **reported** number, with the old bar reported as
-  failed and any new cost bar pre-registered in dollars per delivered task on fresh data. The owner's call.
+- **`v1.0` is DEFINED (owner, 25 Sep; ADR-0093):** the claim *"we do what Opus does, in a different and cheaper
+  way"* is true **and** any user can get it. **Open: confirm ADR-0093's four conditions** (quality vs an
+  Opus-alone arm on listed job types; dollars per delivered task, never more expensive than Opus at any size;
+  the gated pipeline; reproduction on two outside projects with the guarantees holding). **0.x releases
+  continue** — cutting `v0.3.0` is the owner's call.
 - **Recon ran on project-a (24 Sep, the owner's run; ADR-0079 addendum).** 1 error as configured;
   `--strictNullChecks` +11,604, `--noImplicitAny` +7,793, and the lint-shaped flags +282 at **95 % in
   source** — so **ADR-0079 option B (fix only the lint shapes) is deliverable on this project**; whether to
