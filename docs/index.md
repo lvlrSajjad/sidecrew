@@ -83,16 +83,31 @@ planning, measured on an unmodified commercial Nest codebase:
 
 | plan size | Opus tokens to plan | per task | vs. paying a model per task |
 |---|---|---|---|
-| 12 tasks | 265,607 | 22,134 | 2.84× |
-| 41 tasks | 343,144 | 8,369 | 1.07× |
+| 12 tasks (20 Sep, Opus 5) | 265,607 | 22,134 | 2.84× |
+| 41 tasks (20 Sep, Opus 5) | 343,144 | 8,369 | 1.07× |
+| 11 tasks, with retrieval tools (25 Sep, Opus 5.5) | 177,203 | 16,109 | 2.07× |
+| 36 tasks, with retrieval tools (25 Sep, Opus 5.5) | 225,691 | 6,269 | 0.80× |
 
-Planning cost barely moved for 3.4× the work. It is a large **fixed** cost — reading the codebase,
-~233k tokens — plus a small per-task one. So sidecrew's coordination is not worth paying for on a
-dozen tasks, and the economics move sharply in its favour as the job gets bigger. By the rule frozen
-before the planner existed, both rows **fail**.
+Planning cost barely moves with the size of the job: it is a large **fixed** cost per job plus a small
+per-task one. So sidecrew's coordination is not worth paying for on a dozen tasks, and the economics move
+sharply in its favour as the job gets bigger. Giving the planner compiler-backed tools to read with cut it
+~23 % — not enough at 12 tasks, by the rule frozen before it was measured. **In dollars, most of a planner's
+bill is re-reading its own growing context** (cache reads, 33–67 %), not thinking: about **$2.4–3.3 for a
+~12-task job and $2.7–3.5 for a ~40-task one** on Opus 5.5 (measured, 25 Sep).
 
 And it costs wall clock: ~25 s per task interactively with Opus, **216–271 s** with sidecrew. It is
 free and unattended, not fast.
+
+---
+
+## Where it is going
+
+**The claim it is working towards: *"we do what Claude Opus does, in a different and cheaper way"* — and any
+user can get that result on their own code.** 1.0 means sidecrew's success is at least 80–90 % of Opus-alone's
+on a benchmark of real requests, features and bug fixes included, for at most half its dollars on batch jobs —
+stated as a formula with its error margin, never a single number. 2.0 is as fast as Opus; 3.0 as good or better.
+Until then each 0.x release adds a category of work, claimed only once measured. The full roadmap and today's
+scorecard are in the [README](https://github.com/lvlrSajjad/sidecrew#roadmap) and [the roadmap](plan/ROADMAP.md).
 
 ---
 
@@ -128,6 +143,8 @@ the raw results are in the repository:
 | [Decisions](DECISIONS.md) | every architectural decision, with the evidence and the options rejected |
 | [Vision](plan/VISION.md) | what this is for, in the owner's words |
 | [Phases](plan/PHASES.md) | where it is, what each step buys, and the exit rule frozen before each one runs |
+| [Roadmap](plan/ROADMAP.md) | the capability ladder to 1.0, and what 1.0, 2.0 and 3.0 mean |
+| [What stands between it and 1.0](plan/V1-CHALLENGES.md) | the challenges, stated for an independent reviewer — and [the review](research/2026-09-25-v1-independent-analysis.md) |
 | [The pipeline contracts](specs/pipeline.md) | the JSON between planner, workers, verifier, reviewer |
 | [Research](research/) | why the design looks like this — including why a worker cannot be a subagent |
 | [Changelog](CHANGELOG.md) | |

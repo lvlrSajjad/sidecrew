@@ -252,3 +252,18 @@ shape more than any tuning.
    the planner effort sweep and a Sonnet-planner arm.
 6. **Later:** the two-stage gate; readers (graphify, the 7B on spans) only if the dollar re-score says reading
    is worth attacking.
+
+
+## 12. What changed after the analysis — 25 Sep 2026
+
+- **v1.0 is defined** by the owner (ADR-0093 and its addenda): the claim true against Opus-alone — ≥ 80–90 % of its
+  success on a benchmark of real requests, ≤ 50 % of its dollars on batch jobs as a formula with its margin — and
+  reproducible by any user. v2 = as fast; v3 = as good or better. So the analysis's "guarantees-only 1.0" was not
+  taken; cost stays a condition, measured in dollars against Opus-alone, as it recommended.
+- **Measured:** planning dollars by token class — **cache reads are the largest term (33–67 %)**, not output, which
+  corrects both this brief's and the analysis's estimate. P1 — Sonnet as planner — **not met** (7 tasks for $1.93 vs
+  Opus's 11 for $2.39).
+- **Built:** the reflective-reference guard (§11's urgent item), memory admission control, ADR-0089 option F.
+- **Decided:** ADR-0091 (measurement tiers), ADR-0092 (mechanical first), ADR-0094 (the middle tiers, routed by
+  expected cost per success rather than cheapest-first), ADR-0095 (triage, proposed).
+- **Still the missing instrument:** the benchmark of real requests with an Opus-alone arm (ADR-0093 addendum 2).

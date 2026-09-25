@@ -1,5 +1,18 @@
 # Roadmap — prioritised by what this project is for
 
+> **Current as of 25 Sep 2026 — read this box first; the sections below it are dated history unless they say otherwise.**
+>
+> - **What `v1.0` means is decided** (owner, ADR-0093): *"we do what Claude Opus does, in a different and cheaper way"*
+>   is true — ≥ 80–90 % of Opus-alone's success on a benchmark of real requests (features and bugs included), ≤ 50 %
+>   of its dollars on batch jobs as a fitted formula with its margin, judged against Opus-alone — **and** any user
+>   can reproduce it. **v2** = as fast as Opus; **v3** = as good or better. 0.x releases continue meanwhile.
+> - **The road is the capability ladder** at the end of this file (§ *The capability ladder to v1.0*), and how work is
+>   divided is ADR-0092 (mechanical first), ADR-0094 (the middle tiers, routed by expected cost per success) and
+>   ADR-0095 (triage).
+> - **How it is measured**: short probes while the design moves, a long run only for a published number (ADR-0091).
+> - **The working list, in order**, is `HANDOFF.md` §3. The retired bar (`R ≤ 1.0 at N = 12`) failed at 2.07 and is
+>   reported as failed (Phase 14d).
+
 **Owner's statement, 18 Sep 2026**, and it reorders everything below it:
 
 > What matters to me is science and the scientific edge of this project. In the scientific part we

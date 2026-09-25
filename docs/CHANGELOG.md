@@ -1,6 +1,12 @@
 # Changelog
 ## Unreleased — Phase 14d closed (STOP), ADR-0089 closed, and a new way of working
 
+- **A public roadmap** in the README and on the docs site: what 1.0, 2.0 and 3.0 mean, the capability ladder, and the
+  scorecard as measured today.
+- **Probe P1 (ADR-0094), measured:** Sonnet 5 as the planner planned 7 tasks for $1.93 where Opus 5.5 planned 11 for
+  $2.39 — the rule written first (≤ half the dollars at a comparable count) is not met, so the planner stays the user's
+  model. The first run was void: it read Opus's finished plan from a shared folder; isolation is now made true by
+  construction for every probe.
 - **Memory admission control for the #2a gate** (`src/suite-gate.ts`): the first baseline measures what one
   project suite costs in memory, and the run admits only as many suites at once as that leaves room for —
   generation still runs full width. A verdict under memory pressure or growing swap drops it to one suite,

@@ -2,20 +2,34 @@
 
 **Read this first, then `VISION.md` → `ROADMAP.md` → `PHASES.md`.**
 
-> **The direction, so no session drifts from it.** Opus receives a task and **plans a session to
-> gather the info needed**; workers read and report; **Opus asks the user** where a machine cannot
-> decide; Opus plans on the answer; workers act; the loop repeats **until a machine-checkable
-> definition of *satisfied*** is met. That is `VISION.md`'s philosophy and the owner's own framing
-> (20 Sep 2026). **Phases 14c and 14c′ built the *act on any file* half. 14d is the *read and ask*
-> half, and it is where `v1.0.0` is cut.**
+> **The direction, so no session drifts from it.** `v1.0` means the claim *"we do what Claude Opus does, in a
+> different and cheaper way"* is true — **≥ 80–90 % of Opus-alone's success** on a benchmark of real requests
+> (features and bugs included), for **≤ 50 % of its dollars on batch jobs**, as a fitted formula with its margin —
+> **and** any user can reproduce it (ADR-0093). The work is divided **mechanical tool → local models → cheaper
+> Claude → the user's model**, routed by expected cost per success, every rung behind the gate (ADR-0092, ADR-0094),
+> after **triage** splits a request by size and complexity (ADR-0095). **Measure with short probes; spend a night
+> only on a number that will be published** (ADR-0091). The road is ROADMAP's capability ladder.
 
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 25 Sep 2026, ~11:00. Phase 14d is CLOSED — STOP by its frozen rule (`R₁` = 2.07 at `N = 11`).
-ADR-0089 is closed by option F and merged. Two new owner decisions change how work proceeds: ADR-0091
-(measure cheaply; a night only for a claim) and ADR-0092 (mechanical first, never mechanical only). The one
-open decision is what `v1.0` means — §4. Nothing is running; no clone on disk; nothing pushed since `v0.2.0`.**
+**Last updated: 25 Sep 2026, evening. Everything is committed and pushed to `origin/main`. Nothing is running,
+no clone is on disk, no worker is up. Start at §3.**
+
+### What happened on 25 Sep, in one table
+
+| | result | where |
+|---|---|---|
+| **Phase 14d closed — STOP** by its frozen rule | `R₁` = **2.07** at `N = 11` (retrieval cut planning ~23 %); both arms pay near `N ≈ 40` (0.73, 0.80); night 2 dropped — it could not change the row | `prompts/phase-14d-retrieval.md` § *The result* |
+| **v1.0 defined** (owner) | the claim true against Opus-alone, in dollars, on real requests, reproducible; v2 = as fast; v3 = as good or better | ADR-0093 + 3 addenda, ROADMAP, README § Roadmap |
+| **ADR-0089 closed** — option F | survival needs a kill that is neither the body removal nor a crash (a second, assertion-stripped mutation pass) | ADR-0089 addenda |
+| **reflective-reference gate rule** | no removing/renaming what is decorated, named as a string, or glob-loaded; planted traps; fixture control | `src/reflection.ts` |
+| **memory admission control** | the first baseline measures one suite's footprint; only what fits runs at once; back-off named *memory* | `src/suite-gate.ts` |
+| **dollar re-score** (tier 0) | **cache reads are the largest planning cost (33–67 %)**, not output; ~$0.22–0.30/task at N≈11, ~$0.07–0.08 at N≈40 (Opus 5.5) | `experiments/planner-cost/results/dollars-2026-09-25.json` |
+| **P1 — Sonnet as planner** (tier 1) | **not met**: 7 tasks for $1.93 vs Opus's 11 for $2.39; first run void (read Opus's plan) → isolation by construction | `…/p1-sonnet-planner-2026-09-25.json`, ADR-0094 addendum |
+| **new ADRs** | 0091 measurement tiers · 0092 mechanical first · 0093 v1 · 0094 middle tiers + routing rule · 0095 triage (proposed) | DECISIONS.md |
+| **independent analysis** of the road to v1 | received and answered; most recommendations adopted, the "guarantees-only v1" not | `docs/research/2026-09-25-v1-independent-analysis.md`, V1-CHALLENGES §11–12 |
+| **public roadmap** | README § Roadmap and the docs site | README, `docs/index.md` |
 
 ### What happened on 22–24 Sep, in one table
 
@@ -40,16 +54,16 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 | | |
 |---|---|
-| branch | `main`. Everything since `v0.2.0` is **committed locally, not pushed**; `origin/main` is `7ec88df`. 0 client references in the tracked tree — **scan before any push** (§5) |
-| tests | `npm run lint && npm test` → **901 passing**, 1 skipped · slow: `verifier-ts` 12 · `fix` 38 · `recon` 1 · `query` 2 — **53, all green on 25 Sep** · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
+| branch | `main` = `origin/main`, **pushed 25 Sep**. 0 client references in anything pushed — **scan blob contents over `origin/main..HEAD` before every push** (§5) |
+| tests | `npm run lint && npm test` → **917 passing**, 1 skipped · slow: `verifier-ts` 12 · `fix` 39 · `recon` 1 · `query` 2 — **all green on 25 Sep** · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
 | version | **`0.2.0`**, published 24 Sep. Six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2); use `npm version X --no-git-tag-version` for the first and last. `ci.yml` checks four, `release.yml` five, **neither checks the lockfile** |
 | published | `sidecrew@0.2.0` on npm as `latest` with provenance; `io.github.lvlrSajjad/sidecrew` on the MCP Registry lists `0.1.2` and `0.2.0`. Release = green CI on the commit, then `git tag -a vX.Y.Z` and push the tag; `release.yml` has no `workflow_dispatch` (use `gh run rerun <id> --failed`). **Never push `private-history`** |
 | tool cache | **`~/.sidecrew/tools/stryker-8.7.1`** is installed on this machine (62 MB, no project-owned tools inside it). `sidecrew tools` reports it |
 | clones | **none on disk** (the 14d clone was deleted 25 Sep). Make one with `scripts/pinned-clone.sh` for any measurement |
 | supported | **24 GB+ Apple Silicon, local tier only** (ADR-0073) |
-| next phase | **no numbered phase** — the daytime list in §3, and the owner's v1.0 decision (§4) |
-| ADRs | run to **0092**; start new ones at **0094**. **0093** defines v1.0 (owner) — its conditions await confirmation. Decided 25 Sep: **0090** (accepted; §5 = B), **0089** (closed by F, merged), **0091** (measurement tiers), **0092** (mechanical first, in principle). Open: **0064** (mostly retired by 0079) |
-| running | **nothing.** Workers stopped, sandboxes swept, clones deleted |
+| next | **no numbered phase** — §3's working list, in order |
+| ADRs | run to **0095**; start new ones at **0096**. Proposed: **0095** (triage). Accepted this week: 0089 (closed by F), 0090, 0091, 0092 (in principle), 0093, 0094 (in principle). Open: **0064** (mostly retired by 0079) |
+| running | **nothing.** No worker, no clone, sandboxes swept. **Qwen3-Coder-30B-A3B is not downloaded yet** (the owner will, overnight) |
 | CI | **green** on `main` and on the `v0.2.0` release run |
 | `gh` | authenticated **per tree**: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A bash shell must set it explicitly |
 | Phase 14's passive exit check | still live: first-run failures on outside projects, window ends **5 Oct 2026** (item 3 of §3's history, below) |
@@ -148,101 +162,41 @@ now fixed, and neither of which the gate would ever have caught:**
 
 ## 3. What to do next
 
-### What to do next — daytime, tier 0–1 (ADR-0091), in this order unless the owner reorders it
+### Starting a fresh session — paste this
 
-Start a fresh session with: *"Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/plan/V1-CHALLENGES.md` (especially
-§11) and ADR-0091/0092. Then do the next item on HANDOFF §3's list."*
+> Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/plan/ROADMAP.md` (the box at the top and § *The capability
+> ladder*), and ADRs 0091–0095 in `docs/DECISIONS.md`. Then `git status` and `git log -5`. Do the next open item on
+> HANDOFF §3's list, as a tier-1 probe or a daytime build (ADR-0091). Anything that runs on a client project needs a
+> pinned clone and the owner's go; nothing is pushed without scanning `origin/main..HEAD`.
 
-1. **Dollar re-score** of the eight planner transcripts (20 and 25 Sep) by token class — input, cache write,
-   cache read, output — at the pricing of each transcript's own model. Tier 0: minutes, no run.
-2. **Reflective-reference guard** for deletion shapes, with planted traps (an untested entity loaded by a
-   glob, a string-token DI provider): a dead-code task touching one is refused. **No dead-code survivor goes
-   to a user before this exists.** Tier 1.
-3. **Memory admission control**: count the project suite's measured footprint in the concurrency ceiling,
-   pass jest `--maxWorkers`, and back off on memory pressure by name rather than on token rate. Tier 1.
-4. **Re-score the published workload #1 rates under ADR-0089 F** (3/8, 4/8, 4/10) — a Stryker run on
-   project-a and project-b's published modules, **the owner's go** (the classifier blocks sidecrew commands on
-   a client checkout; the owner runs them, or adds a permission rule).
-5. **The deterministic-executor probe (ADR-0092 rung 1 vs 2)**: language-service rename, ESLint `--fix` /
-   `tsc` for lint shapes, behind the unchanged gate, against the 7B on ~10 tasks. Tier 1. Plus the owner's
-   own example: an *affected files* query (reverse import graph, reflection blind spot named).
-6. **Verify-only mode** for small jobs: Opus edits, sidecrew gates (Phase 11b's arm D, as a product path).
-7. **ADR-0094's three probes** (the middle tiers): P1 Sonnet as planner, P2 two-level planning, P3 Qwen3-Coder-30B-A3B
-   on the 7B's failures (the owner is downloading it: revision `6e302ea604ad…`, Apache-2.0, 17.2 GB — pin it in
-   `src/models.json` and measure its RSS first).
+### The working list, in order — each item states its tier (ADR-0091)
 
-8. **ADR-0095 triage** (owner's idea): `sidecrew triage` (a mechanical card) and a triage skill for the user's model
-   (one short turn → a job card of parts, each routed by ADR-0094). Checked on labelled requests before use.
-
-**Done 25 Sep:** item 3 — memory admission control (`src/suite-gate.ts`; jest `--maxWorkers` still open, BACKLOG). Item 2 — the reflective-reference guard (`src/reflection.ts`, rule `reflective_reference`, planted traps). **Done 25 Sep:** item 1 — the dollar re-score (`experiments/planner-cost/results/dollars-2026-09-25.json`): cache reads,
-not output, are the largest planning cost.
-
-**Phase 14d in numbers** (the rule file's dated notes say how each was handled; night 2 was dropped under ADR-0091):
-
-| arm | N | `P_total` → normalised | R (normalised) | gated so far |
-|---|---|---|---|---|
-| base ≈ 12 | 11 | 199,152 → 229,830 | 2.68 | **9/11** |
-| **retrieval ≈ 12** | 11 | 146,525 → 177,203 | **2.07** | 1/11 — **9 machine failures** (swap), not re-gated |
-| base ≈ 40 | 45 | 254,933 (paid its own harness) | 0.73 | **32/45**, 1 machine failure |
-| retrieval ≈ 40 | 36 | 195,013 → 225,691 | 0.80 | interrupted, not re-run (cannot change the fork) |
-
-**Three instrument findings from night 1, each written into the rule file before the number it affects:**
-parallel planners shared a 30,678-token prompt cache (R is read with it added back); two project-a suites at
-concurrency 2 are ~16 GB of jest workers and swap the machine (machine failures re-gated at concurrency 1;
-BACKLOG item for the ceiling); and sidecrew's "thermal back-off" fired on swap, not heat.
-
-**What the build established, so the measurement session does not re-derive it:**
-
-| | |
-|---|---|
-| the relevance answer | **admitted, never judged** (ADR-0090 §2): predicate answers are exact by construction; judgement answers are admitted iff every claim cites a byte-checked span within a budget; irrelevance is bounded and shows up in `R`; omission shows up as lower survival; neither can make a wrong change survive |
-| what `P_total` is made of | `N = 12`: harness **45,877** · reading **94,978** · output × 2 **130,164** (`scripts/planner-decompose.py`, `experiments/planner-cost/results/decomposition-2026-09-24.json`) |
-| the ceiling | all reading removed, output unchanged → **`R` = 1.88**; staying out of STOP with output unchanged needs reading **−88 %** |
-| what is built | `sidecrew recon` · `sidecrew query refs\|unreferenced\|sizes\|diagnostics` · `sidecrew read` (admitted by citation; budget in the prompt file) · change-planner §1′ switched by the brief · `planner-decompose.py` counts retrieval calls |
-| the reader, probed | on the real 7B over sidecrew's own code: byte equality refused 9/10 (it joins lines), so quotes match word-for-word with layout removed; then 6 admitted, 4 refused, **2 of the 6 said more than their quote** — admitted ≠ true |
-| the reading, by tool (`N = 12` / `N = 41`) | file contents 65 % / 37 % · grep 18 % / 25 % · **the planner's own analysis scripts 10 % / 12 %** · listings 4 % / 18 % · sidecrew's output 2 % / 3 % (an earlier count of 12 % / 33 % was a classifier bug, corrected before commit) |
-| the frozen fork | `R₁ ≤ 1.0` PROCEED (cut 1.0, with ADR-0089) · `(1.0, 2.0]` INSERT `14d′` · `> 2.0` STOP · quality veto: `S₁`'s upper bound < `S₀` → STOP for retrieval as built |
-| the size | 4 planner passes (~2 h, day) + ~106 gated tasks (~5 h, one night after 02:05) — re-size from the real plans |
-
-**The numbers it will otherwise go hunting for** (`experiments/planner-cost/`, measured 19–20 Sep):
-
-| | |
-|---|---|
-| `R` at `N = 12` / `N = 41` | **2.84** / **1.07** (both FAIL; 1.0 needs `R ≤ 1.0` at `N = 12`) |
-| `P_total` at 12 / 41 tasks | 265,607 / 343,144 Opus tokens |
-| fixed planning cost `F` | **≈ 233,500 tokens**, 88 % of the total at `N = 12` and 68 % at `N = 41`; the per-task term is ≈ 2,700 |
-| what the fixed cost is | **corrected 24 Sep (ADR-0090 §1):** ~17 % harness, ~36 % reading, ~49 % Opus's own output paid twice. The old *"overwhelmingly reading: 15.5 M cache reads"* counted cache reads, which `P_total` excludes |
-| instrument | `scripts/planner-tokens.mjs`, dedup by `message.id` keeping the last; subagent transcripts are in `<session>/subagents/`. **A subagent transcript is a clean window by construction**, so spawn planners as subagents and read `--agents` |
-
-**The traps, each already paid for once:**
-
-- **Re-plan and re-gate both arms under today's gate.** The 20 Sep plans were gated before ADR-0084,
-  ADR-0077 B and ADR-0086 B. An old arm against a new one would measure this phase plus three gate
-  changes, which is 14c's §2 trap one level up. The 20 Sep plans are also at an older project commit.
-- **Measure on a pinned clone** (`scripts/pinned-clone.sh`), never the working checkout, which moves
-  daily. **Refuse if the dependency manifests differ**, and the script does.
-- **The quality veto is what makes it an overnight.** `R` itself is planning tokens (daytime, minutes
-  per pass). The veto needs the plans gated: an estimated **~106 gated tasks** (12 + 41, both arms), which is
-  **5–6 h** going by 14c′ (83 tasks in 4 h), an estimate until the plans exist. Start after **02:05** (ADR-0083).
-- **Relevance is not machine-checkable.** A machine confirms a location *exists*; the user is the
-  proposed relevance oracle (ADR-0079), batched, once per cycle, or the loop pays the fixed cost `n` times.
-
-**The expected number of overnights to `v1.0.0`: 1 (14d), 2 if `R` lands in (1.0, 2.0] and inserts
-14d′, and one contingency.** ADR-0089 needs no overnight: the re-score is done and B is chosen, so it is a daytime build.
-
-### The board — everything live, in order
-
-| | what | cost | needs |
+| | item | tier | needs |
 |---|---|---|---|
-| **A** | **Phase 14d** — retrieval, cut `v1.0.0` | **built**; the measurement is left: ~2 h of planner passes by day + one ~5 h gated night | the owner naming a night (§5 is decided: B) |
-| **B** | **ADR-0089** — close the type-only-assertion hole; **a 1.0 prerequisite** | ~1 session, no overnight | **option B chosen 24 Sep**; build it with a control fixture and mutator names in verdicts. One daytime Stryker run would settle the ≤ 2/11 bound (owner's go) Recommendation: **B** (require a kill other than the whole-body removal), with **A** as the detector's cheap first line |
-| **C** | **What raises ADR-0082 D's `Y`** | a probe | not scheduled. D's funnel says the worker cannot build a test against a NestJS service (2/14 ever passed on the original code; both then killed). The candidate levers are the service's own specs as context, or a larger worker |
-| **D** | Phase 14's passive exit check | watching | nothing; window ends 5 Oct |
+| 1 | **Design the benchmark** that 1.0 is measured on: real historical changes from **outside open-source TypeScript projects**, the commit's intent as the request, the commit's own tests as the hidden oracle, a blind Opus judge only where there are none; an **Opus-alone arm** with its token classes and dollars; stated job sizes for the cost formula (ADR-0093 addenda 2–3). On paper first: which repos, how commits are sampled and categorised | 0 | nothing — the missing instrument everything else hangs on |
+| 2 | **The deterministic-executor probe** (ADR-0092 rung 1 vs rung 2): language-service rename, ESLint `--fix` / `tsc` for lint shapes, behind the unchanged gate, against the 7B on ~10 tasks. Plus the owner's example, an **affected-files** query (reverse import graph, reflection blind spot named) | 1 | a pinned clone |
+| 3 | **ADR-0094 P2** — two-level planning: Sonnet builds the dossier and plan, the user's model decides in one short session. *Changes the plan if* total dollars fall below P1's and the top model's share below a third | 1 | a pinned clone; isolation by construction (other arms' outputs moved out) |
+| 4 | **ADR-0094 P3** — Qwen3-Coder-30B-A3B on the tasks the 7B failed on 25 Sep, at concurrency 1. First pin it (`mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit`, revision `6e302ea604ad9ab206367e2c501d1571023e7b6d`, Apache-2.0, 17.2 GB) in `src/models.json` and measure its RSS beside a suite | 1 | **the owner's download** |
+| 5 | **ADR-0095 triage** — `sidecrew triage` (the mechanical card) and the triage skill; checked on the benchmark's labelled requests before anything is routed by it | 1 | item 1 |
+| 6 | **Verify-only mode** for small jobs: the user's model edits, sidecrew gates (Phase 11b's arm D as a product path) — the honest small-job story under ADR-0093 | build | nothing |
+| 7 | **Re-score the published workload #1 rates under ADR-0089 F** (3/8, 4/8, 4/10) — a Stryker run on project-a's and project-b's published modules | 1 | **the owner's go** (the classifier blocks sidecrew commands on a client checkout) |
+| 8 | **jest `--maxWorkers` from the concurrency** — the other half of memory admission control; it changes how the project's tests run, so it needs its own ADR first | ADR, then build | nothing |
+| 9 | **The test-file predicate question** — support files under `test/` count as source (BACKLOG); measure how many #2a survivors touched one, then an ADR | 0, then ADR | nothing |
 
-**Do not re-open** ADR-0075, ADR-0086 or ADR-0087 (decided, built, measured), or ADR-0088 (built and
-proven on three runs).
+**Standing rules learned on 25 Sep, apply to every item:** isolation between probe arms is **made true by
+construction** (move other arms' outputs out of reach, audit the transcript), never merely asked for; parallel
+planners share a prompt cache — launch one at a time or add back the harness; a subagent prompt for sidecrew work
+should say the owner confirmed it is business-related tooling (one refused on the org instruction).
 
----
+### Phase 14d in numbers — history, kept for the curve
+
+| arm | N | Opus new tokens (harness-normalised) | R | first-pass gating | dollars (alone) |
+|---|---|---|---|---|---|
+| base ≈ 12 | 11 | 229,830 | 2.68 | 9/11 | $3.31 |
+| **retrieval ≈ 12** | 11 | 177,203 | **2.07** | 1/11 (9 machine failures) | $2.39 |
+| base ≈ 40 | 45 | 254,933 | 0.73 | 32/45 (1 machine failure) | $3.48 |
+| retrieval ≈ 40 | 36 | 225,691 | 0.80 | interrupted | $2.67 |
+| P1: Sonnet ≈ 12 | 7 | 163,832 (as measured) | — | not gated | $1.93 |
 
 ### Earlier completed work (20–22 Sep) — history, not a queue, kept for what each one cost
 
@@ -384,15 +338,9 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **`v1.0` bars SET (owner, 25 Sep; ADR-0093 addendum):** ≥ **80–90 %** of Opus-alone's success on a
-  representative benchmark of real requests (features included), at ≤ **50 %** of its dollars (aspiration 20 %),
-  judged blind by Opus against Opus-alone's result, reproducing on outside projects; **the cost claim is a formula in `N` with intervals, never a single number (addendum 3)**. **v2** = as fast as Opus;
-  **v3** = quality ≥ Opus. **Open: the benchmark's request mix, and whether "50 % cheaper" is over the mix or per
-  request.** Earlier wording, kept: **`v1.0` is DEFINED (owner, 25 Sep; ADR-0093):** the claim *"we do what Opus does, in a different and cheaper
-  way"* is true **and** any user can get it. **Open: confirm ADR-0093's four conditions** (quality vs an
-  Opus-alone arm on listed job types; dollars per delivered task, never more expensive than Opus at any size;
-  the gated pipeline; reproduction on two outside projects with the guarantees holding). **0.x releases
-  continue** — **`v0.3.0` skipped for now (owner, 25 Sep).**
+- **`v1.0` is decided** (ADR-0093 and its three addenda) and nothing about it is open; the benchmark design (§3 item 1)
+  is how it gets measured. **`v0.3.0`: skipped for now (owner, 25 Sep)** — cutting it is the owner's call, and `main`
+  has a release's worth (recon, query, read, the reflective rule, ADR-0089 F, memory admission control).
 - **Recon ran on project-a (24 Sep, the owner's run; ADR-0079 addendum).** 1 error as configured;
   `--strictNullChecks` +11,604, `--noImplicitAny` +7,793, and the lint-shaped flags +282 at **95 % in
   source** — so **ADR-0079 option B (fix only the lint shapes) is deliverable on this project**; whether to
@@ -400,7 +348,7 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
   source (BACKLOG, needs an ADR). Note the auto-mode classifier **blocks** sidecrew commands pointed at a
   client checkout — the owner runs those, or adds a permission rule.
 - **ADR-0089 — CLOSED 25 Sep by option F** (A and B beside it), merged. Owed: re-score the published
-  workload #1 rates under it (§3 item 4). **The re-score is done (addendum, 24 Sep):** from stored records only an upper
+  workload #1 rates under it (§3 item 7). **The re-score is done (addendum, 24 Sep):** from stored records only an upper
   bound is possible — verdicts keep Stryker ids, not mutator names — and it is **2 of 11** published
   real-project survivors, both tests of one function with a single mutant. Worst case project-a's 4/8 → 2/8.
   Settling it exactly is one daytime Stryker run on one project-a function, **the owner's go**.

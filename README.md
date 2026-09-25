@@ -469,6 +469,13 @@ sidecrew bench --determinism   # 5× the same prompt: byte-identical, or non-zer
 
 ## Status
 
+**On `main`, unreleased since `v0.2.0`:** `sidecrew recon` (how many `tsc` errors each stricter flag would add),
+`sidecrew query` (reference counts, unreferenced exports, rewrite sizes, located diagnostics — from the project's own
+compiler), `sidecrew read` (the local model reads, claims admitted only by verified citation), a gate rule refusing
+changes to anything reached by reflection, the tightened test-writing gate, and memory admission control for large
+test suites. Phase 14d measured whether letting the planner use these makes planning cheap enough at small job sizes:
+**it cut planning tokens ~23 %, and not enough** — see the Roadmap.
+
 **v0.2.0 — the reach (24 Sep 2026).** A task can name one declaration instead of a whole file, and it is
 judged by that declaration: zero errors inside it, nothing worse outside it, and every test still
 passing (ADR-0086). All measured on an unmodified commercial Nest codebase (2,174 source files), against
@@ -485,7 +492,8 @@ rules frozen before the numbers existed:
 line this project calls *usable*. The shape was `--strictNullChecks` null guards, the hardest one
 measured. **What did not work yet:** a worker writing its own tests *before* a change (ADR-0082) managed
 **2/20**, because it cannot yet build a test that runs against a real NestJS service. And a hole was
-found in the test-writing gate (ADR-0089, open): a type-only assertion can pass it.
+found in the test-writing gate (ADR-0089): a type-only assertion could pass it. **Closed on `main` since
+`v0.2.0`** — survival now needs a kill that is neither the body removal nor a crash.
 
 **Before that, Phase 14 — the first public release.** The pipeline runs end to end for both workloads: plan,
 generate on a local worker, verify, retry once, escalate; and `sidecrew fix` does the same for
@@ -567,35 +575,59 @@ Phase 7's hardening, each with the ADR that argued it:
 
 `sidecrew run --dry-run` writes every task *and* every rendered prompt and stops before the first token.
 
-### Where this is going
+## Roadmap
 
-**The bar, in the owner's words: *"be able to achieve what Opus does, our way — even 90 % is a win."***
-That decomposes into four numbers, all re-measured at the end of every phase so the bar is a
-scorecard rather than a feeling:
+**The claim sidecrew is working towards, in the owner's words: *"we do what Claude Opus does, but in a different
+and cheaper way"* — and any user can get that result on their own code.** Every release says exactly how much of it
+is true yet, with its numbers labelled *measured* or *estimated*, and claims nothing beyond that
+([ADR-0093](docs/DECISIONS.md)).
 
-| | what it measures | today | at the bar |
+| version | means | status |
+|---|---|---|
+| **0.x** | each release adds a **rung** of the ladder below, claimed only once measured | `v0.2.0` published; more on `main` |
+| **1.0** | sidecrew's success rate is **≥ 80–90 % of Opus-alone's** on a benchmark of real requests — features and bug fixes included — for **≤ 50 % of its dollars on batch jobs** (stated as a fitted formula in the job's size, with its error margin, never a single number), judged against Opus-alone's own result, and reproducing on projects sidecrew was not built on | not yet |
+| **2.0** | as fast as Opus alone, or faster | — |
+| **3.0** | quality equal to Opus alone, or higher | — |
+
+### The capability ladder
+
+Most features and bugs are not unique, so work is grouped into categories, each with its own gate a machine can
+run. A category is claimed only after it is measured. The last rung — *any* request — is 1.0.
+
+| rung | category | gate | status |
 |---|---|---|---|
-| **Reach** | share of a real codebase **by bytes** a task may touch | **51.9 %** | ≥ 90 % |
-| **Shapes** | behaviour-preserving shapes surviving at a usable rate | **1 of 5** | ≥ 4 of 5 |
-| **Cost** | `R` — Opus tokens to plan ÷ paying a model per task | **2.84** at 12 tasks, **1.07** at 41 | ≤ 1.0 at 12 |
-| **Trust** | `D` — how often the gate disagrees with itself | **0.105** `[0.013, 0.331]` | ≤ 0.02, or diagnosed |
+| 1 | write unit tests for existing code | compiles ∧ passes ∧ kills a mutant that is neither the body removal nor a crash ∧ not tautological | built; measured 3/8, 4/8, 4/10 on real projects (being re-scored under the tightened gate) |
+| 2 | behaviour-preserving cleanups — renames, dead code, unused imports | the diff stays confined ∧ `tsc` clean ∧ every test that passed still passes ∧ nothing reflection reaches is removed | built, measured |
+| 3 | lint and compiler-flag fixes | rung 2's gate + the flag or rule clean | measured population (+282 on a real Nest codebase, 95 % in source); not yet run |
+| 4 | static-analysis findings (Sonar-style rules) | rung 3's gate + the analyser's rule clean | proposed |
+| 5 | strictness migrations (`--strictNullChecks`) | rung 2's gate, test-file type errors demoted | 25/83 one declaration at a time (indicative) |
+| 6 | categorised bug fixes | a reproducing test goes red → green ∧ nothing regresses | not built |
+| 7 | categorised features | a spec test the smart model writes and the user approves goes red → green ∧ is mutation-sensitive ∧ a held-out test passes | not built |
+| 8 | **any** bug, **any** feature, a whole new module | rung 7's gate, uncategorised | 1.0 |
 
-Only Cost improves on its own as jobs get bigger. Reach is ADR-0075's symbol-scoped return; Shapes has
-now been measured once (Phase 14b) and the ceiling turned out to be the gate's scope rather than the
-worker's, which is ADR-0077's to resolve; Trust needs a diagnosis, not a threshold. `docs/plan/PHASES.md` has
-the phase for each, and **every one of them ends with a rule written before the phase runs** — a fork
-chosen after seeing a result is a description of how somebody felt about the result.
+### How the work is divided — cheapest capable first, by expected cost per success
 
-**Workload #2b — behaviour-*changing* work — is deliberately last**, and
-[ADR-0031](docs/DECISIONS.md) says why: behaviour-preserving changes already have a free oracle, the
-project's own suite, while behaviour-changing ones need Opus to write a specification. That inverts
-the token economics and flips ADR-0006's Goodhart problem the wrong way — a bad test gets discarded
-by the gate, but a bad implementation that passes the tests it was shown ships.
+A mechanical tool where one gives an exact answer (the compiler, the language service, a codemod), then a local
+model, then a cheaper Claude model, then the model the user is on — each piece of work routed by expected cost
+per success rather than cheapness alone, climbing on a gate's verdict, and every rung judged by the same gate
+([ADR-0092](docs/DECISIONS.md), [ADR-0094](docs/DECISIONS.md)). A request is first **triaged**: its size (how many
+places change) decides the cost, its complexity (how much judgement the outcome needs) decides the level, and a
+request can split into parts at different levels ([ADR-0095](docs/DECISIONS.md)).
 
-What is not here: the `api` tier **runs** (Phase 13) and is unsupported (ADR-0073) because it has no
-measurement of its own — no survival rate, no approval rate, no price. The thermal guard has still
-never *fired*; the soak says the machine gave it no reason to, which is not the same as saying a
-back-off would land correctly. `docs/research/` is why the design looks like this.
+### Where it stands, measured
+
+| | what it measures | now | at the bar |
+|---|---|---|---|
+| **Reach** | share of a real codebase by bytes a task may touch | **0.911** (measured) | ≥ 0.90 ✓ |
+| **Cost** | planning spend | **not yet cheaper than Opus on small jobs**: planning a ~12-task job costs **$2.39–3.31** of Opus 5.5 (~$0.22–0.30 per task); a ~40-task job **$2.67–3.48** (~$0.07–0.08 per task). **Most of the dollars are the planner re-reading its own context**, not thinking (measured) | ≤ 50 % of Opus-alone on batch jobs, once an Opus-alone arm is measured |
+| **Shapes** | behaviour-preserving shapes at a usable rate | renames and dead code yes; strictness migrations improving; formal re-score pending | ≥ 4 of 5 |
+| **Trust** | how often the gate disagrees with itself | diagnosed as the project suite's own flake rate, mitigated by re-reading regression-only failures (ADR-0084) | diagnosed ✓ |
+
+**What comes next** (`docs/plan/HANDOFF.md` has the working list): the benchmark of real requests from outside
+open-source projects that 1.0 is measured on; the Opus-alone comparison it needs; triage; the middle tiers of
+models; and faster gating. While the design is still moving, the project measures with short probes and spends a
+long run only on a number it will publish ([ADR-0091](docs/DECISIONS.md)). An independent analysis of the road to
+1.0 is in [`docs/research/2026-09-25-v1-independent-analysis.md`](docs/research/2026-09-25-v1-independent-analysis.md).
 
 ## Working on sidecrew itself
 

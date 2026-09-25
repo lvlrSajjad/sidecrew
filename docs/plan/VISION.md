@@ -1,5 +1,10 @@
 # Vision — what sidecrew is for
 
+> **25 Sep 2026 — what "doing the vision" now means, decided:** `v1.0` is the claim *"we do what Claude Opus does,
+> in a different and cheaper way"* made true and reproducible by any user (ADR-0093), reached rung by rung up the
+> capability ladder in `ROADMAP.md`. Who does each piece of work is ADR-0092 and ADR-0094: a mechanical tool where
+> one is exact, then local models, then cheaper Claude models, then the user's model — every rung behind the gate.
+
 **Owner's statement, 16 Sep 2026.** This is the destination. `PHASES.md` is the route; every phase in it
 either moves towards this or is a detour that has to justify itself.
 
