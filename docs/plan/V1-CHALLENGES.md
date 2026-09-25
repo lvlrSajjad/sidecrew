@@ -201,3 +201,54 @@ Research and thinking, not code. Specifically:
 `docs/plan/VISION.md` · `docs/plan/PHASES.md` · `docs/plan/HANDOFF.md` · `docs/DECISIONS.md` (ADR-0077,
 0079, 0082, 0084, 0086, 0089, 0090) · `docs/plan/prompts/phase-14d-retrieval.md` (the frozen rule and its
 dated notes) · `experiments/planner-cost/README.md` and `results/` · `docs/plan/BACKLOG.md`.
+
+## 11. The independent analysis came back — 25 Sep 2026
+
+`docs/research/2026-09-25-v1-independent-analysis.md` (Fable, verbatim). Its headline: **don't ship v1.0 against
+`R ≤ 1.0 at N = 12`** — keep that bar, report it as failed, and pre-register a new one in **dollars per
+delivered task against an Opus-alone arm**; **define v1.0 by the guarantees**, with cost a published number
+rather than a release condition; and test whether **deterministic tools** (the TypeScript language service,
+ESLint `--fix`, Knip) match the 7B on the shapes that survive today, because that would change the product's
+shape more than any tuning.
+
+### The points it could not see, answered from the repository
+
+| it asked | the repository says |
+|---|---|
+| how `W_upper` = 7,794 was derived | Phase 11's **C3 control: Claude Haiku**, the `haiku-worker` agent harness, **93,532 tokens over 12 tasks**, harness included (`prompts/phase-11-go-no-go-2a.md`, `experiments/go-no-go-2a/results/go-no-go-2a-2026-09-18.json`). So R divides **Opus** planning tokens by **Haiku** doing tokens. In dollars the comparator is ~4× cheaper per token again — the construct defect it names is real, and larger than it assumed. Each Haiku task paid its own agent harness; nothing paid a planning session. |
+| which model the planners ran on | **`claude-opus-5`** on 20 Sep, **`claude-opus-5-5`** on 25 Sep (read from the transcripts). All four 25 Sep arms share one model, so they compare with each other; 20 Sep's numbers are across a model change. |
+| the frozen bar's wording | `R = P_total / N / 7,794`, `N` = **planned, validated** tasks after refusals, not delivered ones. Survival enters only through the quality veto. |
+| what "normalised" means | New tokens only — input + output + cache_creation, cache reads excluded (`planner-cost` §2) — plus, for the 25 Sep arms, the first message's cache read added back, because parallel planners shared a prompt cache (`phase-14d-retrieval.md`, note of 25 Sep ~00:20). Output is counted once as output and once as the next message's cache write. |
+| ADR-0089 option F's kill criterion | Built 25 Sep: a second Stryker pass with the candidate's assertions stripped; a kill that pass also makes is a crash kill; survival needs a kill that is neither a crash nor the body removal. Verified on the fixture. |
+
+### Where this session agrees, and where it adds something
+
+- **Agree — v1.0 means the guarantees.** That is the owner's to decide, as a new ADR, and it is the cleanest
+  way to stop redefining a research milestone until it passes. The old bar's result gets reported as failed.
+- **Agree — the dollar re-score of existing transcripts comes first.** It is hours, needs no run, and may
+  move the verdict by 2×. The transcripts hold every usage field.
+- **Agree, and it is urgent — the reflective-reference guard.** Last night's dead-code survivors (32/45, 9/11)
+  passed a gate that cannot see code reached only through DI or an entity glob when no test covers it. **No
+  survivor was applied to any real checkout** — they exist only as verdicts on the pinned clone — but no
+  dead-code survivor should be offered to a user until the guard exists.
+- **Agree — verify-only mode for small jobs.** It partly exists: Phase 11b's arm D was *the gate applied to
+  Opus's own output*. Turning it into a product path is small.
+- **Agree — memory admission control before anything else runs at concurrency 2.**
+- **Adds:** the deterministic-executor experiment is cheap because the pieces exist — `sidecrew query refs`
+  already drives the TypeScript language service, which can rename, and `recon`/`query diagnostics` already
+  enumerate lint-shaped fixes. And it may conflict with the owner's premise that local models do the
+  heavy lifting; that is a finding worth having, not a reason to skip the test.
+
+### Proposed order — for the owner to approve, change or reject
+
+1. **Tonight: finish Phase 14d as frozen** (`scripts/retrieval-night2.sh`). The old bar's result has to be
+   complete to be reported honestly, and the machine is idle overnight.
+2. **ADR-0091 (owner): what v1.0 means** — the guarantees; the cost bar reported, not gating; a new dollar bar
+   pre-registered on fresh data.
+3. **Daytime, hours:** the dollar re-score by token class, and the Opus-alone comparator's design.
+4. **Daytime, small, safety first:** the reflective-reference guard with planted traps; memory admission
+   control; merge ADR-0089 F and re-score the published workload #1 rates under it.
+5. **Days:** the deterministic-executor arm on the shapes that survive today; verify-only mode for small jobs;
+   the planner effort sweep and a Sonnet-planner arm.
+6. **Later:** the two-stage gate; readers (graphify, the 7B on spans) only if the dollar re-score says reading
+   is worth attacking.
