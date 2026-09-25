@@ -7047,3 +7047,43 @@ ADR-0091 (a release claim is tier 3), ADR-0092, the independent analysis
 - **The road to v1 is the four conditions**, each reached by tier 0–2 work and proven once, at the end, by a
   tier-3 run on fresh projects. V1-CHALLENGES §11's list is the first stretch of it; the Opus-alone
   comparator (condition 1 and 2) is the missing instrument, and it is built before anything else is claimed.
+
+### ADR-0093 addendum, 25 Sep 2026 — the owner's numbers, and the roadmap past 1.0
+
+The owner reviewed the four conditions and set them, in his words and then as bars:
+
+1. **Capability.** *"v1.0 has to be able to match the coding capabilities of Claude Opus alone … even Opus
+   itself isn't 100 % bulletproof, so we add a 10–20 % margin."* → **Not a list of job types: Opus's coding
+   capability in general, measured on a representative set of real requests.** sidecrew's success rate must be
+   **at least 80–90 % of Opus-alone's** on the same requests (a relative margin, because Opus-alone fails too).
+2. **Cheaper.** *"Since sidecrew still isn't faster, cheaper must be like 50 % cheaper or even less … maybe even
+   80 % cheaper."* → **At most 50 % of Opus-alone's dollars** on the same requests as the v1 floor; **20 %** is
+   the aspiration.
+3. **Different method.** *"The whole thing, not just the gate … Opus handles the thinking, the smart part, the
+   planning when needed, the executing when needed, but the rest goes to the mechanical tools and 7Bs. The
+   result has to be highly similar to Opus, and it'll be judged by Opus."* → The work splits by ADR-0092's
+   ladder; **the result is judged by Opus**, blind, against what Opus alone produced, and must be **~90 %
+   similar or equivalent**; the gate still decides what is shown.
+4. **Any user.** *"Not exactly our results, but results 80–90 % similar to what Opus can do for them."* → The
+   capability and cost bars reproduce on **outside projects** within that band.
+
+**The roadmap past 1.0, set by the owner:** **v2** — as fast as Opus alone, or faster. **v3** — quality equal
+to Opus alone, or higher.
+
+**What these bars imply, stated so no one is surprised later:**
+
+- **Condition 1 puts behaviour-changing work in v1.** "Opus's coding capability in general" includes features
+  and bug fixes, which sidecrew does not attempt today (workload #2b; ADR-0082, where the 7B wrote a usable
+  test 2 times in 20). **This becomes the largest item on the road to v1.** The owner's own framing gives its
+  shape: Opus does the smart part, which for a feature includes writing the specification test; the 7B and
+  mechanical tools implement against it; the gate and an Opus judge decide.
+- **Conditions 1 and 2 pull against each other on small jobs.** A one-file request routed to "Opus edits,
+  sidecrew verifies" costs about what Opus alone does — not 50 % less. So "50 % cheaper" has to be stated **over
+  a realistic mix of requests** (the benchmark's total dollars), with a separate rule that no single request
+  costs meaningfully more than Opus alone. Proposed; the owner decides.
+- **Opus judging Opus needs controls.** The judge sees both results unlabelled and in random order; the
+  judge's own noise is measured by judging Opus-alone against a second Opus-alone run of the same request —
+  that noise is part of the 10–20 % margin, not in addition to it.
+- **The missing instrument is a benchmark**: a representative set of real requests on outside projects, with
+  an Opus-alone arm, an Opus judge, and dollar accounting. Everything in this ADR is measured on it, once, at
+  tier 3 (ADR-0091); everything before it is tier 0–2.

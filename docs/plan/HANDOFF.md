@@ -375,7 +375,11 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
-- **`v1.0` is DEFINED (owner, 25 Sep; ADR-0093):** the claim *"we do what Opus does, in a different and cheaper
+- **`v1.0` bars SET (owner, 25 Sep; ADR-0093 addendum):** ≥ **80–90 %** of Opus-alone's success on a
+  representative benchmark of real requests (features included), at ≤ **50 %** of its dollars (aspiration 20 %),
+  judged blind by Opus against Opus-alone's result, reproducing on outside projects. **v2** = as fast as Opus;
+  **v3** = quality ≥ Opus. **Open: the benchmark's request mix, and whether "50 % cheaper" is over the mix or per
+  request.** Earlier wording, kept: **`v1.0` is DEFINED (owner, 25 Sep; ADR-0093):** the claim *"we do what Opus does, in a different and cheaper
   way"* is true **and** any user can get it. **Open: confirm ADR-0093's four conditions** (quality vs an
   Opus-alone arm on listed job types; dollars per delivered task, never more expensive than Opus at any size;
   the gated pipeline; reproduction on two outside projects with the guarantees holding). **0.x releases
