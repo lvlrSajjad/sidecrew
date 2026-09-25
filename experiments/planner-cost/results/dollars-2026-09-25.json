@@ -1,0 +1,162 @@
+{
+  "measured": true,
+  "date": "2026-09-25",
+  "tier": "0 (ADR-0091) — no run; the six existing planner transcripts re-priced",
+  "instrument": "scripts/planner-dollars.py; rates: Anthropic first-party list prices as cached by the claude-api reference on 25 Sep 2026 (Opus 5.5 $4/$20, cache read $0.20; Opus 5 $5/$25, $0.50; 5-minute cache writes 1.25x input)",
+  "planners": {
+    "20sep-n12": {
+      "model": "claude-opus-5",
+      "messages": 50,
+      "tokens": {
+        "input": 100,
+        "cache_write_5m": 200425,
+        "cache_write_1h": 0,
+        "cache_read": 6308509,
+        "output": 65082,
+        "thinking": 34541
+      },
+      "dollars": {
+        "input": 0.0005,
+        "cache_write": 1.2527,
+        "cache_read": 3.1543,
+        "output": 1.6271
+      },
+      "total": 6.0345,
+      "alone": 6.0345,
+      "output_share_of_dollars": 0.27,
+      "N": 12,
+      "per_task": 0.5029,
+      "per_task_alone": 0.5029
+    },
+    "20sep-n41": {
+      "model": "claude-opus-5",
+      "messages": 90,
+      "tokens": {
+        "input": 180,
+        "cache_write_5m": 254070,
+        "cache_write_1h": 0,
+        "cache_read": 15545079,
+        "output": 88894,
+        "thinking": 36732
+      },
+      "dollars": {
+        "input": 0.0009,
+        "cache_write": 1.5879,
+        "cache_read": 7.7725,
+        "output": 2.2224
+      },
+      "total": 11.5837,
+      "alone": 11.5837,
+      "output_share_of_dollars": 0.192,
+      "N": 41,
+      "per_task": 0.2825,
+      "per_task_alone": 0.2825
+    },
+    "base-n12": {
+      "model": "claude-opus-5-5",
+      "messages": 62,
+      "tokens": {
+        "input": 124,
+        "cache_write_5m": 151613,
+        "cache_write_1h": 0,
+        "cache_read": 7274342,
+        "output": 47415,
+        "thinking": 25041
+      },
+      "dollars": {
+        "input": 0.0005,
+        "cache_write": 0.7581,
+        "cache_read": 1.4549,
+        "output": 0.9483
+      },
+      "total": 3.1617,
+      "alone": 3.309,
+      "output_share_of_dollars": 0.3,
+      "N": 11,
+      "per_task": 0.2874,
+      "per_task_alone": 0.3008
+    },
+    "retr-n12": {
+      "model": "claude-opus-5-5",
+      "messages": 51,
+      "tokens": {
+        "input": 102,
+        "cache_write_5m": 110752,
+        "cache_write_1h": 0,
+        "cache_read": 4862350,
+        "output": 35671,
+        "thinking": 18151
+      },
+      "dollars": {
+        "input": 0.0004,
+        "cache_write": 0.5538,
+        "cache_read": 0.9725,
+        "output": 0.7134
+      },
+      "total": 2.2401,
+      "alone": 2.3873,
+      "output_share_of_dollars": 0.318,
+      "N": 11,
+      "per_task": 0.2036,
+      "per_task_alone": 0.217
+    },
+    "base-n40": {
+      "model": "claude-opus-5-5",
+      "messages": 51,
+      "tokens": {
+        "input": 102,
+        "cache_write_5m": 188246,
+        "cache_write_1h": 0,
+        "cache_read": 6022415,
+        "output": 66585,
+        "thinking": 35483
+      },
+      "dollars": {
+        "input": 0.0004,
+        "cache_write": 0.9412,
+        "cache_read": 1.2045,
+        "output": 1.3317
+      },
+      "total": 3.4778,
+      "alone": 3.4778,
+      "output_share_of_dollars": 0.383,
+      "N": 45,
+      "per_task": 0.0773,
+      "per_task_alone": 0.0773
+    },
+    "retr-n40": {
+      "model": "claude-opus-5-5",
+      "messages": 50,
+      "tokens": {
+        "input": 100,
+        "cache_write_5m": 158541,
+        "cache_write_1h": 0,
+        "cache_read": 5015911,
+        "output": 36372,
+        "thinking": 19289
+      },
+      "dollars": {
+        "input": 0.0004,
+        "cache_write": 0.7927,
+        "cache_read": 1.0032,
+        "output": 0.7274
+      },
+      "total": 2.5237,
+      "alone": 2.671,
+      "output_share_of_dollars": 0.288,
+      "N": 36,
+      "per_task": 0.0701,
+      "per_task_alone": 0.0742
+    }
+  },
+  "findings": [
+    "Cache reads are the largest dollar term (33–67 % of each planner's bill); output, thinking included, is 19–38 %. The token metric P_total excluded cache reads, so it was blind to the largest dollar cost. The lever is fewer and shorter turns, not less thinking.",
+    "Planning dollars per planned task, as a pass launched alone pays: $0.22–0.30 at N ≈ 11 and $0.074–0.077 at N ≈ 36–45 on Opus 5.5.",
+    "Opus 5 (20 Sep) → Opus 5.5 (25 Sep) roughly halved the dollars of comparable passes; model price moves as much as design does."
+  ],
+  "comparator_estimate": {
+    "estimated": true,
+    "basis": "Phase 11b arm A (Opus alone, one fresh session per task): a ~47.9k-token session floor plus 2.8–6.0k tokens per task (experiments/status-quo/results/arm-a-project-a-tokens.json). Token classes were not split, so dollars are a rough reading only.",
+    "reading": "If Opus alone did a batch in one session, it pays the floor once and ~3–6k tokens per task of mostly output and context. At Opus 5.5 rates that is of the same order as sidecrew's planning alone at N ≈ 40 ($0.07–0.08 per task) — before counting that sidecrew's workers and gate are free and Opus-alone's reads, edits and test runs are not. The 50 % claim cannot be assessed until an Opus-alone batch arm is measured with its token classes; that arm is the missing instrument (ADR-0093)."
+  }
+}
