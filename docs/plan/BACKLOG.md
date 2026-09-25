@@ -864,3 +864,12 @@ whose survival and cost figures were never measured.
   for the gate — both are breaches, the candidate is refused either way — but the *stat* over-reports
   documentation changes, and Phase 11b's numbers are read off that stat. Whether ADR-0054's rule should
   exclude suppression comments is a decision, not a fix.
+
+## Noticed by the 14d night run (25 Sep 2026)
+
+- **The concurrency ceiling does not count the project's suite.** One project-a suite is 11 jest workers
+  at ~700 MB each (~8.2 GB); at concurrency 2, two suites plus two 7B workers plus `tsc` exceed 32 GB and
+  the machine swaps (26 GB observed), which turns every suite into a 900 s timeout (ADR-0066's failure
+  mode). And the thermal back-off then fires on swap-slowed token rates and reports it as heat. Options: pass
+  `--maxWorkers` to jest from the concurrency, or measure the baseline suite's peak RSS and let the ceiling
+  count it. Needs an ADR; it changes what `--concurrency 2` means on large projects.

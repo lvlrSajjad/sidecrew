@@ -187,3 +187,22 @@ retrieval arm reported:
    dangerous direction is the other one — a retrieval pass reading a base pass's files would flatter `R₁` —
    so both retrieval transcripts are audited for reads of files they did not write before `R₁` is read.
    A retrieval pass that relied on one is re-run alone.
+
+## Note, 25 Sep 2026 ~05:30 — machine failures are re-gated once, quietly; written before any re-gate ran
+
+*Not an edit to §2 or §3.* §2 says `S = surviving / validated tasks` and did not say what a **machine
+failure** is. The standing rule (ADR-0056, ADR-0066 option C, and the `fix_escalate` tool's own words) is
+that a machine failure is not the worker's and is excluded from any quoted rate. Found at 05:20: the
+retrieval `N ≈ 12` run gated its candidates under memory pressure **warn**, swap growing from ~6 GB to
+**26 GB**, and **9 of 11** tasks ended as machine failures — the project's suite timing out at the 900 s cap
+(its baseline, taken alone, ran in 270 s). The base `N ≈ 12` run stayed at **normal** pressure. The cause is
+sidecrew's, not either arm's: one project-a suite is **11 jest workers, ~8.2 GB**, and at concurrency 2
+two suites plus two 7B workers and `tsc` exceed 32 GB. (The run's "thermal back-off" to concurrency 1 was
+that swap slowing the workers, not heat.)
+
+**So, for every arm alike:** after the four runs, each task whose every attempt was a machine failure is
+**re-gated once, at concurrency 1, on a quiet machine** — the same task definitions, so the deterministic
+worker returns the same candidates (non-negotiable #4). The re-gate's verdict is that task's verdict. A
+task that is a machine failure again is **excluded from its arm's denominator** (ADR-0056) and counted in
+the report. Only machine failures are re-gated: a real verdict, pass or fail, is never re-read — that is
+ADR-0066's *better of two* forbidden move. The first-pass counts are reported beside the result.
