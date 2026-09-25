@@ -874,6 +874,7 @@ reads; nothing gates on it.
 | `deletion_without_replacement` | more code lines removed than `max_deleted_lines` allows |
 | `no_edit_at_all` | a candidate that changed nothing |
 | `documentation_changed` | documentation the ask did not call for, removed or reworded (ADR-0054) |
+| `reflective_reference` | a declaration whose name the change removes — deleted or renamed — while it is decorated, named as a string in another project file (a DI token), or in a file a runtime glob loads (`**/*.entity{.ts,.js}`). The one break a clean `tsc` and a green suite cannot show; blind to names built at runtime and globs built from variables; fails closed without a compiler (`src/reflection.ts`) |
 | `edit_outside_symbol` | on a symbol task, any change outside the named declarations: judged by putting them back and requiring the original file byte for byte, so a whole-file answer gets no way round it. Also a returned name the task does not list, or one returned twice (ADR-0086 §4) |
 | `symbol_not_redeclared` | on a symbol task, a named declaration that no longer resolves exactly once: renamed, split or deleted. **Fails closed** when the compiler cannot be loaded |
 

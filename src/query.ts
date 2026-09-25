@@ -210,10 +210,20 @@ function refsQuery(p: Program, specs: string[]) {
   });
 }
 
-const DECLARATION_KIND: Record<string, string> = {
-  FunctionDeclaration: "function", ClassDeclaration: "class", InterfaceDeclaration: "interface",
-  TypeAliasDeclaration: "type", EnumDeclaration: "enum", VariableStatement: "const", ModuleDeclaration: "namespace",
-};
+/**
+ * The kind of an exported top-level statement, by the compiler's own type guards. **Not by
+ * `ts.SyntaxKind[kind]`**: the enum's reverse mapping returns an alias for some kinds — `VariableStatement` reads
+ * back as `FirstStatement` — and looking kinds up by name silently skipped every exported `const` (found 25 Sep
+ * by the reflective-reference fixture, the first exported const any query test had).
+ */
+const declarationKind = (ts: TsModule, st: TsNode): string | undefined =>
+  ts.isFunctionDeclaration(st) ? "function"
+    : ts.isClassDeclaration(st) ? "class"
+      : ts.isInterfaceDeclaration(st) ? "interface"
+        : ts.isTypeAliasDeclaration(st) ? "type"
+          : ts.isEnumDeclaration(st) ? "enum"
+            : ts.isVariableStatement(st) ? "const"
+              : ts.isModuleDeclaration(st) ? "namespace" : undefined;
 
 function unreferencedQuery(p: Program, under: string | undefined, say: (l: string) => void) {
   const { ts } = p;
@@ -226,7 +236,7 @@ function unreferencedQuery(p: Program, under: string | undefined, say: (l: strin
     for (const st of sf.statements) {
       const exported = ts.canHaveModifiers(st) && (ts.getModifiers(st) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
       if (!exported) continue;
-      const kind = DECLARATION_KIND[ts.SyntaxKind[st.kind]];
+      const kind = declarationKind(ts, st);
       if (kind === undefined) continue;
       const names: TsNode[] = ts.isVariableStatement(st)
         ? st.declarationList.declarations.map((d) => d.name).filter((n) => ts.isIdentifier(n))

@@ -88,7 +88,8 @@ describe("the controls in fixtures/fix-fixture/controls", () => {
     it(`refuses the ${name} control, and names that rule`, () => {
       // The task is always about `src/rates.ts`: every control is a way of *not* fixing its planted
       // TS2538, which is what makes them comparable.
-      const breaches = checkConfinement(scoped(task(["src/rates.ts"]), control.symbols), candidate(control.edits));
+      // With the fixture as the project, so the reflective check can read `src/registry.ts` (src/reflection.ts).
+      const breaches = checkConfinement(scoped(task(["src/rates.ts"]), control.symbols), candidate(control.edits), { projectDir: FIXTURE });
       expect(rules(breaches), control.why).toContain(name);
       expect(confinementMessage(breaches)).toContain(name);
     });

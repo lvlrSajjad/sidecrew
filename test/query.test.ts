@@ -36,11 +36,12 @@ describe("query refs — the compiler's references, not a grep's", () => {
 });
 
 describe("query unreferenced — exports nothing outside their file uses", () => {
-  it("finds the six the fixture has, and marks the ones only tests use", async () => {
+  it("finds the seven the fixture has, and marks the ones only tests use", async () => {
     const a = await query("unreferenced", FIXTURE);
     if (a.kind !== "unreferenced") throw new Error("wrong kind");
-    expect(a.scanned).toBe(9);
-    expect(a.items.map((i) => i.name).sort()).toEqual(["Cart", "convert", "discounted", "lineTotal", "rateFor", "renderTotal"]);
+    expect(a.scanned).toBe(10);
+    // RATE_HANDLERS is the reflective_reference control's registry: nothing imports it, by design.
+    expect(a.items.map((i) => i.name).sort()).toEqual(["Cart", "RATE_HANDLERS", "convert", "discounted", "lineTotal", "rateFor", "renderTotal"]);
     expect(a.items.find((i) => i.name === "convert")!.refs_from_tests).toBeGreaterThan(0);
     expect(a.items.find((i) => i.name === "Cart")!.refs_from_tests).toBe(0);
   });
@@ -48,9 +49,9 @@ describe("query unreferenced — exports nothing outside their file uses", () =>
   it("caps the list and says so, keeping the total", async () => {
     const a = await query("unreferenced", FIXTURE, { limit: 2 });
     expect(a.items).toHaveLength(2);
-    expect(a.total).toBe(6);
+    expect(a.total).toBe(7);
     expect(a.truncated).toBe(true);
-    expect(renderQuery(a)).toMatch(/showing 2 of 6/);
+    expect(renderQuery(a)).toMatch(/showing 2 of 7/);
   });
 
   it("scans only under a prefix when asked", async () => {

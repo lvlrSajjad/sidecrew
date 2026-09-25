@@ -524,6 +524,15 @@ export const ConfinementRule = z.enum([
    * split, deleted, or the compiler that would find it could not be loaded (fails closed, ADR-0086 §4).
    */
   "symbol_not_redeclared",
+  /**
+   * A declaration whose name the change removes — deleted or renamed — while something reaches it by
+   * **reflection**: it is decorated, its name is written as a string in another project file, or its file
+   * matches a runtime glob in the project. `tsc` and a green suite cannot see any of those, so this is the
+   * mechanical half of what the 25 Sep planners refused by hand (`src/reflection.ts`; V1-CHALLENGES §11).
+   * A name built at runtime, a glob built from variables and configuration outside the project are its
+   * stated blind spots. Fails closed without a compiler.
+   */
+  "reflective_reference",
 ]);
 export type ConfinementRule = z.infer<typeof ConfinementRule>;
 

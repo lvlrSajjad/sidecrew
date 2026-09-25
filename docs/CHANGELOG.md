@@ -1,6 +1,15 @@
 # Changelog
 ## Unreleased — Phase 14d closed (STOP), ADR-0089 closed, and a new way of working
 
+- **New gate rule `reflective_reference`: a change may not remove or rename a declaration that something
+  reaches by reflection** — decorated (DI, ORM, scheduler), named as a string in another project file (a DI
+  token, a lookup by name), or in a file a runtime glob loads (`*.entity{.ts,.js}`, `.js` globs matched to `.ts`
+  sources). `tsc` and a green suite cannot see these; the 25 Sep planners refused them by hand. Its blind spots
+  (names built at runtime, globs built from variables) are stated where it is used; it fails closed without a
+  compiler. Planted-trap tests and a fixture control. **Until this existed, no dead-code survivor should have
+  gone to a user.**
+- **Fixed: `sidecrew query unreferenced` never scanned exported `const`s** — it looked statement kinds up by
+  name, and TypeScript's enum reverse-maps `VariableStatement` to `FirstStatement`. Found by the new fixture.
 - **Phase 14d closes on its frozen rule: STOP.** With retrieval, planning cost `R₁` = **2.07** at `N = 11`
   (harness-normalised; 1.71 as measured) against a bar of 1.0; without it, 2.68. Retrieval cut planning tokens
   ~23 %. At `N ≈ 40` both arms already pay (0.73, 0.80). The pre-registered prediction (1.5, 2.3) held. The

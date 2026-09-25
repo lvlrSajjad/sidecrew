@@ -15,6 +15,7 @@
 // **Nothing is written until this has passed.** That is the property whole-file edits buy (ADR-0047 §2):
 // confinement is a pure function of the task's sources and the candidate's, so there is no
 // partially-applied sandbox to reason about.
+import { reflectiveBreaches } from "./reflection.js";
 import { basename } from "node:path";
 import type { ChangeCandidate, ChangeObservation, ChangeTask, ConfinementBreach, ConfinementRule } from "./schemas.js";
 import { symbolBreaches } from "./symbols.js";
@@ -250,6 +251,10 @@ export function checkConfinement(
   // ADR-0086 §4. After the per-file rules, because it answers a narrower question: of the lines that
   // changed, were they all inside the declarations the task names?
   breaches.push(...symbolBreaches(task, candidate, opts.projectDir));
+
+  // Last, and only when a declaration's name actually leaves a file: the one breach a green suite and a
+  // clean `tsc` cannot show (src/reflection.ts). Skipped entirely for a candidate that removes no name.
+  if (changed.length > 0) breaches.push(...reflectiveBreaches(task, candidate, opts.projectDir));
 
   return breaches;
 }

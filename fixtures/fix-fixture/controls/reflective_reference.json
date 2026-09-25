@@ -1,0 +1,10 @@
+{
+  "rule": "reflective_reference",
+  "why": "A rename that `tsc` accepts once every static caller is updated, and that a suite would pass if no test called the old name \u2014 while `src/registry.ts` still names `rateFor` as a string, the way a DI token or a lookup by name does. The compiler and the tests cannot see that use; the gate must refuse the change before it ships a runtime break (src/reflection.ts).",
+  "edits": [
+    {
+      "path": "src/rates.ts",
+      "contents": "import { roundTo } from \"./money\";\n\n/**\n * Planted error #1 \u2014 **TS2538**, `undefined` used as an index type.\n *\n * At runtime this is already correct: `rates[undefined]` is `undefined` and `?? 0` catches it, which is\n * exactly the behaviour `test/rates.test.ts` pins. Only the types are wrong, which is what makes it a\n * behaviour-preserving fix rather than a bug fix \u2014 see the fixture README.\n */\nexport function lookupRate(rates: Record<string, number>, code: string | undefined): number {\n  return rates[code] ?? 0;\n}\n\nexport function convert(amount: number, rates: Record<string, number>, code: string | undefined): number {\n  return roundTo(amount * lookupRate(rates, code), 2);\n}\n"
+    }
+  ]
+}
