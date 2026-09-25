@@ -12,10 +12,11 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 24 Sep 2026, ~14:30. Phase 14d is BUILT: ADR-0090, the frozen exit check, and all of
-§4 — `sidecrew recon`, `sidecrew query`, `sidecrew read`, the planner's §1′. What is left is the
-measurement, which the owner runs at night. Nothing is running (the 7B used for a probe is stopped);
-nothing is pushed since `v0.2.0`. ADR-0090 §5 and ADR-0089 were decided by the owner the same day: **B** and **B**.**
+**Last updated: 25 Sep 2026, ~10:05. Phase 14d's measurement is HALF DONE and resumes tonight.** The four
+planner passes are measured; three of four arms are gated; the fourth (retrieval `N ≈ 40`) was interrupted
+by swapping and re-runs whole on **night 2**, followed by the machine-failure re-gates and §3 — **one
+command, §3 below**. ADR-0089's A and B are built on branch `adr-0089` (**merge after night 2**, not before,
+so the gate code under the four arms stays identical). Nothing is running; nothing is pushed since `v0.2.0`.
 
 ### What happened on 22–24 Sep, in one table
 
@@ -148,17 +149,36 @@ now fixed, and neither of which the gate would ever have caught:**
 
 ## 3. What to do next
 
-### Running Phase 14d's measurement — paste this, on a day the owner has named a night for
+### Night 2 of Phase 14d — start it with this, after ~22:00, and leave the machine alone
 
-> Run phase 14d's measurement of sidecrew. Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, **ADR-0090**, and
-> `docs/plan/prompts/phase-14d-retrieval.md` **in full** — §2–§3 are frozen, and the three dated notes
-> below them bind the run (piece 4's budget, the quote-match rule, the base-arm void check). Then
-> `git status` and `git log -5`. ADR-0090 §5 is decided (B) and already in §3's `14d′` row. Make a pinned clone of `project-a`
-> (`scripts/pinned-clone.sh`), write the two briefs (gitignored, identical but for the retrieval line),
-> and run the four planner passes as subagents — base arm first, retrieval arm second, one at a time.
-> Void any base-arm pass `planner-decompose.py` shows retrieval calls in. Validate all four plans,
-> **re-size** the night from their real task counts, and prepare the gated runs to start after 02:05.
-> Do not start the night without the owner's go.
+```bash
+cd ~/Coding/ME/sidecrew && S=<this repo's Claude project dir>/2bd5727e-f43d-4843-b300-1360ab14fc33/subagents && \
+T_BASE_N12=$S/agent-ac5fb4e92da2d4102.jsonl T_RETR_N12=$S/agent-a7a9ef81061c14482.jsonl \
+T_BASE_N40=$S/agent-a78cb032d220c3938.jsonl T_RETR_N40=$S/agent-ab0ad48eeed1fb3b0.jsonl \
+WATCH=<the project-a working checkout> caffeinate -dims scripts/retrieval-night2.sh
+```
+
+It waits for 02:05, re-runs the retrieval `N ≈ 40` arm whole at concurrency 1 (~3.3 h), re-gates every arm's
+machine failures once (10 tasks, ~1 h), then writes `experiments/planner-cost/results/result-14d-2026-09-25.json`
+with §3 applied. **Expect it done ~06:30–07:30.** Log: `experiments/planner-cost/plans/night2-14d-2026-09-25.log`.
+Then: read the result, apply the fork as written, merge `adr-0089`, delete the clone
+`~/.sidecrew/clones/project-a-cea0b6d2ab` and the worktree `../sidecrew-adr0089`, update PHASES/CHANGELOG/this file.
+**Do not rebuild `dist` or merge anything into `main` before it runs** — the tree must be clean and the gate
+code the same as night 1's.
+
+**Night 1, 24–25 Sep, in numbers** (the rule file's four dated notes say how each was handled):
+
+| arm | N | `P_total` → normalised | R (normalised) | gated so far |
+|---|---|---|---|---|
+| base ≈ 12 | 11 | 199,152 → 229,830 | 2.68 | **9/11** |
+| **retrieval ≈ 12** | 11 | 146,525 → 177,203 | **2.07** | 1/11 — **9 machine failures**, re-gated night 2 |
+| base ≈ 40 | 45 | 254,933 (paid its own harness) | 0.73 | **32/45**, 1 machine failure |
+| retrieval ≈ 40 | 36 | 195,013 → 225,691 | 0.80 | interrupted — re-run whole night 2 |
+
+**Three instrument findings from night 1, each written into the rule file before the number it affects:**
+parallel planners shared a 30,678-token prompt cache (R is read with it added back); two project-a suites at
+concurrency 2 are ~16 GB of jest workers and swap the machine (machine failures re-gated at concurrency 1;
+BACKLOG item for the ceiling); and sidecrew's "thermal back-off" fired on swap, not heat.
 
 **What the build established, so the measurement session does not re-derive it:**
 
