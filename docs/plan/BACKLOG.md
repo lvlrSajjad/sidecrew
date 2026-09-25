@@ -873,3 +873,7 @@ whose survival and cost figures were never measured.
   mode). And the thermal back-off then fires on swap-slowed token rates and reports it as heat. Options: pass
   `--maxWorkers` to jest from the concurrency, or measure the baseline suite's peak RSS and let the ceiling
   count it. Needs an ADR; it changes what `--concurrency 2` means on large projects.
+  **Half built, 25 Sep (`src/suite-gate.ts`):** the first baseline measures one suite's footprint and the run
+  admits only as many suites at once as free memory holds; a verdict under memory pressure or swap growth
+  lowers it to one, named as memory. **Still open:** passing jest `--maxWorkers` from the concurrency — it
+  changes how the project's tests run (and possibly its flake rate, ADR-0084), so it needs its own ADR.

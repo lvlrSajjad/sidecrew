@@ -491,6 +491,12 @@ export async function captureBaseline(sandbox: string, opts: BaselineOpts): Prom
 export interface VerifyChangeOpts {
   /** The step's sandbox, holding the state the baseline describes. Cloned per task; never written to. */
   sandbox: string;
+  /**
+   * Admission for the project's suite (`src/suite-gate.ts`): at most as many suites at once as free memory
+   * holds. Typed structurally so this module takes no new import (HANDOFF §5: an import cycle here is a wrong
+   * number, not a crash). Absent means unlimited, which is what every caller but `runFix` wants.
+   */
+  suiteGate?: { run<T>(job: () => Promise<T>): Promise<T> };
   baseline: ChangeBaseline;
   /** The real project, for its own `tsc` and runner binaries and its `node_modules`. */
   projectDir: string;
@@ -834,7 +840,9 @@ export async function verifyChange(
           reported: boolean; ran: number; passed: number; regressed: string[]; vanished: number;
           message: string; ms: number;
         }> => {
-          const suite = await runSuite(sandbox, projectDir, opts.runner, timeouts.tests);
+          const suite = opts.suiteGate === undefined
+            ? await runSuite(sandbox, projectDir, opts.runner, timeouts.tests)
+            : await opts.suiteGate.run(() => runSuite(sandbox, projectDir, opts.runner, timeouts.tests));
           const passedNow = new Set(suite.passed_ids);
           const seenNow = new Set(suite.seen_ids);
           return {

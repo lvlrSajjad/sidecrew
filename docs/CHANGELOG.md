@@ -1,6 +1,11 @@
 # Changelog
 ## Unreleased — Phase 14d closed (STOP), ADR-0089 closed, and a new way of working
 
+- **Memory admission control for the #2a gate** (`src/suite-gate.ts`): the first baseline measures what one
+  project suite costs in memory, and the run admits only as many suites at once as that leaves room for —
+  generation still runs full width. A verdict under memory pressure or growing swap drops it to one suite,
+  and says *memory*, not *thermal*. On 25 Sep two project-a suites (~8.2 GB each) swapped the machine and
+  turned 9 of 11 candidates into timeouts.
 - **New gate rule `reflective_reference`: a change may not remove or rename a declaration that something
   reaches by reflection** — decorated (DI, ORM, scheduler), named as a string in another project file (a DI
   token, a lookup by name), or in a file a runtime glob loads (`*.entity{.ts,.js}`, `.js` globs matched to `.ts`

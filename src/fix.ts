@@ -31,6 +31,7 @@ import {
 } from "./change.js";
 import { billedWorkerTokens, discoverWorkers, portsFromEnv, PoolRss, runId, RUN_SEED, type WorkerEndpoint } from "./batch.js";
 import { planApiConcurrency, planConcurrency } from "./concurrency.js";
+import { measureFootprint, memoryBackOffReason, SuiteGate, suiteSlots } from "./suite-gate.js";
 import { baseUrlFor, readMemory, type Memory } from "./doctor.js";
 import { diffOf } from "./diff.js";
 import { apiModel, assertSupportedMachine, defaultKey, entry, modelForMachine, tierFor, type ModelEntry } from "./models.js";
@@ -842,6 +843,8 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
   // response to it (ADR-0025's baseline is a local-tier baseline).
   const baselineTok = tier === "api" ? null : await benchBaseline(model.key, opts.benchDir ?? RESULTS_DIR);
   const thermal = new ThermalGuard({ baseline: baselineTok?.tok_s ?? null, concurrency: concurrency.workers });
+  /** At most this many project suites at once; lowered by the first baseline's measured footprint and by memory back-off. */
+  const suites = new SuiteGate(concurrency.workers);
 
   /**
    * Who writes a candidate this run, resolved once.
@@ -903,9 +906,18 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
       // The baseline is captured once per step, in the sandbox the change will happen in (ADR-0046),
       // and re-captured here because step N+1's baseline is the project after step N landed.
       say(`step ${index + 1}/${plan.steps.length} "${step.name}": capturing the baseline`);
-      const captured = await captureBaseline(sandbox, {
+      // The first baseline is also the measurement of what one suite costs in memory (src/suite-gate.ts).
+      const measured = await measureFootprint(() => captureBaseline(sandbox, {
         projectDir, runner, tsconfig, timeouts: opts.timeouts, files: filesOfStep(step), compilerFlags,
-      });
+      }));
+      const captured = measured.result;
+      if (index === 0 && measured.footprint_gb !== null && mem !== null) {
+        const slots = suiteSlots(mem.free_gb, measured.footprint_gb);
+        if (suites.lower(slots)) {
+          say(`  memory: one suite measured at ${measured.footprint_gb.toFixed(1)} GB with ${mem.free_gb.toFixed(1)} GB free, ` +
+            `so ${suites.capacity} suite${suites.capacity === 1 ? "" : "s"} at a time (generation still runs ${concurrency.workers} wide)`);
+        }
+      }
       const baseline = captured.baseline;
       await writeJson(join(runDir, "baselines", `${index}.json`), baseline);
       first ??= baseline;
@@ -986,9 +998,12 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
             const gateStart = performance.now();
             const verdict = await verifyChange(current, candidate, {
               sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions, demoteTestTypeErrors, symbolGate,
-              timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
+              timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox, suiteGate: suites,
             });
             gate_ms += performance.now() - gateStart;
+            // Back off on memory by name (25 Sep: the thermal guard fired on swap and called it heat).
+            const memoryReason = memoryBackOffReason(verdict.machine);
+            if (memoryReason !== null && suites.lower(1)) say(`memory back-off: ${memoryReason} — one suite at a time from here`);
             await writeJson(join(runDir, "verdicts", `${safeName(current.task_id)}.json`), verdict);
             if (!staleBaselineWarned && crossesCalendarDay(verdict) === true) {
               staleBaselineWarned = true;
@@ -1050,7 +1065,7 @@ async function runFixUnchecked(planPath: string, opts: RunFixOpts): Promise<FixR
                 const g2 = performance.now();
                 const v2 = await verifyChange(corrected, c2, {
                   sandbox, baseline, projectDir, runner, tsconfig, compilerFlags, retryRegressions, demoteTestTypeErrors, symbolGate,
-                  timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox,
+                  timeouts: opts.timeouts, sandboxRoot: opts.sandboxRoot, keepSandbox: opts.keepSandbox, suiteGate: suites,
                 });
                 gate_ms += performance.now() - g2;
                 await writeJson(join(runDir, "verdicts", `${safeName(corrected.task_id)}.json`), v2);
