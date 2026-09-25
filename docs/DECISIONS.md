@@ -7187,3 +7187,47 @@ and a quality-when-passing `qᵢₖ`. Then:
 **The table** starts from priors (25 Sep's verdicts, Phase 11b, and probes P1–P3) and is updated from every
 gate verdict. It is data, not code: a JSON of `(category, executor) → Beta(α, β), cost, quality`, versioned,
 and reported beside any number it produced.
+
+## ADR-0095 — Triage: measure a request's size and complexity, split it, and label each part before routing
+
+**Status:** **proposed — the owner's idea, 25 Sep 2026**: *"to pick the right one or two candidates we must measure
+the size and the complexity of the problem … a request can be done by a simple CLI script even though it covers 100
+files … fixing a bug that can hardly be re-created is the philosopher's work … jobs can be split … maybe a skill is
+needed to make this distinction."* Feeds ADR-0094's routing rule; uses ROADMAP's capability ladder as its categories.
+
+### Size and complexity are different axes, and only complexity picks the level
+
+- **Size** — how many places change. Counted mechanically (`recon`, `query refs`, an affected-files graph). It
+  decides **cost** (a large batch amortises the fixed planning cost, ADR-0090 §1), never the level.
+- **Complexity** — how much judgement the outcome needs. A 100-file codemod is huge and L0; an intermittent bug may
+  be one line and is the philosopher's.
+
+### Complexity as mostly-checkable questions
+
+| question | answered by | pushes toward |
+|---|---|---|
+| can the end state be written as a predicate a machine checks (tsc clean, a lint rule clean, 0 references, a failing test that turns green)? | per category | yes → lower levels; no → the philosopher |
+| is there a deterministic transform (language-service rename, `eslint --fix`, a codemod)? | a lookup table | yes → L0 |
+| does each change fit inside one declaration or file? | the AST and the affected-files graph | yes → L1–L2; cross-cutting → L4–L5 |
+| a bug: can a test reproduce it? | an attempt to write one (L3–L4) | no, or intermittent → the philosopher |
+| is the intent clear? | the user's model, in one short turn | vague → ask the user |
+| hazards — reflection, public API, data migration? | the reflective guard (`src/reflection.ts`), export analysis | raises the level |
+
+### The output: a job card
+
+One request becomes a list of **parts**, each with its category, level, size, gate and confidence. Parts are routed
+independently by ADR-0094's rule; a part only the philosopher can do stays with it, and the rest go down the ladder.
+
+### How it is built — a tool and a skill
+
+- **`sidecrew triage`** (L0, free): measures the named scope and returns a compact card — counts per flag, reference
+  counts, files affected, whether tests exist, hazards found.
+- **A triage skill** for the user's model: how to turn the request plus that card into a job card, with the category
+  table. **One short turn** of the top model — the only step that needs it (interpreting the ask), on a compact input,
+  which is ADR-0094's "keep the philosopher's sessions short".
+
+### How it is checked before anything is routed by it (ADR-0091 tier 1)
+
+A labelled set of requests — the benchmark's historical commits carry their own gold category (ADR-0093) — scored on
+triage accuracy: category, level, and split. *Changes the plan if:* accuracy on level is below ~80 %, in which case the
+card needs more mechanical signals before a model is trusted with the split.

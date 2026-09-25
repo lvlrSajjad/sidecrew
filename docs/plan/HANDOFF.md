@@ -171,6 +171,9 @@ Start a fresh session with: *"Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/pl
    on the 7B's failures (the owner is downloading it: revision `6e302ea604ad…`, Apache-2.0, 17.2 GB — pin it in
    `src/models.json` and measure its RSS first).
 
+8. **ADR-0095 triage** (owner's idea): `sidecrew triage` (a mechanical card) and a triage skill for the user's model
+   (one short turn → a job card of parts, each routed by ADR-0094). Checked on labelled requests before use.
+
 **Done 25 Sep:** item 3 — memory admission control (`src/suite-gate.ts`; jest `--maxWorkers` still open, BACKLOG). Item 2 — the reflective-reference guard (`src/reflection.ts`, rule `reflective_reference`, planted traps). **Done 25 Sep:** item 1 — the dollar re-score (`experiments/planner-cost/results/dollars-2026-09-25.json`): cache reads,
 not output, are the largest planning cost.
 
