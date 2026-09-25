@@ -1,14 +1,21 @@
-# What stands between sidecrew and v1.0 — a brief for independent research
+# sidecrew — the ideal, what is built, and what stands between it and v1.0
+
+*A brief for independent research.*
 
 **Written 25 Sep 2026 by the session that built and measured Phase 14d, for a fresh researcher (Fable) to
 think about without the owner's or this session's opinions leading.** Every number here is labelled
 measured or estimated and cites where it lives. **My own recommendations are at the end, in their own
 section, so they can be argued with rather than inherited.**
 
-## 0. What the owner wants, and what v1.0 was defined to mean
+## 0. Our ideal — what the owner wants, and what v1.0 was defined to mean
 
-- **The vision** (`docs/plan/VISION.md`): *"do anything with the code that Opus does — the difference is the
-  way. Opus does the smart part, local models do the heavy lifting."* Opus plans; local MLX workers (a pinned
+- **The ideal, in the owner's words** (`docs/plan/VISION.md`): *"From outside, the user wants to change x, y,
+  z in their source code, and the change gets done with the same quality Opus itself would produce. From
+  inside, it is not just Opus — it is Opus with its local model employees."* And: *"do anything with the code
+  that Opus does — the difference is the way. Opus does the smart part, local models do the heavy lifting."*
+- **The loop the owner described** (20 Sep): Opus receives a task and plans a session to gather what it
+  needs; workers read and report; Opus asks the user where a machine cannot decide; workers act; the loop
+  repeats until a machine-checkable definition of *satisfied* is met. Opus plans; local MLX workers (a pinned
   Qwen2.5-Coder 7B) do the work; **a mechanical gate decides what Opus and the user ever see.** The owner's
   bar for the road to v1: *"even 90 % of what Opus does is a win."*
 - **The measure** (owner, 16 Sep): *"fewer tokens, faster, more precise"* than using Opus on its own.
@@ -25,20 +32,44 @@ Claude never sees raw worker output; determinism; a project is byte-for-byte int
 **no client code or name ever leaves the repository** (the two real projects are `project-a`, an unmodified
 commercial NestJS/jest service of ~2,160 files and 6,765 tests, and `project-b`, React/jest).
 
-## 1. Where the scorecard stands (25 Sep 2026)
+## 1. What has been built and measured (16–25 Sep 2026)
+
+**Built — one npm package, `sidecrew`, CLI + MCP server, published `v0.2.0` on npm with provenance and on the
+MCP Registry** (`docs/CHANGELOG.md`):
+
+| | what it is | status |
+|---|---|---|
+| local workers | a pinned MLX Qwen2.5-Coder 7B (and 14B), `serve`/`status`/`bench`, temperature 0, fixed seed, memory-aware; refuses below 24 GB installed | built (Phases 1, 13) |
+| workload #1 — unit tests | Opus plans function × test shape with one exemplar; a worker writes the test; gate: compiles ∧ passes ∧ kills a real mutant ∧ not tautological (Stryker for TS, Muter for Swift) | built and measured on real projects: **3/8, 4/8, 4/10** survival (Phases 2–9) |
+| workload #2a — behaviour-preserving changes | Opus plans grouped, ordered tasks; a worker returns whole files or single declarations; gate: diff confined ∧ `tsc` clean with none introduced ∧ every test that passed before still passes | built (Phases 10–12, 14c): the main workload |
+| the management side | change planner, ordered steps, a budgeted correction round, escalation queue, review queue, unattended mode, resume, a task→candidate cache | built (Phases 12, 13b) |
+| reach | symbol-scoped tasks, so a 4,000-line file is addressable one declaration at a time | built: **0.519 → 0.911** of a codebase by bytes (14c) |
+| safety | the project is fingerprinted before and after every job; sidecrew brings its own pinned Stryker; nothing is installed into a project | built (ADR-0088) |
+| retrieval (14d) | `recon` (errors per strictness flag), `query` (refs / unreferenced / sizes / diagnostics from the project's compiler), `read` (the 7B reads, claims admitted only by verified citation), a planner contract that uses them | built 24 Sep; being measured (§3) |
+
+**Measured against the status quo — Phase 11b** (the direct comparison with Opus, on renames): on project-a
+the 7B's output was **byte-identical to Opus's on 18 of 19 tasks**, and every task passed the gate
+(19/19); on project-b, **15/19** passed, 15/18 attributable to the worker. **0 worker tokens against
+80,131 and 95,335 Opus tokens** for the same tasks. The gate found no defect in Opus's own output. The verdict
+was **withheld by its own rule**: 19/19 renames is not a claim about harder shapes.
+
+**Measured on 25 Sep (night 1 of Phase 14d):** survival **9/11** and **32/45** on the base arm's dead-code and
+rename plans; planning cost in §3.
+
+## 2. Where the scorecard stands (25 Sep 2026)
 
 | | bar | now | status |
 |---|---|---|---|
 | Reach | ≥ 0.90 of a codebase by bytes a task may touch | **0.911** (measured, 14c, ADR-0086) | met |
 | Shapes | ≥ 4 of 5 behaviour-preserving shapes at a usable rate | **1 of 5 formally** (20 Sep); since then indicative only — see §4 | open |
-| Cost | `R ≤ 1.0` at `N = 12` | **2.07** with retrieval, 2.68 without (measured 25 Sep, harness-normalised; §2) | **far off** |
+| Cost | `R ≤ 1.0` at `N = 12` | **2.07** with retrieval, 2.68 without (measured 25 Sep, harness-normalised; §3) | **far off** |
 | Trust | `D ≤ 0.02`, or diagnosed | `D` diagnosed as the project suite's own flake rate (ADR-0084), mitigated by re-reading regression-only failures | met by diagnosis |
-| ADR-0089 | closed | **closed by option F on 25 Sep** (branch `adr-0089`); published workload #1 rates still to be re-scored under it | nearly |
+| ADR-0089 | closed | **closed by option F on 25 Sep** (branch `adr-0089`); published workload #1 rates still to be re-scored under it (§7) | nearly |
 
 *Pending tonight (night 2 of Phase 14d):* the retrieval arm at `N ≈ 40` and the quality veto. `R₁` at
 `N ≈ 12` is already fixed by the planner transcripts; tonight decides only whether the veto fires first.
 
-## 2. Challenge 1 — planning costs more than the work it plans, on small jobs
+## 3. Challenge 1 — planning costs more than the work it plans, on small jobs
 
 **Measured** (`experiments/planner-cost/`, `prompts/phase-14d-retrieval.md`, ADR-0090):
 
@@ -63,19 +94,20 @@ cost structure? What is the honest way to change a frozen bar? Which levers atta
 a cheaper planner model, a machine-generated plan for predicate-shaped jobs, a much shorter planner
 contract, routing small jobs to Opus directly? What does the curve look like between `N = 12` and 40?
 
-## 3. Challenge 2 — wall-clock: the gate runs the whole suite per candidate
+## 4. Challenge 2 — wall-clock: the gate runs the whole suite per candidate
 
 **Measured:** on `project-a`, the gate is **~260–280 s per candidate** (the project's full 6,765-test
 suite), generation 13–40 s; a night gated **~11 tasks/hour** (`N ≈ 40` arm: 45 tasks in 4 h 09 m).
 **Estimated, not measured:** Opus making the same mechanical edits directly takes ~0.5–1 min each plus one
-suite run — so sidecrew is **roughly 4–8× slower** in wall-clock. No head-to-head of that exact kind exists.
+suite run — so sidecrew is **roughly 4–8× slower** in wall-clock. Phase 11b compared *output and tokens*
+with Opus directly (§1); **no wall-clock head-to-head has been measured.**
 
 **Open questions:** Can the gate run only affected tests (jest `--findRelatedTests`, an import graph) without
 losing soundness — dynamic imports, DI containers and entity globs hide dependencies? Can candidates be
 batched into one suite run and bisected on failure? Is "faster" even the right promise, when the owner's
 measure said *"faster as the user feels it"* — parallel, unattended — rather than per task?
 
-## 4. Challenge 3 — which work sidecrew can do at all
+## 5. Challenge 3 — which work sidecrew can do at all
 
 **Behaviour-preserving (workload #2a)** — *measured*:
 - `rename`, `unused_import`: survive well (Phase 11). `unused_import` barely exists on project-a.
@@ -97,7 +129,7 @@ approves it, another worker makes it pass). **Measured: the 7B wrote a usable te
 the oracle? Which model should write specification tests — and does that break the zero-token premise?
 Should v1 promise features at all?
 
-## 5. Challenge 4 — the local model as a reader
+## 6. Challenge 4 — the local model as a reader
 
 **Measured / observed on 25 Sep** (construction probes and the planner reports, not a rate):
 - The 7B's quotes only verified after layout was tolerated; then **2 of 6 admitted claims said more than
@@ -114,7 +146,7 @@ Opus tokens to dollars.
 persistent graph be the "cache the reading across runs" lever (14d′'s second half) without serving stale
 answers (ADR-0065's key discipline)?
 
-## 6. Challenge 5 — gate integrity and operational hazards
+## 7. Challenge 5 — gate integrity and operational hazards
 
 - **ADR-0089** (workload #1): a test that only checks type or existence used to survive. Found on 25 Sep
   that the real hole was **crash kills** — a test that merely calls the function kills every mutant that
@@ -128,7 +160,7 @@ answers (ADR-0065's key discipline)?
   infrastructure (BACKLOG, needs an ADR).
 - **Machine-failure handling** in measurements was underspecified and had to be decided mid-run (dated notes).
 
-## 7. Challenge 6 — the measurement programme itself
+## 8. Challenge 6 — the measurement programme itself
 
 - Frozen decision rules have kept the numbers honest, and they have also produced a v1 bar that the
   arithmetic now says the current design cannot meet. Is there a principled way to revise a bar without it
@@ -137,7 +169,7 @@ answers (ADR-0065's key discipline)?
   prompt cache that lowered `P_total`; a shared scratchpad between arms. Each was caught and noted before the
   number it affected. What would make the next measurement correct by construction?
 
-## 8. What the owner is asking for
+## 9. What the owner is asking for
 
 Research and thinking, not code. Specifically:
 
@@ -151,7 +183,7 @@ Research and thinking, not code. Specifically:
 6. **Wall-clock:** is a faster gate possible without weakening what it guarantees?
 7. **What would make you conclude the design should change shape**, rather than be tuned?
 
-## 9. This session's own recommendations — to be challenged, not adopted
+## 10. This session's own recommendations — to be challenged, not adopted
 
 - **Route by size.** A cheap `recon`/`query` pass estimates `N` before planning; below ~30–40 tasks, hand the
   job to Opus directly. sidecrew is for large, mechanical, verifiable batches, and should say so.
