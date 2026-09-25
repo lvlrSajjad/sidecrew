@@ -7087,3 +7087,23 @@ to Opus alone, or higher.
 - **The missing instrument is a benchmark**: a representative set of real requests on outside projects, with
   an Opus-alone arm, an Opus judge, and dollar accounting. Everything in this ADR is measured on it, once, at
   tier 3 (ADR-0091); everything before it is tier 0–2.
+
+### ADR-0093 addendum 2, 25 Sep 2026 — how v1 is approached, and where each claim applies (owner)
+
+- **0.x climbs a capability ladder, each rung claimed only when measured.** The owner: *"we will be honest on
+  what each version 0.x delivers — x delivers only writing tests, y can also fix linter errors, z can find and
+  fix Sonar issues, … omega can add a whole new module."* Features and bug fixes are **categorised and
+  grouped** — most are not unique — and each category is a rung with its own gate and its own measured bar;
+  **the uncategorised bug or feature is the last rung, and v1's.** `docs/plan/ROADMAP.md` carries the ladder.
+- **The cost claim is scoped to where it is true: large batch jobs.** The owner: *"maybe we claim the batch jobs
+  like fixing all tsc errors across a 250k LOC project."* Small requests are stated as costing about what Opus
+  alone does, verified; **the 50 % bar applies to batch jobs**, named by size, and the release notes say which.
+- **Opus reviews the final diff as part of the method** — the owner's intent for *"judged by Opus"*: a last pass
+  that flags or fixes what the pipeline got wrong. It is a product step, and its tokens count against the cost
+  bar, so it is targeted (flagged and low-confidence changes plus an audit sample, as workload #1's review queue
+  already does), not a full re-read.
+- **Measuring against Opus-alone uses an objective oracle first, a judge second.** The benchmark is built from
+  **real historical changes in outside open-source TypeScript projects** (owner, agreeing): the commit's intent
+  is the request, and **the commit's own tests are a held-out oracle** neither arm sees — no judge bias at all
+  where they exist. A blind Opus judge, with its noise measured by judging Opus-alone against a second
+  Opus-alone run, is used only where the commit carries no test.

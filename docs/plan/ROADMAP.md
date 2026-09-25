@@ -450,3 +450,24 @@ generated tests encoding the client's business rules and remain client IP with t
   its position here. It stays not-next until option D has a number.
 - **More languages.** Python and Kotlin multiply the surface before the shape is proven.
 - **More agents.** `VISION.md`: a role earns its place by removing Opus tokens. None currently does.
+
+
+## The capability ladder to v1.0 — owner, 25 Sep 2026 (ADR-0093)
+
+**v1.0** = sidecrew does what Opus alone does — any feature, any bug, any batch job — at **≥ 80–90 % of
+Opus-alone's success** on a benchmark of real requests, for **≤ 50 % of its dollars on batch jobs**, reproducing
+on outside projects. **v2** = as fast as Opus alone. **v3** = quality equal to Opus alone or higher.
+
+Until then each **0.x** release claims only the rungs it has measured, and says so. The rungs are categories of
+work, each with its own gate, grouped because most features and bugs are not unique:
+
+| rung | category | gate a machine can run | status |
+|---|---|---|---|
+| 1 | write unit tests for existing code | compiles ∧ passes ∧ kills a real mutant ∧ not tautological (ADR-0089) | built, measured (3/8, 4/8, 4/10; re-score under F owed) |
+| 2 | behaviour-preserving cleanups: renames, dead code, unused imports | confined ∧ `tsc` clean ∧ every passing test still passes | built, measured |
+| 3 | lint and compiler-flag fixes (`--noUnusedLocals`, `--noImplicitReturns`, …) | rung 2's gate + the linter/compiler flag clean | recon measured +282 on project-a, 95 % in source; not yet run |
+| 4 | static-analysis findings (Sonar-style rules) | rung 3's gate + the analyser's rule clean | proposed |
+| 5 | type-strictness migrations (`--strictNullChecks`) | rung 2's gate, test-file type errors demoted (ADR-0077 B) | 25/83 per declaration (14c′) |
+| 6 | categorised bug fixes (a reproducing test exists or can be written) | the reproducing test goes red → green ∧ nothing regresses | not built (ADR-0082) |
+| 7 | categorised features (a spec test Opus writes, the user approves) | spec test red → green ∧ mutation-sensitive ∧ held-out test ∧ nothing regresses | not built |
+| 8 | **any** bug, **any** feature, a whole new module | rung 7's gate, uncategorised | v1.0 |
