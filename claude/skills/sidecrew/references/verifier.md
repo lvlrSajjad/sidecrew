@@ -1,6 +1,8 @@
 # Reading a Verdict
 
-Survive ⇔ `compile_ok ∧ pass_ok ∧ ¬tautological ∧ mutation.killed ≥ 1`. `src/schemas.ts` enforces that as
+Survive ⇔ `compile_ok ∧ pass_ok ∧ ¬tautological ∧ mutation.killed ≥ 1`, where the kill must be something
+other than `body_mutant_id` — the mutant that empties the whole function (ADR-0089; a type-only assertion
+kills that one and nothing else). `src/schemas.ts` enforces that as
 an iff, so a `Verdict` whose `survived` disagrees with its own fields does not parse.
 
 | stage | what ran | fail means |

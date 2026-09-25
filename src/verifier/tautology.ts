@@ -22,6 +22,7 @@ export type TautologyCode =
   | "constant_assertions"
   | "self_comparison"
   | "snapshot_only"
+  | "type_only_assertions"
   | "function_never_called"
   | "copied_exemplar";
 
@@ -209,7 +210,7 @@ interface Assertion {
   matcher: string;
   /** The matcher's own argument text, or null for a matcher called with none. */
   expected: string | null;
-  kind: "meaningful" | "constant" | "self" | "snapshot";
+  kind: "meaningful" | "constant" | "self" | "snapshot" | "type_only";
   /** The call site as written, for the message the retry reads. Set by the Swift scanner only. */
   text?: string;
 }
@@ -340,8 +341,24 @@ function classifySwift(name: string, subject: string, expected: string | null, c
   return "meaningful";
 }
 
+/**
+ * ADR-0089 option A: an assertion about a value's **type or existence** rather than the value. Every one
+ * of these holds for any function that returns something of the right shape, so a test made only of them
+ * kills nothing but the mutant that empties the body — which option B no longer counts. This is the cheap
+ * first line that says so before a mutation run is spent; it misses the same move written another way,
+ * which is why B is the rule and this is the early warning.
+ */
+const TYPE_ONLY_MATCHERS = new Set(["toBeDefined", "toBeInstanceOf"]);
+const isTypeOnly = (subject: string, matcher: string, expected: string | null): boolean => {
+  const s = normalise(subject);
+  if (TYPE_ONLY_MATCHERS.has(matcher)) return true;
+  if (EQUALITY_MATCHERS.has(matcher) && /^typeof\b/.test(s)) return true;
+  return EQUALITY_MATCHERS.has(matcher) && /\binstanceof\b/.test(s) && normalise(expected ?? "") === "true";
+};
+
 function classify(subject: string, matcher: string, expected: string | null): Assertion["kind"] {
   if (SNAPSHOT_MATCHERS.has(matcher)) return "snapshot";
+  if (isTypeOnly(subject, matcher, expected)) return "type_only";
   if (isConstantExpression(subject) && (expected === null || isConstantExpression(expected))) return "constant";
   if (expected !== null && EQUALITY_MATCHERS.has(matcher) && normalise(subject) === normalise(expected)) return "self";
   return "meaningful";
@@ -421,7 +438,7 @@ export function analyseTautology(
   if (found.length === 0) {
     findings.push({ code: "no_assertions", message: "the test makes no assertions at all", line: 1 });
   } else if (meaningful === 0) {
-    for (const kind of ["constant", "self", "snapshot"] as const) {
+    for (const kind of ["constant", "self", "snapshot", "type_only"] as const) {
       const first = found.find((a) => a.kind === kind);
       if (!first) continue;
       findings.push({ code: CODE_FOR[kind], message: MESSAGE_FOR[dialect][kind](first, functionName), line: at(first.index) });
@@ -431,7 +448,7 @@ export function analyseTautology(
   return { tautological: findings.length > 0, assertions: found.length, meaningful, findings };
 }
 
-const CODE_FOR = { constant: "constant_assertions", self: "self_comparison", snapshot: "snapshot_only" } as const;
+const CODE_FOR = { constant: "constant_assertions", self: "self_comparison", snapshot: "snapshot_only", type_only: "type_only_assertions" } as const;
 
 type Message = (a: Assertion, fn: string) => string;
 
@@ -439,7 +456,7 @@ type Message = (a: Assertion, fn: string) => string;
  * One set per dialect, because the message is read by a worker model on its single retry and the
  * fastest way to waste that retry is to quote it syntax from a language it is not writing.
  */
-const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Message>> = {
+const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot" | "type_only", Message>> = {
   typescript: {
     constant: (a, fn) =>
       `every assertion is constant — \`expect(${normalise(a.subject)})\` holds whatever ${fn} does`,
@@ -447,6 +464,9 @@ const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Mess
       `every assertion compares a value with itself — \`expect(${normalise(a.subject)}).${a.matcher}(${normalise(a.expected ?? "")})\` cannot fail`,
     snapshot: (a, fn) =>
       `the only assertions are snapshots, which pin whatever ${fn} returns today rather than what it should return`,
+    type_only: (a, fn) =>
+      `every assertion checks a type or that a value exists — \`expect(${normalise(a.subject)}).${a.matcher}(…)\` holds ` +
+      `for any ${fn} that returns something of that shape. Assert on the value itself (ADR-0089)`,
   },
   swift: {
     constant: (a, fn) =>
@@ -457,6 +477,9 @@ const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Mess
     // that adding a snapshot library to the matcher list is a one-line change rather than a branch.
     snapshot: (a, fn) =>
       `the only assertions are snapshots, which pin whatever ${fn} returns today rather than what it should return`,
+    // Unreachable today: the Swift scanner does not classify type-only assertions (ADR-0089 A is TS-first).
+    type_only: (a, fn) =>
+      `every assertion checks a type or that a value exists — \`${a.text ?? normalise(a.subject)}\` holds for any ${fn} that returns something`,
   },
 };
 
@@ -466,4 +489,70 @@ const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot", Mess
  */
 export function isTautological(source: string, functionName: string, language = "typescript"): boolean {
   return analyseTautology(source, functionName, language).tautological;
+}
+
+/**
+ * **ADR-0089 option F.** The candidate with every assertion taken out and every call it makes left in:
+ * `expect(X).….matcher(Y)` becomes `void (X)`, `assert.m(A, B)` becomes `void (A)`, and
+ * `expect.assertions(n)` / `expect.hasAssertions()` become `void 0`, so the stripped file asserts nothing
+ * and still passes on the original code.
+ *
+ * Run through mutation, the stripped test can only kill a mutant by **throwing** — it checks no value.
+ * So every mutant it kills is one the candidate killed by a crash, not by an assertion, and a kill of that
+ * kind is not evidence about what the function returns (the 25 Sep finding: the type-only test's one
+ * kill was `normalize("")`, which makes the function throw).
+ *
+ * Two shapes are deliberately kept as calls rather than values: `.resolves` becomes `(X)` so an awaited
+ * rejection still surfaces as a crash, and `.rejects` becomes `Promise.resolve(X).catch(() => undefined)`
+ * so an expected rejection does not become one. A `toThrow` subject is a function, and `void (fn)` does
+ * not call it — which is right: a mutant that stops throwing is caught by the assertion, not by a crash.
+ * TypeScript dialect only; the Swift verifier has no second pass and records no crash kills.
+ */
+export function stripAssertions(source: string): string {
+  const masked = mask(source, "typescript");
+  const edits: { from: number; to: number; text: string }[] = [];
+  const call = /\b(expect|assert)\b\s*(?:\.\s*([A-Za-z_$][\w$]*))?\s*\(/g;
+  for (let m = call.exec(masked); m !== null; m = call.exec(masked)) {
+    const open = m.index + m[0].length - 1;
+    const args = balanced(masked, open);
+    if (!args) continue;
+    const inner = source.slice(open + 1, args.end);
+    if (m[1] === "expect" && m[2] !== undefined && EXPECT_STATICS.has(m[2])) {
+      if (m[2] === "assertions" || m[2] === "hasAssertions") edits.push({ from: m.index, to: args.end + 1, text: "void 0" });
+      call.lastIndex = args.end;
+      continue;
+    }
+    if (m[1] === "assert") {
+      const first = splitArgs(inner)[0] ?? "undefined";
+      edits.push({ from: m.index, to: args.end + 1, text: `void (${first})` });
+      call.lastIndex = args.end;
+      continue;
+    }
+    // expect(X) and its chain, up to and including the matcher's own call.
+    let i = args.end + 1;
+    let end = args.end + 1;
+    const links: string[] = [];
+    for (;;) {
+      const link = /^\s*\.\s*([A-Za-z_$][\w$]*)/.exec(masked.slice(i));
+      if (!link) break;
+      links.push(link[1] ?? "");
+      i += link[0].length;
+      const after = /^\s*\(/.exec(masked.slice(i));
+      if (after) {
+        const callArgs = balanced(masked, i + after[0].length - 1);
+        if (callArgs) end = callArgs.end + 1;
+        break;
+      }
+      end = i;
+      if (!MODIFIERS.has(link[1] ?? "")) break;
+    }
+    const text = links.includes("resolves") ? `(${inner})`
+      : links.includes("rejects") ? `Promise.resolve(${inner}).catch(() => undefined)`
+      : `void (${inner})`;
+    edits.push({ from: m.index, to: end, text });
+    call.lastIndex = end;
+  }
+  let out = source;
+  for (const e of edits.sort((a, b) => b.from - a.from)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  return out;
 }

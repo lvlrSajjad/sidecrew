@@ -23,6 +23,8 @@ const SKILL = read("claude/skills/sidecrew/SKILL.md");
 describe("references/verifier.md", () => {
   it("states the survival rule the schema enforces", () => {
     expect(VERIFIER).toContain("compile_ok ∧ pass_ok ∧ ¬tautological ∧ mutation.killed ≥ 1");
+    // ADR-0089: and the kill is not the whole-body removal, which any existence check kills.
+    expect(VERIFIER).toContain("body_mutant_id");
   });
 
   it("states the mutation-score formula, and says which one it is not", () => {
