@@ -47,6 +47,7 @@ out = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else \
     f"experiments/planner-cost/results/result-14d-{date}.json"
 plans = Path("experiments/planner-cost/plans")
 dirs = json.load(open(plans / f"run-14d-{date}-dirs.json"))
+# `regate-<arm>` entries are the once-only quiet re-gates of machine failures (prompt note, 25 Sep ~05:30).
 ARMS = ["base-n12", "retr-n12", "base-n40", "retr-n40"]
 
 
@@ -55,22 +56,48 @@ def tasks_of(arm):
     return plan, [t["task_id"] for s in plan["steps"] for t in s["tasks"]]
 
 
-def survivors(arm, ids):
-    run = dirs.get(arm) or ""
-    if run == "":
-        return 0, {"missing_run": True}
-    verdicts = {}
+def verdicts_of(run):
+    out = {}
+    if not run:
+        return out
     for f in sorted((Path(".sidecrew/runs") / run / "verdicts").glob("*.json")):
         v = json.load(open(f))
-        verdicts.setdefault(v["task_id"].split("#")[0], []).append(v)
-    k = sum(1 for t in ids if any(v["survived"] for v in verdicts.get(t, [])))
+        out.setdefault(v["task_id"].split("#")[0], []).append(v)
+    return out
+
+
+def machine_failed(vs):
+    return bool(vs) and all(v.get("machine_failure") for v in vs)
+
+
+def survivors(arm, ids):
+    """(k, n, facts): a machine-failed task takes its re-gate's verdict; failing again, it leaves n."""
+    run = dirs.get(arm) or ""
+    if run == "":
+        return 0, len(ids), {"missing_run": True}
+    first = verdicts_of(run)
+    regate = verdicts_of(dirs.get(f"regate-{arm}") or "")
+    k, n, first_pass_mf, still_mf = 0, 0, 0, 0
+    for t in ids:
+        vs = first.get(t, [])
+        if machine_failed(vs):
+            first_pass_mf += 1
+            vs = regate.get(t, [])
+            if machine_failed(vs) or not vs:
+                still_mf += 1
+                continue
+        n += 1
+        k += any(v["survived"] for v in vs)
     result = json.load(open(Path(".sidecrew/runs") / run / "result.json"))
-    return k, {
+    return k, n, {
+        "first_pass_machine_failures": first_pass_mf,
+        "excluded_after_regate": still_mf,
+        "first_pass_survived": sum(1 for t in ids if any(v["survived"] for v in first.get(t, []))),
         "combined_regressions": result["project"]["combined_regressions"],
         "errors_before": result["project"]["errors_before"],
         "errors_after": result["project"]["errors_after"],
         "machine_failures": result["stats"].get("machine_failures"),
-        "tasks_without_verdict": sum(1 for t in ids if t not in verdicts),
+        "tasks_without_verdict": sum(1 for t in ids if t not in first),
     }
 
 
@@ -91,7 +118,7 @@ for arm in ARMS:
         sys.exit(f"set T_{arm.upper().replace('-', '_')} to that planner's subagent transcript")
     d = decompose.decompose(transcript)
     n = len(ids)
-    k, run = survivors(arm, ids)
+    k, n_gated, run = survivors(arm, ids)
     shared = first_cache_read(transcript)
     normalised = d["P_total"] + shared
     rows[arm] = {
@@ -108,12 +135,13 @@ for arm in ARMS:
         "shapes": {s: sum(1 for st in plan["steps"] for t in st["tasks"] if t.get("shape") == s)
                    for s in {t.get("shape") for st in plan["steps"] for t in st["tasks"]}},
         "survived": k,
+        "gated": n_gated,
         "run": run,
     }
 
 void = [a for a in ("base-n12", "base-n40") if rows[a]["retrieval_calls"] > 0]
-s0 = rate(rows["base-n12"]["survived"] + rows["base-n40"]["survived"], rows["base-n12"]["N"] + rows["base-n40"]["N"])
-s1 = rate(rows["retr-n12"]["survived"] + rows["retr-n40"]["survived"], rows["retr-n12"]["N"] + rows["retr-n40"]["N"])
+s0 = rate(rows["base-n12"]["survived"] + rows["base-n40"]["survived"], rows["base-n12"]["gated"] + rows["base-n40"]["gated"])
+s1 = rate(rows["retr-n12"]["survived"] + rows["retr-n40"]["survived"], rows["retr-n12"]["gated"] + rows["retr-n40"]["gated"])
 r1 = rows["retr-n12"]["R"]
 
 if s0["n"] < 20 or s1["n"] < 20:
@@ -156,4 +184,4 @@ Path(out).write_text(json.dumps(report, indent=2, ensure_ascii=False))
 print(json.dumps({k: report[k] for k in ("R1_at_N12", "R0_at_N12", "S0", "S1", "veto", "fork", "void_base_transcripts")}, indent=2, ensure_ascii=False))
 for arm in ARMS:
     r = rows[arm]
-    print(f"{arm:9s} N={r['N']:3d} P_total={r['P_total']:>8,} (+{r['harness_from_sibling_cache']:,}) R={r['R']} (as measured {r['R_as_measured']}) survived={r['survived']} retrieval_calls={r['retrieval_calls']}")
+    print(f"{arm:9s} N={r['N']:3d} P_total={r['P_total']:>8,} (+{r['harness_from_sibling_cache']:,}) R={r['R']} (as measured {r['R_as_measured']}) survived={r['survived']}/{r['gated']} retrieval_calls={r['retrieval_calls']}")
