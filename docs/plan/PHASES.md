@@ -34,7 +34,7 @@ you update when finished. Don't start N+1 until N's DoD is met.
 | **14b** | **The editing ceiling: is it the model or the task?** — two probes on §2.2's declared task set | ✅ **`S₁₄ = 2/30`, both probes < 0.10 → PROCEED to 14c.** Neither: the workers do the work, the gate cannot credit it (**ADR-0077**, proposed) | **one evening · needs the machine** · no build, no version. Decides whether "any shape of change" is reachable at all |
 | **14c** | **The reach: symbol-scoped return** (ADR-0075 option C) — half a codebase is currently unaddressable | ✅ **23 Sep: `Reach` 0.519 → 0.911; `S_big` 0/9 vs `S_small` 1/18, intervals overlap → INSERT `14c′`** (ADR-0087). The worker clears the same share of errors on either side (0.304 vs 0.307); the change's size binds, not the file's · `v0.2.0` **held** (owner, 23 Sep) |
 | **14c′** | **A big change is not a big file** — inserted by 14c's frozen rule | ✅ **24 Sep: `S′_big` 15/41 [0.221, 0.531] vs `S′_small` 10/42 [0.121, 0.395]; safety clean → PROCEED to 14d.** Intervals overlap and the big arm's reaches below 0.30, so *usable* is a direction. Same 27 files as 14c: 1/27 → 25/83 once the unit is one declaration · `v0.2.0`: the owner's call, and the rule recommends cutting |
-| **14d** | **Retrieval: local models read the codebase** — the other half of the vision | 🟡 **built, 24 Sep; the measurement waits for a night.** ADR-0090 (relevance: *admitted, never judged*), exit check frozen (`prompts/phase-14d-retrieval.md`), and all of §4: `sidecrew recon` (ADR-0079 A), `sidecrew query`, `sidecrew read`, the planner's §1′. **Found:** the fixed cost is ~⅓ reading and ~½ Opus's own output, so removing all reading gives `R` = 1.88 at `N = 12` — ADR-0090 §5 waits on the owner · **cut `v1.0.0`** | 3–4 sessions · **one overnight run** (sized: ~5 h gated, after 02:05) |
+| **14d** | **Retrieval: local models read the codebase** — the other half of the vision | ✅ **25 Sep: STOP by the frozen rule — `R₁` = 2.07 at `N = 11` (> 2.0); prediction (1.5, 2.3) held.** Retrieval cut planning ~23 % at `N ≈ 12`; both arms pay near `N ≈ 40` (0.73, 0.80). Veto not computed — it cannot change the row (ADR-0091). Built: ADR-0090, `recon`, `query`, `read`, planner §1′. **What v1.0 means is now the owner's open decision** (V1-CHALLENGES §11) | `prompts/phase-14d-retrieval.md` § *The result* |
 | 15 | Workload #2b: behaviour-changing changes | 🔷 proposed · **post-1.0** · **ADR-0082 gives it a candidate oracle for the first time** | ADR-0031 options B/C · the remaining slice of the 90 %, and the one nothing measured so far says anything about. **ADR-0082 (proposed, 21 Sep) is the missing instrument**: a test written to the *expected* behaviour, by the worker, before the change. Needs its option D measured first |
 | 16 | Python + Kotlin verifiers | ⬜ | (write when publish is done) |
 | 17 | The edge ideas: fine-tune on survivors, worker pooling, two-model agreement | 🔷 proposed | `BACKLOG.md` § *The edge ideas* |
@@ -1056,6 +1056,13 @@ below are the order in which its parts become true**, not a list of features:
    says what the user meant — which stays human, but lands on a ten-line artefact instead of a diff.
 
 ### Every phase ends with an exit check, and the fork is named before the phase runs
+
+> **From 25 Sep 2026, every exit check names its measurement tier (ADR-0091).** While the design is moving, a
+> phase exits on a **tier-1 probe** (5–10 tasks, 10–60 min, labelled *indicative*); a night-long frozen run
+> (tier 3) is spent only on a number that will be published or on a release claim, and a run that cannot
+> change a decision is not run. **And the executor for any piece of work is chosen by ADR-0092's ladder** —
+> a mechanical tool where one is exact, then the 7B, then a cheaper Claude model, then Opus — with the gate
+> judging every rung.
 
 **The owner's process decision, 20 Sep 2026.** A phase does not simply finish. It ends by
 re-measuring the scorecard below and applying a rule that was **written before the phase started**,

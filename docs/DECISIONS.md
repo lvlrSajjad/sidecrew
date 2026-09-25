@@ -6836,3 +6836,95 @@ combined 7/16 → 5/16; project-a's first module and project-b are unaffected. A
 killed id was, so the next re-score is exact rather than a bound — option B needs that field anyway,
 because "a kill other than the whole-body removal" is a statement about mutators. The recommendation
 stays **B, with A as the detector's first line**, and the owner still picks.
+
+## ADR-0091 — Measure cheaply while the design is moving; spend a night only on a claim
+
+**Status:** **accepted — the owner's proposal, 25 Sep 2026** · applies from Phase 14d's close onward · bears on
+every phase exit check (PHASES.md § *Every phase ends with an exit check*)
+
+### The owner's words
+
+> We do lengthy and expensive night runs to prove and measure things we don't know, and the measurements
+> may end up stale and obsolete, as we are in early phases of this project, not the final phases where the
+> philosophy is actually achieved. How about cheaper ways to measure during these phases, and only add
+> expensive measurements and runs when it's necessary? That boosts our development speed. […] maybe we gain
+> that value by a 10 min run, or a 20 min run.
+
+### Why this is right, from this week's own record
+
+- **Expensive numbers went stale fast.** 20 Sep's plans were obsolete after three gate changes; the planner
+  model changed between 20 and 25 Sep (`claude-opus-5` → `claude-opus-5-5`); night 1 of 14d lost most of an
+  arm to a machine defect rather than to the question asked.
+- **Cheap work predicted the expensive answer.** ADR-0090 §1's arithmetic on existing transcripts put
+  retrieval's ceiling at `R` = 1.88 and the prediction at (1.5, 2.3); the night measured 2.07.
+- **The week's most useful findings came from probes, not nights** — the crash-kill hole (ADR-0089), the
+  7B's quoting, the swap cause, the classifier bug — each in minutes.
+
+### The tiers
+
+| tier | what | cost | may decide |
+|---|---|---|---|
+| **0** | arithmetic on existing transcripts, results and run directories | minutes – hours | what to try next |
+| **1** | a **probe**: 5–10 tasks, one pass, a pinned clone, daytime; `k/n` with its interval, labelled *indicative* | **10–60 min** | to drop an idea, or to promote it |
+| **2** | a **replay**: re-gate stored candidates, no worker | ~1–2 h | whether a gate change moves verdicts |
+| **3** | a **frozen run**: a rule written first, the full task set, a night | a night | a **published** number or a **release** claim |
+
+### The rules that keep it honest
+
+1. **A probe decides direction; only a tier-3 run decides a claim.** A tier 0–2 number is labelled
+   *indicative* wherever it appears and never goes in the README, a release note or the scorecard.
+2. **Every probe writes one line before it runs** — what result would change the plan — in the commit or the
+   prompt file. It costs nothing and keeps a probe from becoming a story told after the fact.
+3. **Escalate to tier 3 only when** the number will be published or quoted, a release gate needs it, or a
+   probe's interval straddles the line being decided.
+4. **A run that cannot change a decision is not run.** Phase 14d's second night was dropped on this rule: both
+   branches of its fork led to STOP.
+5. **Every phase's exit check names its tier.** Most exploration phases are tier 1; a release is tier 3.
+
+## ADR-0092 — Mechanical first, never mechanical only: who does a piece of work
+
+**Status:** **accepted in principle — the owner's proposal, 25 Sep 2026; the rules below are proposed and are
+refined as probes (ADR-0091 tier 1) test them** · bears on VISION.md's *"smart and heavy is the split"*, ADR-0076,
+ADR-0090, and the independent analysis's deterministic-executor finding
+
+### The owner's words
+
+> We don't have to do things with either the 7B or Claude models. Building or finding mechanical tools for
+> some purposes may save tokens on both sides — for example an AST tool to see what files may get affected
+> by changing this file. Any time something can be mechanised we should do it, since those are often more
+> reliable than any model or even any human. But we must avoid over-mechanising: that also makes us lose
+> accuracy or limits us. There should be rules — like whether Opus has to do the planning, or Opus can do x
+> itself, or Opus can do it using a cheaper model.
+
+### The ladder — the cheapest executor that is trustworthy for *this* question wins
+
+| rung | who | use it when | examples here |
+|---|---|---|---|
+| **1** | **a mechanical tool** | the question has an exact answer a deterministic tool computes, and its blind spots are known | `tsc` (recon, diagnostics), the TypeScript language service (`query refs`, rename), import graphs ("what does changing this file affect"), ESLint `--fix`, file sizes |
+| **2** | **the local 7B** | the edit is bounded and gateable but not codified — judgement inside one declaration | deleting a dead declaration, a null guard in one method |
+| **3** | **a cheaper Claude model** (Haiku, Sonnet) | judgement is needed, it is bounded, and its output is checkable | a reader or a specification-test writer — **priced in dollars, and a worker role here needs non-negotiable #1 revisited by its own ADR** |
+| **4** | **Opus** | planning, asking the user, work with no gate, and jobs so small that coordinating costs more than doing | a one-file change: Opus edits and **sidecrew still verifies** |
+
+**Whoever does the work, the gate still judges it.** A mechanical answer is not exempt: a compiler-backed
+rename still goes through `tsc` and the suite.
+
+### When not to mechanise — the over-mechanising rules
+
+1. **Mechanise only where the tool is exact for the question asked.** A reference count is exact about
+   static references and **blind to reflection** (DI tokens, entity globs, `this[name]`): there its answer is a
+   *candidate*, never a verdict — the planners of 25 Sep refused tasks on exactly that, and the reflective
+   guard (V1-CHALLENGES §11) is the mechanical half of that judgement.
+2. **Name every blind spot where the answer is shown**, the way `query unreferenced` marks `DECORATED`.
+3. **Never encode judgement as heuristics.** `deriveLineRange`'s regex scanner was patched four times before
+   it was replaced by the compiler (ADR-0076): when a rule keeps growing special cases, it wanted a real tool
+   or a model, not a fifth pattern.
+4. **No tool for a one-off.** Mechanise what recurs across jobs.
+5. **Every mechanical path keeps a fallback** to the next rung when the tool refuses or cannot answer.
+
+### What it changes next
+
+The independent analysis's deterministic-executor probe (the TypeScript language service for renames, ESLint
+`--fix` and `tsc` diagnostics for lint shapes, Knip-style reachability for dead code, each behind the unchanged
+gate) is the first test of rung 1 against rung 2, at tier 1. An "affected files" query — the reverse import
+graph of a file, with its reflection blind spot named — is the owner's own example and a small addition to
+`sidecrew query`.

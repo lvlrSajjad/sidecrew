@@ -1,0 +1,106 @@
+{
+  "measured": true,
+  "experiment": "phase-14d-retrieval",
+  "date": "2026-09-25",
+  "rule": "docs/plan/prompts/phase-14d-retrieval.md §2–§3, frozen 24 Sep 2026, with its dated notes",
+  "sidecrew_commit_at_run": "5d4407b",
+  "project_commit": "cea0b6d2ab",
+  "W_upper": 7794,
+  "W_upper_is": "Phase 11 C3 control: Claude Haiku via the haiku-worker agent, 93,532 tokens / 12 tasks",
+  "arms": {
+    "base-n12": {
+      "N": 11,
+      "P_total": 199152,
+      "harness_from_sibling_cache": 30678,
+      "P_total_normalised": 229830,
+      "R": 2.681,
+      "R_as_measured": 2.323,
+      "split": {
+        "harness": 15645,
+        "reading": 91352,
+        "output": 47415,
+        "output_counted_twice": 94830
+      },
+      "retrieval_calls": 0,
+      "model": "claude-opus-5-5",
+      "gated_first_pass": {
+        "survived": 9,
+        "tasks": 11,
+        "machine_failures": 0,
+        "combined_regressions": 0
+      }
+    },
+    "retr-n12": {
+      "N": 11,
+      "P_total": 146525,
+      "harness_from_sibling_cache": 30678,
+      "P_total_normalised": 177203,
+      "R": 2.067,
+      "R_as_measured": 1.709,
+      "split": {
+        "harness": 15646,
+        "reading": 61834,
+        "output": 35671,
+        "output_counted_twice": 71342
+      },
+      "retrieval_calls": 16,
+      "model": "claude-opus-5-5",
+      "gated_first_pass": {
+        "survived": 1,
+        "tasks": 11,
+        "machine_failures": 9,
+        "combined_regressions": 0
+      }
+    },
+    "base-n40": {
+      "N": 45,
+      "P_total": 254933,
+      "harness_from_sibling_cache": 0,
+      "P_total_normalised": 254933,
+      "R": 0.727,
+      "R_as_measured": 0.727,
+      "split": {
+        "harness": 46323,
+        "reading": 78015,
+        "output": 66585,
+        "output_counted_twice": 133170
+      },
+      "retrieval_calls": 0,
+      "model": "claude-opus-5-5",
+      "gated_first_pass": {
+        "survived": 32,
+        "tasks": 45,
+        "machine_failures": 1,
+        "combined_regressions": 0
+      }
+    },
+    "retr-n40": {
+      "N": 36,
+      "P_total": 195013,
+      "harness_from_sibling_cache": 30678,
+      "P_total_normalised": 225691,
+      "R": 0.804,
+      "R_as_measured": 0.695,
+      "split": {
+        "harness": 15646,
+        "reading": 108394,
+        "output": 36372,
+        "output_counted_twice": 72744
+      },
+      "retrieval_calls": 11,
+      "model": "claude-opus-5-5",
+      "gated_first_pass": null
+    }
+  },
+  "R1_at_N12": 2.067,
+  "R1_at_N12_as_measured": 1.709,
+  "R0_at_N12": 2.681,
+  "fork": "STOP — R₁ = 2.07 > 2.0 (§3). The quality veto was NOT computed: its only outcome, 'STOP for retrieval as built', is the same row, so no value of it can change the result (owner, 25 Sep, measurement-tiers decision ADR-0091).",
+  "not_measured": {
+    "retr-n40 gating": "interrupted at 09:54 under 30 GB swap; not re-run — it cannot change the fork",
+    "retr-n12 survival": "9 of 11 tasks were machine failures (suite timeouts under swap); not re-gated, for the same reason",
+    "S0, S1, the veto": "not computed"
+  },
+  "descriptive_only": "base arm first-pass survival 9/11 and 32/45; indicative, not a claim — the gate cannot see DI/entity-glob reachability for dead_code (V1-CHALLENGES §11)",
+  "prediction_preregistered": "R₁ in (1.5, 2.3) — held"
+}

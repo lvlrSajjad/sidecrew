@@ -220,3 +220,29 @@ same conditions. Then every arm's machine failures are re-gated once (the 05:30 
 **What is already known, stated so it cannot be tuned to:** base `N ≈ 12` 9/11, base `N ≈ 40` 32/45 (1
 machine failure), retrieval `N ≈ 12` 1/11 with **9 machine failures** awaiting their re-gate. The veto is
 not computable until the re-gates exist, and `R₁` is already fixed by the planner transcripts.
+
+## The result — 25 Sep 2026, applied as written: **STOP**
+
+`experiments/planner-cost/results/result-14d-2026-09-25.json`, measured. All four planners on `claude-opus-5-5`,
+on the pinned clone at `cea0b6d2ab`; `R` harness-normalised as the 00:20 note requires.
+
+| arm | N | `P_total` → normalised | R | first-pass gating |
+|---|---|---|---|---|
+| base, ≈ 12 | 11 | 199,152 → 229,830 | 2.68 | 9/11 |
+| **retrieval, ≈ 12** | 11 | 146,525 → 177,203 | **`R₁` = 2.07** (1.71 as measured) | 1/11, 9 machine failures |
+| base, ≈ 40 | 45 | 254,933 | 0.73 | 32/45, 1 machine failure |
+| retrieval, ≈ 40 | 36 | 195,013 → 225,691 | 0.80 | interrupted, not re-run |
+
+**The fork: `R₁` = 2.07 > 2.0 → STOP.** The quality veto was **not computed**: its only outcome is *STOP for
+retrieval as built*, the same row, so no value of it can change the result. Under the owner's
+measurement-tiers decision (ADR-0091, 25 Sep) a run that cannot change a decision is not run, so the second
+night, the retrieval `N ≈ 40` gating and the machine-failure re-gates were dropped. The as-measured `R₁`
+(1.71) would have read INSERT `14d′`; the normalised reading decides, as the note written before `R₁`
+existed says. **The pre-registered prediction, `R₁` in (1.5, 2.3), held.**
+
+**What STOP means here, in §3's words:** *"say the coordination model does not pay at small plan sizes and
+publish `v0.x` describing the sizes where it does."* The curve says it pays near `N ≈ 40` (0.73–0.80).
+Retrieval cut planning tokens by ~23 % at `N ≈ 12` and cannot close the rest: half the cost is Opus's own
+output (ADR-0090 §1). **What comes next is not decided by this rule**: the independent analysis
+(`docs/research/2026-09-25-v1-independent-analysis.md`) argues the bar itself measures the wrong thing, and
+the owner's next decision is what `v1.0` means (V1-CHALLENGES §11).
