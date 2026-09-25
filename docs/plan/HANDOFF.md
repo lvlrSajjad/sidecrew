@@ -12,11 +12,10 @@
 This file is always current; if it disagrees with anything else, it is the thing that was updated
 last and the other file is the bug (CLAUDE.md § *Conventions*).
 
-**Last updated: 25 Sep 2026, ~10:05. Phase 14d's measurement is HALF DONE and resumes tonight.** The four
-planner passes are measured; three of four arms are gated; the fourth (retrieval `N ≈ 40`) was interrupted
-by swapping and re-runs whole on **night 2**, followed by the machine-failure re-gates and §3 — **one
-command, §3 below**. ADR-0089's A and B are built on branch `adr-0089` (**merge after night 2**, not before,
-so the gate code under the four arms stays identical). Nothing is running; nothing is pushed since `v0.2.0`.
+**Last updated: 25 Sep 2026, ~11:00. Phase 14d is CLOSED — STOP by its frozen rule (`R₁` = 2.07 at `N = 11`).
+ADR-0089 is closed by option F and merged. Two new owner decisions change how work proceeds: ADR-0091
+(measure cheaply; a night only for a claim) and ADR-0092 (mechanical first, never mechanical only). The one
+open decision is what `v1.0` means — §4. Nothing is running; no clone on disk; nothing pushed since `v0.2.0`.**
 
 ### What happened on 22–24 Sep, in one table
 
@@ -41,15 +40,15 @@ CLAUDE.md was missed — trust `PHASES.md` and the ADRs over this page, and fix 
 
 | | |
 |---|---|
-| branch | `main`. Phase 14d's build is **committed locally, not pushed**; `origin/main` is `7ec88df`. 0 client references in the tracked tree — **scan before any push** (§5) |
-| tests | `npm run lint && npm test` → **881 passing**, 1 skipped · `recon.slow` **1** + `query.slow` **2** (real `tsc` on the fix fixture) · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
+| branch | `main`. Everything since `v0.2.0` is **committed locally, not pushed**; `origin/main` is `7ec88df`. 0 client references in the tracked tree — **scan before any push** (§5) |
+| tests | `npm run lint && npm test` → **901 passing**, 1 skipped · slow: `verifier-ts` 12 · `fix` 38 · `recon` 1 · `query` 2 — **53, all green on 25 Sep** · slow sets: `SIDECREW_SLOW=1 npx vitest run test/fix.slow.test.ts` → **38**, `test/verifier-ts.slow.test.ts` → **11** (needs `sidecrew tools install`, not a fixture install) · **run both before a phase ends** · `verifier-jest.slow` needs `npm install` in `fixtures/jest-fixture`, which is a download and has not been run since ADR-0088 |
 | version | **`0.2.0`**, published 24 Sep. Six places move together (`package.json`, `server.json` ×2, `plugin.json`, `src/mcp.ts`, `package-lock.json` ×2); use `npm version X --no-git-tag-version` for the first and last. `ci.yml` checks four, `release.yml` five, **neither checks the lockfile** |
 | published | `sidecrew@0.2.0` on npm as `latest` with provenance; `io.github.lvlrSajjad/sidecrew` on the MCP Registry lists `0.1.2` and `0.2.0`. Release = green CI on the commit, then `git tag -a vX.Y.Z` and push the tag; `release.yml` has no `workflow_dispatch` (use `gh run rerun <id> --failed`). **Never push `private-history`** |
 | tool cache | **`~/.sidecrew/tools/stryker-8.7.1`** is installed on this machine (62 MB, no project-owned tools inside it). `sidecrew tools` reports it |
-| clones | **none on disk.** Make one with `scripts/pinned-clone.sh <project> <commit> <dest>` for any measurement (ADR-0088 addendum) |
+| clones | **none on disk** (the 14d clone was deleted 25 Sep). Make one with `scripts/pinned-clone.sh` for any measurement |
 | supported | **24 GB+ Apple Silicon, local tier only** (ADR-0073) |
-| next phase | **14d measurement** — four planner passes by day, then the gated night · §3 |
-| ADRs | run to **0090**; start new ones at **0091**. Decided 24 Sep: **0090** (accepted; §5 = B), **0089** (option B — built next, 1.0 prerequisite). Open: **0064** (mostly retired by 0079). Decided this week: 0086 (C, and §6 = B), 0087 (A, amended per declaration), 0088, 0082 (in principle, TDD) |
+| next phase | **no numbered phase** — the daytime list in §3, and the owner's v1.0 decision (§4) |
+| ADRs | run to **0092**; start new ones at **0093** (v1.0's meaning is the first). Decided 25 Sep: **0090** (accepted; §5 = B), **0089** (closed by F, merged), **0091** (measurement tiers), **0092** (mechanical first, in principle). Open: **0064** (mostly retired by 0079) |
 | running | **nothing.** Workers stopped, sandboxes swept, clones deleted |
 | CI | **green** on `main` and on the `v0.2.0` release run |
 | `gh` | authenticated **per tree**: `~/Coding/ME/*` → `GH_CONFIG_DIR=~/.config/gh-personal`. A bash shell must set it explicitly |
@@ -149,31 +148,34 @@ now fixed, and neither of which the gate would ever have caught:**
 
 ## 3. What to do next
 
-### Night 2 of Phase 14d — start it with this, after ~22:00, and leave the machine alone
+### What to do next — daytime, tier 0–1 (ADR-0091), in this order unless the owner reorders it
 
-```bash
-cd ~/Coding/ME/sidecrew && S=<this repo's Claude project dir>/2bd5727e-f43d-4843-b300-1360ab14fc33/subagents && \
-T_BASE_N12=$S/agent-ac5fb4e92da2d4102.jsonl T_RETR_N12=$S/agent-a7a9ef81061c14482.jsonl \
-T_BASE_N40=$S/agent-a78cb032d220c3938.jsonl T_RETR_N40=$S/agent-ab0ad48eeed1fb3b0.jsonl \
-WATCH=<the project-a working checkout> caffeinate -dims scripts/retrieval-night2.sh
-```
+Start a fresh session with: *"Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/plan/V1-CHALLENGES.md` (especially
+§11) and ADR-0091/0092. Then do the next item on HANDOFF §3's list."*
 
-It waits for 02:05, re-runs the retrieval `N ≈ 40` arm whole at concurrency 1 (~3.3 h), re-gates every arm's
-machine failures once (10 tasks, ~1 h), then writes `experiments/planner-cost/results/result-14d-2026-09-25.json`
-with §3 applied. **Expect it done ~06:30–07:30.** Log: `experiments/planner-cost/plans/night2-14d-2026-09-25.log`.
-Then: read the result, apply the fork as written, merge `adr-0089`, delete the clone
-`~/.sidecrew/clones/project-a-cea0b6d2ab` and the worktree `../sidecrew-adr0089`, update PHASES/CHANGELOG/this file.
-**Do not rebuild `dist` or merge anything into `main` before it runs** — the tree must be clean and the gate
-code the same as night 1's.
+1. **Dollar re-score** of the eight planner transcripts (20 and 25 Sep) by token class — input, cache write,
+   cache read, output — at the pricing of each transcript's own model. Tier 0: minutes, no run.
+2. **Reflective-reference guard** for deletion shapes, with planted traps (an untested entity loaded by a
+   glob, a string-token DI provider): a dead-code task touching one is refused. **No dead-code survivor goes
+   to a user before this exists.** Tier 1.
+3. **Memory admission control**: count the project suite's measured footprint in the concurrency ceiling,
+   pass jest `--maxWorkers`, and back off on memory pressure by name rather than on token rate. Tier 1.
+4. **Re-score the published workload #1 rates under ADR-0089 F** (3/8, 4/8, 4/10) — a Stryker run on
+   project-a and project-b's published modules, **the owner's go** (the classifier blocks sidecrew commands on
+   a client checkout; the owner runs them, or adds a permission rule).
+5. **The deterministic-executor probe (ADR-0092 rung 1 vs 2)**: language-service rename, ESLint `--fix` /
+   `tsc` for lint shapes, behind the unchanged gate, against the 7B on ~10 tasks. Tier 1. Plus the owner's
+   own example: an *affected files* query (reverse import graph, reflection blind spot named).
+6. **Verify-only mode** for small jobs: Opus edits, sidecrew gates (Phase 11b's arm D, as a product path).
 
-**Night 1, 24–25 Sep, in numbers** (the rule file's four dated notes say how each was handled):
+**Phase 14d in numbers** (the rule file's dated notes say how each was handled; night 2 was dropped under ADR-0091):
 
 | arm | N | `P_total` → normalised | R (normalised) | gated so far |
 |---|---|---|---|---|
 | base ≈ 12 | 11 | 199,152 → 229,830 | 2.68 | **9/11** |
-| **retrieval ≈ 12** | 11 | 146,525 → 177,203 | **2.07** | 1/11 — **9 machine failures**, re-gated night 2 |
+| **retrieval ≈ 12** | 11 | 146,525 → 177,203 | **2.07** | 1/11 — **9 machine failures** (swap), not re-gated |
 | base ≈ 40 | 45 | 254,933 (paid its own harness) | 0.73 | **32/45**, 1 machine failure |
-| retrieval ≈ 40 | 36 | 195,013 → 225,691 | 0.80 | interrupted — re-run whole night 2 |
+| retrieval ≈ 40 | 36 | 195,013 → 225,691 | 0.80 | interrupted, not re-run (cannot change the fork) |
 
 **Three instrument findings from night 1, each written into the rule file before the number it affects:**
 parallel planners shared a 30,678-token prompt cache (R is read with it added back); two project-a suites at
@@ -373,14 +375,18 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 ## 4. Open decisions, waiting on the owner
 
+- **What `v1.0` means (proposed ADR-0093).** The independent analysis and this session agree: define v1.0 by the
+  **guarantees** — project intact, one sound gate per workload, honest refusal, determinism, a stable CLI/MCP
+  interface, published per-shape numbers — and make cost a **reported** number, with the old bar reported as
+  failed and any new cost bar pre-registered in dollars per delivered task on fresh data. The owner's call.
 - **Recon ran on project-a (24 Sep, the owner's run; ADR-0079 addendum).** 1 error as configured;
   `--strictNullChecks` +11,604, `--noImplicitAny` +7,793, and the lint-shaped flags +282 at **95 % in
   source** — so **ADR-0079 option B (fix only the lint shapes) is deliverable on this project**; whether to
   plan it is the owner's call. **Open:** the gate's test predicate calls support files under `test/`
   source (BACKLOG, needs an ADR). Note the auto-mode classifier **blocks** sidecrew commands pointed at a
   client checkout — the owner runs those, or adds a permission rule.
-- **ADR-0089 — DECIDED 24 Sep: option B**, A as the detector's first line, and verdicts recording each
-  kill's mutator. A 1.0 prerequisite; **not yet built** — a daytime session. **The re-score is done (addendum, 24 Sep):** from stored records only an upper
+- **ADR-0089 — CLOSED 25 Sep by option F** (A and B beside it), merged. Owed: re-score the published
+  workload #1 rates under it (§3 item 4). **The re-score is done (addendum, 24 Sep):** from stored records only an upper
   bound is possible — verdicts keep Stryker ids, not mutator names — and it is **2 of 11** published
   real-project survivors, both tests of one function with a single mutant. Worst case project-a's 4/8 → 2/8.
   Settling it exactly is one daytime Stryker run on one project-a function, **the owner's go**.

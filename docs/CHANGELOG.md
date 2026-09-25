@@ -1,5 +1,20 @@
 # Changelog
-## Unreleased — Phase 14d, built (the measurement waits for a night)
+## Unreleased — Phase 14d closed (STOP), ADR-0089 closed, and a new way of working
+
+- **Phase 14d closes on its frozen rule: STOP.** With retrieval, planning cost `R₁` = **2.07** at `N = 11`
+  (harness-normalised; 1.71 as measured) against a bar of 1.0; without it, 2.68. Retrieval cut planning tokens
+  ~23 %. At `N ≈ 40` both arms already pay (0.73, 0.80). The pre-registered prediction (1.5, 2.3) held. The
+  quality veto was not computed because it could not change the row. `prompts/phase-14d-retrieval.md` § *The result*.
+- **ADR-0091 (owner): measure cheaply while the design moves.** Four tiers — arithmetic, a 10–60 min probe, a
+  replay, a frozen night — and a night only for a published number or a release claim. A run that cannot
+  change a decision is not run.
+- **ADR-0092 (owner, in principle): mechanical first, never mechanical only.** The executor ladder — a
+  deterministic tool where one is exact, the local 7B, a cheaper Claude model, Opus — with the gate judging
+  every rung, and rules against over-mechanising.
+- **An independent analysis of the road to v1.0** (`docs/research/2026-09-25-v1-independent-analysis.md`) and
+  the brief it answered (`docs/plan/V1-CHALLENGES.md`). Found on the way: `R`'s comparator is Haiku's tokens
+  (Phase 11's C3), and the 20 and 25 Sep planners ran on different Opus versions.
+
 
 - **`sidecrew query`** and **`sidecrew_query`** — ADR-0090 §4 piece 3. The four questions the 20 Sep
   planners wrote their own scripts for, answered by the project's own TypeScript language service: `refs`
