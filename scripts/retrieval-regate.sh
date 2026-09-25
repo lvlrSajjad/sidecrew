@@ -42,7 +42,9 @@ for arm in ["base-n12", "retr-n12", "base-n40", "retr-n40"]:
     for f in (Path(".sidecrew/runs") / run / "verdicts").glob("*.json"):
         v = json.load(open(f))
         verdicts.setdefault(v["task_id"].split("#")[0], []).append(v)
-    failed = {t for t, vs in verdicts.items() if vs and all(v.get("machine_failure") for v in vs)}
+    # Machine failures are recorded on the escalation, not the verdict (ChangeEscalation.machine_failure).
+    esc = Path(".sidecrew/runs") / run / "escalations.jsonl"
+    failed = {json.loads(l)["task_id"] for l in esc.read_text().splitlines() if l.strip() and json.loads(l).get("machine_failure")} if esc.exists() else set()
     if not failed:
         print(f"{arm}: no machine failures")
         continue

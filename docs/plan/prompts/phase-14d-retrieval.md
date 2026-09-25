@@ -206,3 +206,17 @@ worker returns the same candidates (non-negotiable #4). The re-gate's verdict is
 task that is a machine failure again is **excluded from its arm's denominator** (ADR-0056) and counted in
 the report. Only machine failures are re-gated: a real verdict, pass or fail, is never re-read — that is
 ADR-0066's *better of two* forbidden move. The first-pass counts are reported beside the result.
+
+## Note, 25 Sep 2026 ~10:00 — the retrieval `N ≈ 40` arm is re-run whole next night; written before it runs
+
+*Not an edit to §2 or §3.* The first night's retrieval `N ≈ 40` run started at 08:50 at concurrency 2 and
+swapped 30 GB within the hour (the defect in the 05:30 note); at 09:54, six verdicts in, it was interrupted
+because at that rate it would not finish in the owner's window. **Its partial run is kept on disk as
+`retr-n40-interrupted` and nothing in it is used.** The arm is **re-run whole, at concurrency 1**, on the
+second night — the same plan (its sha256 is logged both nights), the same clone, the same worker. Re-running
+the whole arm is not re-reading chosen verdicts: every task of the arm gets exactly one pass, all under the
+same conditions. Then every arm's machine failures are re-gated once (the 05:30 note) and §3 is applied.
+
+**What is already known, stated so it cannot be tuned to:** base `N ≈ 12` 9/11, base `N ≈ 40` 32/45 (1
+machine failure), retrieval `N ≈ 12` 1/11 with **9 machine failures** awaiting their re-gate. The veto is
+not computable until the re-gates exist, and `R₁` is already fixed by the planner transcripts.

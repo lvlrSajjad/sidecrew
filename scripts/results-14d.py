@@ -66,8 +66,12 @@ def verdicts_of(run):
     return out
 
 
-def machine_failed(vs):
-    return bool(vs) and all(v.get("machine_failure") for v in vs)
+def machine_failures(run):
+    """Task ids whose escalation says machine_failure — sidecrew records it there, not on the verdict."""
+    p = Path(".sidecrew/runs") / run / "escalations.jsonl" if run else None
+    if p is None or not p.exists():
+        return set()
+    return {json.loads(l)["task_id"] for l in p.read_text().splitlines() if l.strip() and json.loads(l).get("machine_failure")}
 
 
 def survivors(arm, ids):
@@ -76,14 +80,17 @@ def survivors(arm, ids):
     if run == "":
         return 0, len(ids), {"missing_run": True}
     first = verdicts_of(run)
-    regate = verdicts_of(dirs.get(f"regate-{arm}") or "")
+    first_mf = machine_failures(run)
+    regate_run = dirs.get(f"regate-{arm}") or ""
+    regate = verdicts_of(regate_run)
+    regate_mf = machine_failures(regate_run)
     k, n, first_pass_mf, still_mf = 0, 0, 0, 0
     for t in ids:
         vs = first.get(t, [])
-        if machine_failed(vs):
+        if t in first_mf:
             first_pass_mf += 1
             vs = regate.get(t, [])
-            if machine_failed(vs) or not vs:
+            if t in regate_mf or not vs:
                 still_mf += 1
                 continue
         n += 1
