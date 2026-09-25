@@ -7107,3 +7107,15 @@ to Opus alone, or higher.
   is the request, and **the commit's own tests are a held-out oracle** neither arm sees — no judge bias at all
   where they exist. A blind Opus judge, with its noise measured by judging Opus-alone against a second
   Opus-alone run, is used only where the commit carries no test.
+
+### ADR-0093 addendum 3, 25 Sep 2026 — the cost claim is a formula with an error margin (owner)
+
+The owner: *"we need to claim the cheapness as a formula rather than a number, and even that formula has an
+error margin. Honesty is the key — we don't claim 'excels' and then under-deliver like others."* So sidecrew
+never publishes *"50 % cheaper"*. It publishes the fitted cost of a job of `N` tasks against Opus-alone's,
+
+    saving(N) = 1 − (A + b·N) / (A_opus + c·N)        in dollars, with A, b, A_opus, c each an interval,
+
+and **the interval of `N` over which the saving's lower bound clears 50 %** — measured on the benchmark with
+replicates, per model version, and re-fitted whenever either changes. A claim holds only inside its
+measured range; outside it the release notes say *about the same as Opus alone, verified*.

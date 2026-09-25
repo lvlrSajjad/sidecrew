@@ -377,13 +377,13 @@ ask — do not rebuild it.** The decomposed variant probe 2 used is beside it un
 
 - **`v1.0` bars SET (owner, 25 Sep; ADR-0093 addendum):** ≥ **80–90 %** of Opus-alone's success on a
   representative benchmark of real requests (features included), at ≤ **50 %** of its dollars (aspiration 20 %),
-  judged blind by Opus against Opus-alone's result, reproducing on outside projects. **v2** = as fast as Opus;
+  judged blind by Opus against Opus-alone's result, reproducing on outside projects; **the cost claim is a formula in `N` with intervals, never a single number (addendum 3)**. **v2** = as fast as Opus;
   **v3** = quality ≥ Opus. **Open: the benchmark's request mix, and whether "50 % cheaper" is over the mix or per
   request.** Earlier wording, kept: **`v1.0` is DEFINED (owner, 25 Sep; ADR-0093):** the claim *"we do what Opus does, in a different and cheaper
   way"* is true **and** any user can get it. **Open: confirm ADR-0093's four conditions** (quality vs an
   Opus-alone arm on listed job types; dollars per delivered task, never more expensive than Opus at any size;
   the gated pipeline; reproduction on two outside projects with the guarantees holding). **0.x releases
-  continue** — cutting `v0.3.0` is the owner's call.
+  continue** — **`v0.3.0` skipped for now (owner, 25 Sep).**
 - **Recon ran on project-a (24 Sep, the owner's run; ADR-0079 addendum).** 1 error as configured;
   `--strictNullChecks` +11,604, `--noImplicitAny` +7,793, and the lint-shaped flags +282 at **95 % in
   source** — so **ADR-0079 option B (fix only the lint shapes) is deliverable on this project**; whether to
