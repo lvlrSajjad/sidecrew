@@ -7161,3 +7161,29 @@ work the Opus planner already does as a Claude subagent. A Claude model doing bu
   session. *Changes the plan if:* total dollars fall below P1's and Opus's share below a third.
 - **P3 — the escalation ladder**: Qwen3-Coder-30B-A3B at concurrency 1 on the tasks the 7B failed on 25 Sep.
   *Changes the plan if:* it clears a meaningful share (≥ 3 of ~10) — then L2 exists as a rung.
+
+### ADR-0094 addendum, 25 Sep 2026 — the ladder is an algorithm, not "cheapest first" (owner's objection)
+
+The owner: *"cheapest first reminds me of a greedy algorithm, which isn't always optimal. We have to have an
+algorithm that works for choosing the model or solution."* Correct, and the fix is a known result.
+
+**The routing rule.** For a task of category `k`, each candidate executor `i` has an attempt cost `cᵢ` (dollars,
+plus the gate's wall-clock at a stated price for time — zero until v2 prices it), a success probability `pᵢₖ`
+and a quality-when-passing `qᵢₖ`. Then:
+
+1. **Drop** executors whose `qᵢₖ` is below the bar, or whose `pᵢₖ` is near zero for `k` (the 7B writing NestJS tests
+   succeeded 2 in 20 — skip it, don't try it first).
+2. **Order the rest by `cᵢ / pᵢₖ`, lowest first** — the optimal order for trying independent options until one
+   succeeds. Cheapest-first is the special case where every `pᵢₖ` is equal; with local models at ~$0 it is
+   optimal *for dollars only*, and stops being so the moment time is priced or a level rarely succeeds.
+3. **Stop climbing** when the expected cost of the remaining climb exceeds the top model doing the task itself —
+   which is what keeps ADR-0093's "never more expensive than Opus alone" true per task.
+4. **Keep exploring**: a small share of tasks go to a level the table is unsure about (Thompson sampling over a
+   Beta posterior per cell), so early data does not freeze the routing. This is `BACKLOG.md`'s "bandit routing
+   between worker models", given a home.
+5. **Attempts are not independent** — a task the 7B fails is likely harder for the 30B too — so the table learns
+   `p` *given that the level below failed*, from the escalation chains every run already records.
+
+**The table** starts from priors (25 Sep's verdicts, Phase 11b, and probes P1–P3) and is updated from every
+gate verdict. It is data, not code: a JSON of `(category, executor) → Beta(α, β), cost, quality`, versioned,
+and reported beside any number it produced.
