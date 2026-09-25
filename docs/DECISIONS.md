@@ -7231,3 +7231,18 @@ independently by ADR-0094's rule; a part only the philosopher can do stays with 
 A labelled set of requests — the benchmark's historical commits carry their own gold category (ADR-0093) — scored on
 triage accuracy: category, level, and split. *Changes the plan if:* accuracy on level is below ~80 %, in which case the
 card needs more mechanical signals before a model is trusted with the split.
+
+### ADR-0094 addendum, 25 Sep 2026 — P1 measured: Sonnet does not plan by default
+
+Tier 1, indicative (`experiments/planner-cost/results/p1-sonnet-planner-2026-09-25.json`). **The first Sonnet run was void**:
+at its fifth tool call it read the Opus arm's finished plan for the same job from the shared plans folder. The
+clean rerun had every other plan moved out, a prompt forbidding other plans and run directories, and an audited
+transcript. **Sonnet 5 planned 7 tasks for $1.93; Opus 5.5 planned 11 for $2.39** — 81 % of the dollars, fewer
+tasks, and more per task. **The rule written first is not met**: the planner stays the user's model. Sonnet is ~2×
+cheaper per token and used more tokens, most of them cache reads again — the cost is the long loop, whoever runs
+it. That points P2 (Sonnet builds and checks, Opus decides once) at the right target; the void first run is a data
+point for it: handed a plan, Sonnet verified and extended it for $1.17.
+
+**A standing rule from this, for every probe:** isolation is made true by construction — the outputs of other arms
+are moved out of reach, not merely asked not to be read — and the transcript is audited for reads before its number
+counts.

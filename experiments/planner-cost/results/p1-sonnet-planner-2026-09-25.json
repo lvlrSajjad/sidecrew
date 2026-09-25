@@ -1,0 +1,40 @@
+{
+  "measured": true,
+  "tier": "1 (ADR-0091) — indicative, one pass, one job",
+  "date": "2026-09-25",
+  "probe": "ADR-0094 P1 — Sonnet 5 as the planner",
+  "rule_written_first": "Changes the plan if Sonnet's plan validates with a comparable task count and ≤ half the dollars — then L4 plans by default (ADR-0094, written before the run).",
+  "comparator": {
+    "arm": "25 Sep retrieval N≈12 (Opus 5.5)",
+    "N": 11,
+    "dollars_alone": 2.39,
+    "per_task": 0.217
+  },
+  "sonnet_void_first_run": {
+    "why": "at its 5th tool call it read the Opus arm's finished plan for the same job (10k chars) from the shared plans folder; everything after was verifying an answer key",
+    "N": 12,
+    "dollars": 1.17,
+    "use": "evidence for P2 (a cheaper model checking a plan it is handed), not for P1"
+  },
+  "sonnet_clean_run": {
+    "isolation": "all other plans moved out of the folder for the run; the prompt forbade reading other plans and run directories; the transcript was audited — no forbidden read",
+    "model": "claude-sonnet-5",
+    "N": 7,
+    "valid": true,
+    "shapes": {
+      "dead_code": 7
+    },
+    "dollars_alone": 1.93,
+    "per_task": 0.275,
+    "dollar_split": {
+      "output": 0.43,
+      "cache_write": 0.3,
+      "cache_read": 1.11
+    },
+    "P_total": 163832,
+    "retrieval_calls": 22,
+    "reader_note": "one read batch returned 6 admitted claims its own check of the cited lines found false — the 7B reader's overstatement, again"
+  },
+  "verdict": "NOT MET — 81 % of Opus's dollars (not ≤ 50 %), 7 tasks against 11 (not comparable), and more expensive per task. Sonnet is ~2× cheaper per token and used more of them, dominated by cache reads. L4 does not plan by default; the planner stays the user's model, and P2 (two-level) is the next probe of the middle tier.",
+  "confound_recorded": "dist was rebuilt with the 25 Sep query fix (exported consts now scanned), making Sonnet's reading slightly heavier than Opus's — against Sonnet."
+}
