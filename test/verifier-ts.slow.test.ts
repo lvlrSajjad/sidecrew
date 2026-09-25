@@ -153,11 +153,11 @@ describe("verifyTs on the fixture", () => {
     expect(verdict.survived).toBe(false);
   }, 300_000);
 
-  it("KNOWN HOLE, narrowed (ADR-0089, 25 Sep): an existence check survives on a crash kill", async () => {
-    // What the build found. `slugify` has a declared return type, so its emptied body is a CompileError
-    // and never runs — option B has nothing to exclude. The one kill is `normalize("")`, which makes the
-    // function THROW: any test that merely calls it kills that. Recorded as the gate behaves, so the hole
-    // cannot close or widen unnoticed; flip it when the owner decides whether a crash-only kill counts.
+  it("CLOSED (ADR-0089 F): an existence check that kills only by crashing does not survive", async () => {
+    // Was the narrowed KNOWN HOLE. `slugify` has a declared return type, so its emptied body is a
+    // CompileError and never runs — option B has nothing to exclude. The one kill is `normalize("")`,
+    // which makes the function THROW; the assertion-stripped second pass kills it too, so it is a crash
+    // kill and not evidence (option F, owner 25 Sep 2026).
     const verdict = await verifyTs(
       candidate("slugify:happy_path:8", 'import { slugify } from "../src/strings";\nimport { it, expect } from "vitest";\nit("x", () => { expect(slugify("Hello World").length >= 0).toBe(true); });\n'),
       { target: target({ source: "src/strings.ts", function: "slugify" }) },
@@ -166,7 +166,9 @@ describe("verifyTs on the fixture", () => {
     expect(verdict.mutation?.body_mutant_id).toBeNull();
     expect(verdict.mutation?.killed_mutators).toEqual(["StringLiteral"]);
     expect(verdict.mutation?.killed_reasons[0]).toMatch(/normalization form/i);
-    expect(verdict.survived).toBe(true);
+    expect(verdict.mutation?.crash_killed_ids).toEqual(verdict.mutation?.killed_ids);
+    expect(verdict.survived).toBe(false);
+    expect(verdict.error).toMatch(/makes slugify throw/);
   }, 300_000);
 
   it("does not hand a candidate the kills the previous candidate earned", async () => {

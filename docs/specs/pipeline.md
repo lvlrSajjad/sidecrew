@@ -149,7 +149,7 @@ line and are not a price quote.
   "compile_ok": true,
   "pass_ok": true,
   "tautological": false,
-  "mutation": { "score": 0.67, "killed": 4, "survived": 2, "timeout": 0, "no_coverage": 0, "killed_ids": ["3","5","7","8"], "killed_mutators": ["BlockStatement","ConditionalExpression","EqualityOperator","StringLiteral"], "body_mutant_id": "3", "killed_reasons": ["expected undefined to be 'a-b'","expected 'a_b' to be 'a-b'","expected true to be false","expected '' to be 'a-b'"] },
+  "mutation": { "score": 0.67, "killed": 4, "survived": 2, "timeout": 0, "no_coverage": 0, "killed_ids": ["3","5","7","8"], "killed_mutators": ["BlockStatement","ConditionalExpression","EqualityOperator","StringLiteral"], "body_mutant_id": "3", "crash_killed_ids": ["5"], "killed_reasons": ["expected undefined to be 'a-b'","expected 'a_b' to be 'a-b'","expected true to be false","expected '' to be 'a-b'"] },
   "error": null,                           // truncated to 2048 chars when a stage fails
   "timing_ms": { "compile": 1400, "pass": 900, "mutation": 21000 }
 }
@@ -162,8 +162,14 @@ whose location contains every other mutant in the mutated range — with Stryker
 that function's whole body. Killing it proves only that the function returns *something*, so a kill of it
 alone is not a survival: `expect(typeof f(x)).toBe("string")` survived before this rule and does not now.
 `killed_mutators` names the mutator of each killed id, in order, so a later re-score is exact, and
-`killed_reasons` keeps the first line of Stryker's reason for each kill — recorded, never gated: whether a
-kill earned by making the function **throw** should count is ADR-0089's open question. Both default
+`killed_reasons` keeps the first line of Stryker's reason for each kill, recorded and never gated.
+
+**Crash kills (ADR-0089 option F, owner 25 Sep 2026).** A kill earned by making the function **throw** is not
+evidence about its value either. So when the first pass leaves a kill to classify, the verifier runs the
+mutation a second time with the candidate's **assertions stripped** (`stripAssertions`: `expect(X)….m(Y)` →
+`void (X)`), and `crash_killed_ids` records the killed mutants that test also kills — matched by mutator,
+location and replacement, never by id. Survival needs a kill outside `body_mutant_id` and `crash_killed_ids`.
+`null` means the second pass did not run (older verdicts, Swift, or nothing to classify). Both default
 to empty/`null` on a verdict written before they existed, which keeps that verdict's meaning. A test made
 only of type or existence checks is also flagged `tautological` (`type_only_assertions`) before a mutation
 run is spent — the cheap first line; the iff is the rule.

@@ -6616,8 +6616,8 @@ verifier no longer reads it, and removing it would rewrite their lockfiles, whic
 **Status:** **a 1.0 prerequisite, decided by the owner 24 Sep 2026**, and `v1.0.0` is not cut until it is
 closed. **Option chosen by the owner, 24 Sep 2026: B, with A as the detector's first line, and verdicts
 recording each kill's mutator** (the re-score addendum below) · **built 25 Sep 2026, and the build found the
-premise was mostly wrong: the hole is crash kills, not the body removal — NOT closed; a new owner decision
-is open** (addendum below) · found while fixing a
+premise was mostly wrong: the hole is crash kills, not the body removal — **closed the same day by option F,
+chosen by the owner** (addenda below) · found while fixing a
 false message ADR-0082 D exposed · bears on non-negotiable #2 (workload #1's iff), ADR-0006 (tautologies), ADR-0005
 
 ### What was found
@@ -6693,6 +6693,30 @@ chosen. **ADR-0089 therefore stays a 1.0 prerequisite and is not closed.** No pu
 has moved; the ≤ 2-of-11 bound was about body-only kills, and crash kills need their own re-score (the
 stored verdicts do not keep reasons, so it is a daytime Stryker run on the published modules — the
 owner's go).
+
+### ADR-0089 addendum, 25 Sep 2026 (later) — option F chosen by the owner, built, and the hole is closed
+
+**F: survival needs a kill from a mutant that does not merely throw on the test's input.** When the first
+mutation pass leaves a kill to classify, the verifier runs Stryker a second time, same source and range,
+cold, with the candidate's **assertions stripped** (`stripAssertions`: `expect(X)….m(Y)` → `void (X)`,
+`assert.m(A, …)` → `void (A)`, `expect.assertions(n)` → `void 0`, `.resolves` kept awaited so a rejection
+is still a crash, `.rejects` caught). The stripped test checks no value, so anything it kills was killed by
+a crash. `crash_killed_ids` records those, matched to the first pass by mutator, location and replacement,
+never by id; `behaviouralKills` subtracts them and the body mutant from `killed`; the iff reads it. If the
+second pass produces no report the verdict is a machine problem with `mutation: null` — never a survivor.
+
+**Verified on a real Stryker run on the fixture:** the crash-only test (`slugify(x).length >= 0`) now fails
+with *"every mutant of slugify this test killed makes slugify throw"*, and the four legitimate fixture
+candidates **still survive** — the second pass does not turn real tests into failures. The `KNOWN HOLE` pin
+is now `CLOSED (ADR-0089 F)`. Runner-independent: nothing reads Stryker's reason text.
+
+**Cost:** one extra mutation pass per candidate that got as far as a kill — survivors and near-survivors
+only. Mutation was already ~90 % of a workload #1 candidate's cost, so a surviving candidate now costs
+roughly 1.9× at the mutation stage. Measured on the fixture: the 12-test slow suite went 63 s → 83 s on the
+four-candidate test.
+
+**Still owed before `v1.0.0`:** re-score the published workload #1 rates (3/8, 4/8, 4/10) under F — a
+daytime Stryker run on project-a and project-b's published modules, the owner's go — and re-state any that move.
 
 ## ADR-0090 — Retrieval is admitted, never judged relevant; the fixed cost is not mostly reading, and the 14d exit rule has to be read with that (PROPOSED)
 

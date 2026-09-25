@@ -23,7 +23,7 @@ import { run } from "../exec.js";
 import { prepareStryker, projectPackageDir, strykerStatus, toolStatusMessage } from "../tools.js";
 import { behaviouralKills, MutationResult, survives, Verdict, type Candidate, type Stage } from "../schemas.js";
 import { TEST_FILE_PATTERN } from "../confinement.js";
-import { analyseTautology, type TautologyReport } from "./tautology.js";
+import { analyseTautology, stripAssertions, type TautologyReport } from "./tautology.js";
 import {
   deriveLineRange, isResolvable, isTestRunner, jestConfigEntry, looksLikeOom, output, removeSandbox,
   resolveNodeModules, safeName, STRYKER_PLUGIN, TEST_RUNNERS, truncateError, VerifierSetupError, type TestRunner,
@@ -535,6 +535,29 @@ const before = (a: Pos, b: Pos): boolean => a[0] < b[0] || (a[0] === b[0] && a[1
  * leaves survival exactly as it was. A lone `BlockStatement` with nothing else to contain is the body
  * mutant too: a function whose only mutant is its body removal gives no test anything to prove.
  */
+/** A mutant's identity across two runs of the same source and range: ids are Stryker's order, this is not. */
+const mutantKey = (m: RawMutant): string =>
+  `${String(m.mutatorName)}@${JSON.stringify(m.location ?? null)}=${JSON.stringify((m as { replacement?: unknown }).replacement ?? null)}`;
+
+const mutantsOf = (report: unknown, sourceFile?: string): RawMutant[] => {
+  const files = (report as RawReport | null)?.files ?? {};
+  const wanted = sourceFile === undefined ? null : sourceFile.split(sep).join("/");
+  const keys = Object.keys(files);
+  const matching = wanted === null ? keys : keys.filter((k) => k.split(sep).join("/").endsWith(wanted));
+  return (matching.length > 0 ? matching : keys).flatMap((k) => files[k]?.mutants ?? []);
+};
+
+/**
+ * ADR-0089 F: which of the first run's killed ids the **assertion-stripped** run killed too. Matched by
+ * mutator, location and replacement, never by id, so a renumbering between the runs cannot misattribute.
+ */
+export function crashKills(first: unknown, stripped: unknown, sourceFile?: string): string[] {
+  const crashed = new Set(mutantsOf(stripped, sourceFile).filter((m) => String(m.status) === "Killed").map(mutantKey));
+  return mutantsOf(first, sourceFile)
+    .filter((m) => String(m.status) === "Killed" && crashed.has(mutantKey(m)))
+    .map((m) => String(m.id));
+}
+
 export function bodyMutant(mutants: readonly RawMutant[]): string | null {
   const located = mutants
     .map((m) => ({ m, start: pos(m.location?.start), end: pos(m.location?.end) }))
@@ -629,11 +652,16 @@ export function noKillMessage(fn: string, m: MutationResult, uncounted: Record<s
   const ran = m.survived + m.no_coverage + m.timeout;
   const compileErrors = uncounted.CompileError ?? 0;
   if (m.killed > 0) {
-    // Reached only when every kill was the body removal (ADR-0089): `killed ≥ 1` and still no evidence.
-    return `the only mutant of ${fn} this test killed is the one that empties its whole body — any ` +
-      "assertion that the function returns something kills that one, so it says nothing about what the " +
-      `function does (ADR-0089). ${m.survived} other mutant(s) survived. Assert on the returned value, not ` +
-      "on its type or its existence.";
+    // Reached only when every kill was the body removal or a crash (ADR-0089): `killed ≥ 1` and still no
+    // evidence about the value.
+    const crashes = (m.crash_killed_ids ?? []).length;
+    const why = crashes > 0
+      ? `every mutant of ${fn} this test killed makes ${fn} throw — with its assertions taken out the test ` +
+        "still kills them, so they were killed by the crash and not by anything the test checked"
+      : `the only mutant of ${fn} this test killed is the one that empties its whole body — any assertion ` +
+        "that the function returns something kills that one";
+    return `${why}. That says nothing about what the function returns (ADR-0089). ${m.survived} other ` +
+      "mutant(s) survived. Assert on the returned value, not on its type, its existence or its not throwing.";
   }
   if (ran === 0) {
     const made = Object.values(uncounted).reduce((n, k) => n + k, 0);
@@ -1002,7 +1030,30 @@ export async function verifyTs(candidate: Candidate, opts: VerifyTsOpts): Promis
       } else {
         stage_reached = "done";
         mutation = parseMutationReport(report, target.sourceFile);
-        if (behaviouralKills(mutation) === 0) problems.push(noKillMessage(target.functionName, mutation, uncountedStatuses(report, target.sourceFile)));
+        // ADR-0089 F: the second pass, and only when a kill is left to classify. Same source, same range,
+        // same config; the candidate's assertions removed, and a cold mutation directory so nothing the
+        // first pass recorded is reused (ADR-0004's incremental leak, which is measured).
+        if (behaviouralKills(mutation) > 0) {
+          await rm(join(sandbox, dirname(MUTATION_REPORT)), { recursive: true, force: true });
+          await writeFile(candidatePath, stripAssertions(candidate.test_source), "utf8");
+          const second = await run(stryker.cmd, [...stryker.args, "run", "--mutate", mutateArg(target.sourceFile, range), STRYKER_CONFIG], {
+            cwd: sandbox, timeoutMs: timeouts.mutation, env: stageEnv(),
+          });
+          timing_ms.mutation = (timing_ms.mutation ?? 0) + second.ms;
+          const strippedReport = await readReport(join(sandbox, MUTATION_REPORT));
+          if (strippedReport === null) {
+            // Without the second reading a crash kill cannot be told from a real one, and counting it as
+            // real is the hole this pass closes. So the mutation stage did not finish: a machine problem.
+            stage_reached = "mutation";
+            // Cleared, because `survives()` reads the counts and not the stage: first-pass counts left here
+            // would score an unclassified kill as a survivor.
+            mutation = null;
+            problems.push(`stryker produced no ${MUTATION_REPORT} on the assertion-stripped pass (ADR-0089 F):\n${output(second)}`);
+          } else {
+            mutation = MutationResult.parse({ ...mutation, crash_killed_ids: crashKills(report, strippedReport, target.sourceFile) });
+          }
+        }
+        if (stage_reached === "done" && mutation !== null && behaviouralKills(mutation) === 0) problems.push(noKillMessage(target.functionName, mutation, uncountedStatuses(report, target.sourceFile)));
       }
     }
   } finally {

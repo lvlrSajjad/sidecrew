@@ -25,6 +25,11 @@
   **95 % in source** — ADR-0079 option B's population exists. It found two things: the report did not
   record the project's commit (now `ReconReport.commit`), and the gate's test predicate calls support files
   under a project's test directory source (a question in `BACKLOG.md`, not a change). ADR-0079 addendum.
+- **ADR-0089 closed by option F (owner, 25 Sep).** A second mutation pass with the candidate's assertions
+  stripped identifies kills earned only by making the function throw; survival now needs a kill that is
+  neither a crash nor the body removal. Verified on a real Stryker run: the crash-only test fails, the four
+  legitimate fixture candidates still survive. Costs one extra mutation pass per candidate that reached a
+  kill. Published workload #1 rates are re-scored under it before 1.0.
 - **ADR-0089 built (A and B) — and the build found the hole is mostly elsewhere, so it is NOT closed.**
   A test made only of type/existence checks is now flagged tautological (A — closes the ADR's own `typeof`
   example, verified on a real Stryker run), and survival needs a kill other than the whole-body removal (B,

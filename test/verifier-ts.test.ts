@@ -708,7 +708,7 @@ describe("the sandbox's node_modules — ADR-0034", () => {
 
 describe("noKillMessage — the two meanings of killed == 0 (ADR-0005)", () => {
   const m = (survived: number, no_coverage = 0, timeout = 0) =>
-    ({ score: 0, killed: 0, survived, no_coverage, timeout, killed_ids: [] as string[], killed_mutators: [] as string[], body_mutant_id: null, killed_reasons: [] as string[] });
+    ({ score: 0, killed: 0, survived, no_coverage, timeout, killed_ids: [] as string[], killed_mutators: [] as string[], body_mutant_id: null, killed_reasons: [] as string[], crash_killed_ids: null });
 
   it("never says a changed version passed when none ran — every mutant a compile error", () => {
     // ADR-0082 D, 24 Sep 2026: 2 mutants, both CompileError. The old sentence sent a planner to repair

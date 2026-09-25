@@ -114,7 +114,7 @@ describe("shouldRetry", () => {
   it("does not spend the retry when nothing in the function could be mutated (ADR-0005)", () => {
     // All four counts zero: no test of that function could ever have killed anything, so rewriting the
     // test rewrites something that was never the problem.
-    const d = shouldRetry(verdict({ mutation: { score: 0, killed: 0, survived: 0, timeout: 0, no_coverage: 0, killed_ids: [], killed_mutators: [], body_mutant_id: null, killed_reasons: [] } }));
+    const d = shouldRetry(verdict({ mutation: { score: 0, killed: 0, survived: 0, timeout: 0, no_coverage: 0, killed_ids: [], killed_mutators: [], body_mutant_id: null, killed_reasons: [], crash_killed_ids: null } }));
     expect(d.retry).toBe(false);
     expect(d.reason).toMatch(/could be mutated/);
   });
@@ -122,7 +122,7 @@ describe("shouldRetry", () => {
   it("says survived rather than proposing a retry for one", () => {
     const survivor = verdict({
       survived: true,
-      mutation: { score: 1, killed: 3, survived: 0, timeout: 0, no_coverage: 0, killed_ids: ["1", "2", "3"], killed_mutators: [], body_mutant_id: null, killed_reasons: [] },
+      mutation: { score: 1, killed: 3, survived: 0, timeout: 0, no_coverage: 0, killed_ids: ["1", "2", "3"], killed_mutators: [], body_mutant_id: null, killed_reasons: [], crash_killed_ids: null },
       error: null,
     });
     expect(shouldRetry(survivor)).toMatchObject({ retry: false, reason: "survived" });

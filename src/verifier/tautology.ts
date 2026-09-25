@@ -490,3 +490,69 @@ const MESSAGE_FOR: Record<Dialect, Record<"constant" | "self" | "snapshot" | "ty
 export function isTautological(source: string, functionName: string, language = "typescript"): boolean {
   return analyseTautology(source, functionName, language).tautological;
 }
+
+/**
+ * **ADR-0089 option F.** The candidate with every assertion taken out and every call it makes left in:
+ * `expect(X).….matcher(Y)` becomes `void (X)`, `assert.m(A, B)` becomes `void (A)`, and
+ * `expect.assertions(n)` / `expect.hasAssertions()` become `void 0`, so the stripped file asserts nothing
+ * and still passes on the original code.
+ *
+ * Run through mutation, the stripped test can only kill a mutant by **throwing** — it checks no value.
+ * So every mutant it kills is one the candidate killed by a crash, not by an assertion, and a kill of that
+ * kind is not evidence about what the function returns (the 25 Sep finding: the type-only test's one
+ * kill was `normalize("")`, which makes the function throw).
+ *
+ * Two shapes are deliberately kept as calls rather than values: `.resolves` becomes `(X)` so an awaited
+ * rejection still surfaces as a crash, and `.rejects` becomes `Promise.resolve(X).catch(() => undefined)`
+ * so an expected rejection does not become one. A `toThrow` subject is a function, and `void (fn)` does
+ * not call it — which is right: a mutant that stops throwing is caught by the assertion, not by a crash.
+ * TypeScript dialect only; the Swift verifier has no second pass and records no crash kills.
+ */
+export function stripAssertions(source: string): string {
+  const masked = mask(source, "typescript");
+  const edits: { from: number; to: number; text: string }[] = [];
+  const call = /\b(expect|assert)\b\s*(?:\.\s*([A-Za-z_$][\w$]*))?\s*\(/g;
+  for (let m = call.exec(masked); m !== null; m = call.exec(masked)) {
+    const open = m.index + m[0].length - 1;
+    const args = balanced(masked, open);
+    if (!args) continue;
+    const inner = source.slice(open + 1, args.end);
+    if (m[1] === "expect" && m[2] !== undefined && EXPECT_STATICS.has(m[2])) {
+      if (m[2] === "assertions" || m[2] === "hasAssertions") edits.push({ from: m.index, to: args.end + 1, text: "void 0" });
+      call.lastIndex = args.end;
+      continue;
+    }
+    if (m[1] === "assert") {
+      const first = splitArgs(inner)[0] ?? "undefined";
+      edits.push({ from: m.index, to: args.end + 1, text: `void (${first})` });
+      call.lastIndex = args.end;
+      continue;
+    }
+    // expect(X) and its chain, up to and including the matcher's own call.
+    let i = args.end + 1;
+    let end = args.end + 1;
+    const links: string[] = [];
+    for (;;) {
+      const link = /^\s*\.\s*([A-Za-z_$][\w$]*)/.exec(masked.slice(i));
+      if (!link) break;
+      links.push(link[1] ?? "");
+      i += link[0].length;
+      const after = /^\s*\(/.exec(masked.slice(i));
+      if (after) {
+        const callArgs = balanced(masked, i + after[0].length - 1);
+        if (callArgs) end = callArgs.end + 1;
+        break;
+      }
+      end = i;
+      if (!MODIFIERS.has(link[1] ?? "")) break;
+    }
+    const text = links.includes("resolves") ? `(${inner})`
+      : links.includes("rejects") ? `Promise.resolve(${inner}).catch(() => undefined)`
+      : `void (${inner})`;
+    edits.push({ from: m.index, to: end, text });
+    call.lastIndex = end;
+  }
+  let out = source;
+  for (const e of edits.sort((a, b) => b.from - a.from)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  return out;
+}

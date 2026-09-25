@@ -210,6 +210,13 @@ export const MutationResult = z.object({
    * the data it will be decided on.
    */
   killed_reasons: z.array(z.string().max(200)).default([]),
+  /**
+   * **ADR-0089 option F (owner, 25 Sep 2026).** The killed ids the candidate **with its assertions
+   * stripped** also kills — mutants killed by making the function throw, not by any value the test
+   * checked. `null` when the second pass did not run: a verdict from before this field, a Swift verdict
+   * (Muter has no second pass), or a candidate with no kill left to classify.
+   */
+  crash_killed_ids: z.array(z.string()).nullable().default(null),
 }).refine((m) => m.killed_mutators.length === 0 || m.killed_mutators.length === m.killed_ids.length, {
   message: "killed_mutators, when recorded, names the mutator of every killed id", path: ["killed_mutators"],
 }).refine((m) => m.killed_reasons.length === 0 || m.killed_reasons.length === m.killed_ids.length, {
@@ -218,11 +225,16 @@ export const MutationResult = z.object({
 export type MutationResult = z.infer<typeof MutationResult>;
 
 /**
- * Kills that are evidence about behaviour: every kill except the whole-body removal (ADR-0089 option B).
- * On a verdict with no body mutant recorded this is simply `killed`.
+ * Kills that are evidence about behaviour: every kill except the whole-body removal (ADR-0089 B) and
+ * except a mutant the assertion-stripped test also kills — a crash kill (ADR-0089 F). On a verdict with
+ * neither recorded this is simply `killed`, which is the rule every older verdict was taken under.
  */
-export const behaviouralKills = (m: MutationResult): number =>
-  m.body_mutant_id !== null && m.killed_ids.includes(m.body_mutant_id) ? m.killed - 1 : m.killed;
+export const behaviouralKills = (m: MutationResult): number => {
+  const excluded = new Set([...(m.body_mutant_id === null ? [] : [m.body_mutant_id]), ...(m.crash_killed_ids ?? [])]);
+  // Subtracted from `killed`, never recounted from the ids, so a verdict whose counts say 0 cannot be
+  // lifted to a survival by the ids it happens to carry.
+  return Math.max(0, m.killed - m.killed_ids.filter((id) => excluded.has(id)).length);
+};
 
 export const Stage = z.enum(["compile", "pass", "mutation", "done"]);
 export type Stage = z.infer<typeof Stage>;
@@ -252,7 +264,7 @@ export const Verdict = VerdictFields.superRefine((v, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["survived"],
-      message: `survived must equal compile_ok ∧ pass_ok ∧ ¬tautological ∧ a kill other than the body removal (ADR-0089) (here: ${survives(v)})`,
+      message: `survived must equal compile_ok ∧ pass_ok ∧ ¬tautological ∧ a kill that is neither the body removal nor a crash (ADR-0089) (here: ${survives(v)})`,
     });
   }
 });
