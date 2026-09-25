@@ -167,6 +167,12 @@ Start a fresh session with: *"Read `CLAUDE.md`, `docs/plan/HANDOFF.md`, `docs/pl
    `tsc` for lint shapes, behind the unchanged gate, against the 7B on ~10 tasks. Tier 1. Plus the owner's
    own example: an *affected files* query (reverse import graph, reflection blind spot named).
 6. **Verify-only mode** for small jobs: Opus edits, sidecrew gates (Phase 11b's arm D, as a product path).
+7. **ADR-0094's three probes** (the middle tiers): P1 Sonnet as planner, P2 two-level planning, P3 Qwen3-Coder-30B-A3B
+   on the 7B's failures (the owner is downloading it: revision `6e302ea604ad…`, Apache-2.0, 17.2 GB — pin it in
+   `src/models.json` and measure its RSS first).
+
+**Done 25 Sep:** item 1 — the dollar re-score (`experiments/planner-cost/results/dollars-2026-09-25.json`): cache reads,
+not output, are the largest planning cost.
 
 **Phase 14d in numbers** (the rule file's dated notes say how each was handled; night 2 was dropped under ADR-0091):
 

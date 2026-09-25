@@ -7119,3 +7119,45 @@ never publishes *"50 % cheaper"*. It publishes the fitted cost of a job of `N` t
 and **the interval of `N` over which the saving's lower bound clears 50 %** — measured on the benchmark with
 replicates, per model version, and re-fitted whenever either changes. A claim holds only inside its
 measured range; outside it the release notes say *about the same as Opus alone, verified*.
+
+## ADR-0094 — The middle tiers: roles between the philosopher and the peasant, and the gate decides when work climbs
+
+**Status:** **accepted in principle — the owner's idea, 25 Sep 2026** (*"we have a few models between Opus and the
+Qwen; we have to consider using them too — but how, and when?"*), with this session's proposal for how and when,
+which the owner took. **The rules are proposed and each is settled by a tier-1 probe (ADR-0091).** Refines
+ADR-0092's ladder; bounded by non-negotiable #1 and ADR-0093's "never more expensive than Opus alone".
+
+### The ladder — roles, cheapest first; "the top" is whatever model the user is on
+
+| level | who | its job | cost |
+|---|---|---|---|
+| **L0** | mechanical tools | anything with an exact answer — `tsc`, the language service, reference counts, lint `--fix` | free |
+| **L1** | a local small model (Qwen2.5-Coder 7B) | bounded edits inside one declaration, behind the gate | free |
+| **L2** | a local large model (Qwen3-Coder-30B-A3B, the 14B) | harder edits (type narrowing); the second try at what L1 failed | free, slower, memory-bound |
+| **L3** | a cheap Claude model (Haiku 4.5) | cheap judgement with checkable output — failure triage, correction notes, cited reading | $1 / $5 per MTok |
+| **L4** | a mid Claude model (Sonnet 5) — **the manager** | the long loop: orientation, grouping, writing tasks, specification tests, first-pass review | $2 / $10 |
+| **L5** | the user's model (Opus, Fable) — **the philosopher** | only decisions: what the ask means, the plan's shape, questions to the user, the final targeted review | top |
+
+### When work moves
+
+1. **Every kind of work starts at its home level**, the lowest that can do it (ADR-0092).
+2. **It climbs on a gate verdict, never on judgement**: an L1 failure goes to L2; a repeated failure gets an L3/L4
+   correction; only then the top. The trigger is machine-checkable, like everything else admitted here.
+3. **The top model's sessions stay short.** Measured (`experiments/planner-cost/results/dollars-2026-09-25.json`):
+   cache reads — long sessions re-reading their own context — are **33–67 %** of a planner's dollars. The
+   manager holds the long context; the philosopher receives a compact dossier and returns a decision.
+4. **Every climb is budgeted per job**, so a job never costs more than Opus alone would (ADR-0093).
+5. **The manager defaults to one level below the user's model**, and a probe decides whether a cheaper one holds.
+
+**Bounded by non-negotiable #1:** bulk edits stay local (L0–L2). L3–L4 do management and judgement — the kind of
+work the Opus planner already does as a Claude subagent. A Claude model doing bulk edits needs its own ADR.
+
+### The probes that settle it (tier 1, each with its "what would change the plan" written first)
+
+- **P1 — Sonnet 5 as the planner** on the brief of 25 Sep's retrieval `N ≈ 12` arm; Opus 5.5 measured $2.39 (alone)
+  there, and $3.31 without retrieval. *Changes the plan if:* Sonnet's plan validates with a comparable task count
+  and ≤ half the dollars — then L4 plans by default.
+- **P2 — two-level planning**: Sonnet builds the dossier and the plan; Opus makes the decisions in one short
+  session. *Changes the plan if:* total dollars fall below P1's and Opus's share below a third.
+- **P3 — the escalation ladder**: Qwen3-Coder-30B-A3B at concurrency 1 on the tasks the 7B failed on 25 Sep.
+  *Changes the plan if:* it clears a meaningful share (≥ 3 of ~10) — then L2 exists as a rung.
